@@ -9,7 +9,7 @@
  * No ports here. Pure. Deterministic.
  */
 
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/infra/utils';
 import type { CallSignal } from '@quantbot/core';
 import type { Candle } from '@quantbot/core';
 

@@ -27,9 +27,9 @@ import { z } from 'zod';
 
 import { DateTime } from 'luxon';
 
-import { ValidationError, ConfigurationError } from '@quantbot/utils';
+import { ValidationError, ConfigurationError } from '@quantbot/infra/utils';
 import type { WorkflowContext } from '../types.js';
-import type { SimulationConfig, SimulationOutput } from '@quantbot/backtest';
+import type { SimulationConfig, SimulationOutput } from '@quantbot/simulation';
 
 // SimulationResult from service layer (includes error/skipped fields)
 // type SimulationResult = {

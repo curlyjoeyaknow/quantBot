@@ -7,7 +7,7 @@
 
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import { ConfigurationError } from '@quantbot/utils';
+import { ConfigurationError } from '@quantbot/infra/utils';
 import type { WorkflowContextWithPorts } from '../context/workflowContextWithPorts.js';
 
 /**

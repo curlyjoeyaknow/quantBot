@@ -13,7 +13,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/infra/utils';
 
 import type { CallSignal, Chain, TokenAddress } from '@quantbot/core';
 import type { MarketDataPort } from '@quantbot/core';
@@ -203,7 +203,7 @@ export async function evaluateCallsWorkflow(
       // Find entry candle index
       const alignedWithIndex = findEntryCandleIndex(aligned, candles);
 
-      // Evaluate overlays using @quantbot/backtest
+      // Evaluate overlays using @quantbot/simulation
       const results = await evaluateCallOverlays(alignedWithIndex, candles, req.backtest);
       allResults.push(...results);
 

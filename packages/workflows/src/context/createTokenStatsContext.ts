@@ -6,7 +6,7 @@
 
 import { resolve } from 'path';
 import { DateTime } from 'luxon';
-import { logger as utilsLogger } from '@quantbot/utils';
+import { logger as utilsLogger } from '@quantbot/infra/utils';
 import type { TokenStatsContext } from '../storage/getTokenStats.js';
 import { createProductionContextWithPorts } from './createProductionContext.js';
 

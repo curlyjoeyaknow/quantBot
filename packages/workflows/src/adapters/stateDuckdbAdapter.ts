@@ -9,7 +9,7 @@ import type {
   StateTransaction,
   StateTransactionResult,
 } from '@quantbot/core';
-import { getPythonEngine } from '@quantbot/utils';
+import { getPythonEngine } from '@quantbot/infra/utils';
 import { z } from 'zod';
 
 /**

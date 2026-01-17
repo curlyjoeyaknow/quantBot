@@ -12,7 +12,7 @@
  */
 
 import { z } from 'zod';
-import { ValidationError, AppError } from '@quantbot/utils';
+import { ValidationError, AppError } from '@quantbot/infra/utils';
 import type { TokenAddress } from '@quantbot/core';
 import type { WorkflowContextWithPorts } from '../context/workflowContextWithPorts.js';
 import {
@@ -24,9 +24,9 @@ import {
   type ExtractedBotData,
   type ResolvedCaller,
 } from '@quantbot/data/ingestion';
-import { isEvmAddress } from '@quantbot/utils';
-import { CallersRepository } from '@quantbot/storage';
-import { TokenDataRepository } from '@quantbot/storage';
+import { isEvmAddress } from '@quantbot/infra/utils';
+import { CallersRepository } from '@quantbot/infra/storage';
+import { TokenDataRepository } from '@quantbot/infra/storage';
 import { createProductionContextWithPorts } from '../context/createProductionContext.js';
 // PostgreSQL repositories removed - use TelegramPipelineService for DuckDB storage
 
@@ -90,7 +90,7 @@ export type TelegramJsonIngestContext = WorkflowContextWithPorts & {
 export async function createDefaultTelegramJsonIngestContext(): Promise<TelegramJsonIngestContext> {
   const baseContext = await createProductionContextWithPorts();
   const dbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
-  const { logger } = await import('@quantbot/utils');
+  const { logger } = await import('@quantbot/infra/utils');
 
   return {
     ...baseContext,

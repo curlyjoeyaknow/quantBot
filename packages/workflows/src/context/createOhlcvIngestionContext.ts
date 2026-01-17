@@ -17,7 +17,7 @@ import {
   createProductionContextWithPorts,
   type ProductionContextConfig,
 } from './createProductionContext.js';
-import { logger as utilsLogger } from '@quantbot/utils';
+import { logger as utilsLogger } from '@quantbot/infra/utils';
 import type { IngestOhlcvContext } from '../ohlcv/ingestOhlcv.js';
 
 /**

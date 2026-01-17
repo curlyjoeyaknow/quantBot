@@ -8,7 +8,7 @@ import type {
   Chain,
 } from '@quantbot/core';
 import type { BirdeyeClient } from '@quantbot/api-clients';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/infra/utils';
 
 // TokenMetadata from MarketDataPort (has chain field)
 type MarketDataTokenMetadata = {
@@ -38,7 +38,7 @@ export function createMarketDataBirdeyeAdapter(client: BirdeyeClient): MarketDat
     async fetchOhlcv(request: MarketDataOhlcvRequest): Promise<Candle[]> {
       // CRITICAL: Verify address is not truncated before passing to Birdeye client
       if (request.tokenAddress.length < 32) {
-        const { logger } = await import('@quantbot/utils');
+        const { logger } = await import('@quantbot/infra/utils');
         logger.error('Address is truncated in MarketDataPort adapter', {
           tokenAddress: request.tokenAddress,
           length: request.tokenAddress.length,

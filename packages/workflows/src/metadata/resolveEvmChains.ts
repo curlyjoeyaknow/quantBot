@@ -18,7 +18,7 @@
 
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import { ValidationError, DatabaseError } from '@quantbot/utils';
+import { ValidationError, DatabaseError } from '@quantbot/infra/utils';
 import type { WorkflowContextWithPorts } from '../context/workflowContextWithPorts.js';
 
 /**
@@ -127,7 +127,7 @@ async function getEvmTokensFromClickHouse(
  * Get EVM tokens from DuckDB
  */
 async function getEvmTokensFromDuckDB(duckdbPath: string): Promise<EvmToken[]> {
-  const { PythonEngine } = await import('@quantbot/utils');
+  const { PythonEngine } = await import('@quantbot/infra/utils');
   const engine = new PythonEngine();
 
   const result = await engine.runScript(
@@ -250,7 +250,7 @@ async function updateChainInDuckDB(
   address: string,
   newChain: string
 ): Promise<void> {
-  const { PythonEngine } = await import('@quantbot/utils');
+  const { PythonEngine } = await import('@quantbot/infra/utils');
   const engine = new PythonEngine();
 
   await engine.runScript(

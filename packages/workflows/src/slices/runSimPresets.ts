@@ -12,7 +12,7 @@
 
 import type { Candle } from '@quantbot/core';
 import type { SliceManifestV1 } from '@quantbot/core';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 export type SimPresetV1 = {
   kind: 'sim_preset_v1';

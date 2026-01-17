@@ -21,8 +21,8 @@
 
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import { ValidationError, findWorkspaceRoot } from '@quantbot/utils';
-import type { PythonEngine } from '@quantbot/utils';
+import { ValidationError, findWorkspaceRoot } from '@quantbot/infra/utils';
+import type { PythonEngine } from '@quantbot/infra/utils';
 import { join } from 'path';
 import { getDetailedCoverageTimeoutMs } from './coverageTimeouts.js';
 

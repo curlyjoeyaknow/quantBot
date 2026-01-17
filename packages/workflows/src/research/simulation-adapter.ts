@@ -25,10 +25,10 @@ import {
   calculateTradeFee,
   buildStrategy,
   buildStopLossConfig,
-} from '@quantbot/backtest';
+} from '@quantbot/simulation';
 import type { ExecutionModel as SimExecutionModel } from '@quantbot/simulation';
 import { DateTime } from 'luxon';
-import { logger, ValidationError } from '@quantbot/utils';
+import { logger, ValidationError } from '@quantbot/infra/utils';
 
 /**
  * Adapter that converts Research OS contract to existing workflow system

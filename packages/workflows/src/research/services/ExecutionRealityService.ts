@@ -6,7 +6,7 @@
  * Replaces MockExecutionRealityService with actual Branch C models.
  */
 
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/infra/utils';
 import type {
   ExecutionModel as ContractExecutionModel,
   CostModel as ContractCostModel,

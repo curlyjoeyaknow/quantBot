@@ -1,4 +1,4 @@
-import { ConfigurationError } from '@quantbot/utils';
+import { ConfigurationError } from '@quantbot/infra/utils';
 import type { WorkflowContextWithPorts } from '../context/workflowContextWithPorts.js';
 import { createOhlcvIngestionContext } from '../context/createOhlcvIngestionContext.js';
 import { createTokenAddress, normalizeChain } from '@quantbot/core';

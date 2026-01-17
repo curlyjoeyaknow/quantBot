@@ -15,8 +15,8 @@ import type {
   HistoricalPriceResponse,
   Chain,
 } from '@quantbot/core';
-import { getStorageEngine } from '@quantbot/storage';
-import { logger } from '@quantbot/utils';
+import { getStorageEngine } from '@quantbot/infra/storage';
+import { logger } from '@quantbot/infra/utils';
 
 /**
  * Map MarketDataPort interval to storage engine interval

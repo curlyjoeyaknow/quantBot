@@ -6,7 +6,7 @@
  */
 
 import type { QueryPort, QueryRequest, QueryResult } from '@quantbot/core';
-import { getClickHouseClient } from '@quantbot/storage';
+import { getClickHouseClient } from '@quantbot/infra/storage';
 
 /**
  * Creates a ClickHouse-backed QueryPort adapter for analytical queries

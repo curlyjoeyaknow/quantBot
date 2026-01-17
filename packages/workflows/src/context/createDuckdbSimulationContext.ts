@@ -5,14 +5,14 @@
  * simulation, and OHLCV ingestion.
  */
 
-import { ConfigurationError } from '@quantbot/utils';
+import { ConfigurationError } from '@quantbot/infra/utils';
 import {
   createProductionContext,
   type ProductionContextConfig,
 } from './createProductionContext.js';
 import type { RunSimulationDuckdbContext } from '../simulation/runSimulationDuckdb.js';
 import type { WorkflowContext } from '../types.js';
-import type { SimulationService, DuckDBStorageService } from '@quantbot/backtest';
+import type { SimulationService, DuckDBStorageService } from '@quantbot/simulation';
 import type { OhlcvIngestionService } from '@quantbot/data/ingestion';
 import { createOhlcvIngestionContext } from './createOhlcvIngestionContext.js';
 // Dynamic import type for OhlcvFetchJob (jobs package)

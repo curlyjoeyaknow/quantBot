@@ -7,7 +7,7 @@
  * **SAFETY**: This test uses dry-run mode by default (no real trades executed).
  */
 
-import { AppError } from '@quantbot/utils';
+import { AppError } from '@quantbot/infra/utils';
 import { createProductionPorts } from '../context/createProductionPorts.js';
 import { createTokenAddress } from '@quantbot/core';
 

@@ -18,17 +18,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
 
 // Mock dependencies BEFORE imports to prevent module resolution issues
-vi.mock('@quantbot/ingestion', () => ({
+vi.mock('@quantbot/data/ingestion', () => ({
   generateOhlcvWorklist: vi.fn(),
 }));
 
-vi.mock('@quantbot/ohlcv', () => ({
+vi.mock('@quantbot/data/ohlcv', () => ({
   storeCandles: vi.fn(),
   getCoverage: vi.fn(),
 }));
 
-vi.mock('@quantbot/utils', async () => {
-  const actual = await vi.importActual<typeof import('@quantbot/utils')>('@quantbot/utils');
+vi.mock('@quantbot/infra/utils', async () => {
+  const actual = await vi.importActual<typeof import('@quantbot/infra/utils')>('@quantbot/infra/utils');
   return {
     ...actual,
     logger: {

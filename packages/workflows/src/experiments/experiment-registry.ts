@@ -4,10 +4,10 @@
  * Registers and tracks experiments before execution.
  */
 
-import type { SimulationRunMetadata } from '@quantbot/storage';
+import type { SimulationRunMetadata } from '@quantbot/infra/storage';
 import { generateExperimentIdFromMetadata } from '@quantbot/core';
 import { serializeSimulationParameters, hashParameterVector } from '@quantbot/core';
-import { getCurrentGitCommitHash } from '@quantbot/utils';
+import { getCurrentGitCommitHash } from '@quantbot/infra/utils';
 import { DateTime } from 'luxon';
 
 /**

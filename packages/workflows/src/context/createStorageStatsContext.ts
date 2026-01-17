@@ -5,7 +5,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { logger as utilsLogger } from '@quantbot/utils';
+import { logger as utilsLogger } from '@quantbot/infra/utils';
 import type { StorageStatsContext } from '../storage/getStorageStats.js';
 import type { OhlcvStatsContext } from '../storage/getOhlcvStats.js';
 import { createProductionContextWithPorts } from './createProductionContext.js';

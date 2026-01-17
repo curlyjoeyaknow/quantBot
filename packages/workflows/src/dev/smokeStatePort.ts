@@ -5,7 +5,7 @@
  * Run this to ensure the DuckDB state adapter is properly wired.
  */
 
-import { AppError } from '@quantbot/utils';
+import { AppError } from '@quantbot/infra/utils';
 import { createProductionPorts } from '../context/createProductionPorts.js';
 
 export async function smokeStatePort(): Promise<void> {

@@ -6,7 +6,7 @@
  */
 
 import type { RunEventPort, RunEvent } from '@quantbot/core';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 /**
  * Extended WorkflowContext with optional RunEventPort

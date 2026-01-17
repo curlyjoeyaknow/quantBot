@@ -12,7 +12,7 @@
 import { z } from 'zod';
 import { createHash } from 'crypto';
 import { execSync } from 'child_process';
-import { ValidationError, NotFoundError } from '@quantbot/utils';
+import { ValidationError, NotFoundError } from '@quantbot/infra/utils';
 import type { SimulationRequest } from './contract.js';
 import type { RunArtifact } from './artifacts.js';
 import { SimulationRequestSchema } from './contract.js';

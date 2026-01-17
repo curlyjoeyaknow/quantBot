@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { DateTime } from 'luxon';
-import { ValidationError, NotFoundError } from '@quantbot/utils';
+import { ValidationError, NotFoundError } from '@quantbot/infra/utils';
 import type {
   WorkflowContext,
   SimulationRunSpec,

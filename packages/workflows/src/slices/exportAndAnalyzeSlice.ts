@@ -7,7 +7,7 @@ import type {
   SliceAnalyzer,
   SliceExporter,
 } from '@quantbot/core';
-import { ValidationError, AppError } from '@quantbot/utils';
+import { ValidationError, AppError } from '@quantbot/infra/utils';
 
 /**
  * Pure workflow handler:

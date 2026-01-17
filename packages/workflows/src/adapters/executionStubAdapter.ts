@@ -32,7 +32,7 @@
 
 import type { ClockPort, ExecutionPort, ExecutionRequest, ExecutionResult } from '@quantbot/core';
 import { createDeterministicRNG, seedFromString } from '@quantbot/core';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 export type ExecutionStubAdapterConfig = {
   /**

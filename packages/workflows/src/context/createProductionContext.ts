@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon';
 import { v4 as uuidv4 } from 'uuid';
-import { logger as utilsLogger, ValidationError } from '@quantbot/utils';
-import { StrategiesRepository, StorageEngine } from '@quantbot/storage';
+import { logger as utilsLogger, ValidationError } from '@quantbot/infra/utils';
+import { StrategiesRepository, StorageEngine } from '@quantbot/infra/storage';
 // PostgreSQL repositories removed - use DuckDB services/workflows instead
 import {
   simulateStrategy,
@@ -10,9 +10,9 @@ import {
   type ReEntryConfig,
   type CostConfig,
   type SignalGroup,
-} from '@quantbot/backtest';
-import { DuckDBStorageService, ClickHouseService } from '@quantbot/backtest';
-import { PythonEngine, getDuckDBPath } from '@quantbot/utils';
+} from '@quantbot/simulation';
+import { DuckDBStorageService, ClickHouseService } from '@quantbot/simulation';
+import { PythonEngine, getDuckDBPath } from '@quantbot/infra/utils';
 import type { ClockPort } from '@quantbot/core';
 import type {
   WorkflowContext,
@@ -43,7 +43,7 @@ export type { WorkflowContext } from '../types.js';
 
 export interface ProductionContextConfig {
   /**
-   * Optional logger override (defaults to @quantbot/utils logger)
+   * Optional logger override (defaults to @quantbot/infra/utils logger)
    */
   logger?: {
     info: (...args: unknown[]) => void;
@@ -113,7 +113,7 @@ export async function createProductionContextWithPorts(
   const { createProductionPorts } = await import('./createProductionPorts.js');
 
   // Get DuckDB path from config, environment, or use default
-  const { getDuckDBPath } = await import('@quantbot/utils');
+  const { getDuckDBPath } = await import('@quantbot/infra/utils');
   const duckdbPath = config?.duckdbPath || getDuckDBPath('data/tele.duckdb');
   const ports = await createProductionPorts(duckdbPath);
 
@@ -476,7 +476,7 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
        * This is the lock that prevents accidental cheating in simulations.
        */
       async run(q: {
-        candleAccessor: import('@quantbot/backtest').CausalCandleAccessor;
+        candleAccessor: import('@quantbot/simulation').CausalCandleAccessor;
         mint: string;
         startTime: number;
         endTime: number;
@@ -502,7 +502,7 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
 
         // Use causal accessor - this is the ONLY path.
         // Legacy { candles: Candle[] } signature removed - impossible to pass raw candles.
-        const { simulateStrategyWithCausalAccessor } = await import('@quantbot/backtest');
+        const { simulateStrategyWithCausalAccessor } = await import('@quantbot/simulation');
         const result = await simulateStrategyWithCausalAccessor(
           q.candleAccessor,
           q.mint,

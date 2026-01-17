@@ -8,7 +8,7 @@
  * from storage, not fetch from APIs.
  */
 
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import { getBirdeyeClient } from '@quantbot/api-clients';
 import { DateTime } from 'luxon';
 

@@ -32,7 +32,7 @@
  * - Workflow is testable with stubbed ports (no real I/O)
  * - Easy to swap providers (Birdeye → Helius) without changing workflow
  * - Clear boundaries: ports define contracts, adapters implement them
- * - No direct imports from @quantbot/api-clients or @quantbot/storage/src
+ * - No direct imports from @quantbot/api-clients or @quantbot/infra/storage/src
  *
  * This workflow follows the workflow contract:
  * - Validates spec with Zod
@@ -43,7 +43,7 @@
 
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import { ValidationError, AppError } from '@quantbot/utils';
+import { ValidationError, AppError } from '@quantbot/infra/utils';
 import type { WorkflowContextWithPorts } from '../context/workflowContextWithPorts.js';
 import { generateOhlcvWorklist } from '@quantbot/data/ingestion';
 import type { OhlcvWorkItem } from '@quantbot/core';

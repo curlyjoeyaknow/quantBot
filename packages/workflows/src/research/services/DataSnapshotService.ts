@@ -20,12 +20,12 @@ import { createHash } from 'crypto';
 import { DateTime } from 'luxon';
 import { promises as fs } from 'fs';
 import { join } from 'path';
-import { logger, ValidationError, ConfigurationError } from '@quantbot/utils';
+import { logger, ValidationError, ConfigurationError } from '@quantbot/infra/utils';
 import type { DataSnapshotRef } from '../contract.js';
 import { DataSnapshotRefSchema } from '../contract.js';
 import type { SliceManifestV1 } from '@quantbot/core';
 import { queryCallsDuckdb, createQueryCallsDuckdbContext } from '../../calls/queryCallsDuckdb.js';
-import { getStorageEngine } from '@quantbot/storage';
+import { getStorageEngine } from '@quantbot/infra/storage';
 import { exportSlicesForAlerts } from '../../slices/exportSlicesForAlerts.js';
 import type { WorkflowContext } from '../../types.js';
 

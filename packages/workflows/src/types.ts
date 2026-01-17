@@ -1,5 +1,5 @@
 import type { DateTime } from 'luxon';
-import type { CausalCandleAccessor } from '@quantbot/backtest';
+import type { CausalCandleAccessor } from '@quantbot/simulation';
 
 export type Candle = {
   timestamp: number;

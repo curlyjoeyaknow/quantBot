@@ -25,7 +25,7 @@ import { z } from 'zod';
 
 import { DateTime } from 'luxon';
 
-import { ValidationError, ConfigurationError } from '@quantbot/utils';
+import { ValidationError, ConfigurationError } from '@quantbot/infra/utils';
 import type { WorkflowContext, CallRecord } from '../types.js';
 
 /**
@@ -86,8 +86,8 @@ export async function createQueryCallsDuckdbContext(
   duckdbPath?: string
 ): Promise<QueryCallsDuckdbContext> {
   const { createProductionContext } = await import('../context/createProductionContext.js');
-  const { DuckDBStorageService } = await import('@quantbot/backtest');
-  const { PythonEngine } = await import('@quantbot/utils');
+  const { DuckDBStorageService } = await import('@quantbot/simulation');
+  const { PythonEngine } = await import('@quantbot/infra/utils');
 
   const baseContext = createProductionContext();
   const pythonEngine = new PythonEngine();

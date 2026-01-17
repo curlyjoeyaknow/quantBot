@@ -7,7 +7,7 @@
 
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import { logger, getDuckDBPath } from '@quantbot/utils';
+import { logger, getDuckDBPath } from '@quantbot/infra/utils';
 import type {
   SliceExporter,
   SliceSpec,

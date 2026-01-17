@@ -17,10 +17,10 @@
 
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import { ValidationError, AppError, isEvmAddress, findWorkspaceRoot } from '@quantbot/utils';
+import { ValidationError, AppError, isEvmAddress, findWorkspaceRoot } from '@quantbot/infra/utils';
 import { ingestOhlcv } from './ingestOhlcv.js';
 import type { IngestOhlcvSpec, IngestOhlcvContext } from './ingestOhlcv.js';
-import type { PythonEngine } from '@quantbot/utils';
+import type { PythonEngine } from '@quantbot/infra/utils';
 import { join } from 'path';
 import { getSurgicalCoverageTimeoutMs } from './coverageTimeouts.js';
 /**
@@ -335,7 +335,7 @@ async function retryFailedMintsAcrossAllChains(
       });
 
       // Add exclusion for each chain that was tried
-      const { DuckDBStorageService } = await import('@quantbot/backtest');
+      const { DuckDBStorageService } = await import('@quantbot/simulation');
       const storageService = new DuckDBStorageService(ctx.pythonEngine);
 
       for (const chain of triedChains) {
@@ -455,7 +455,7 @@ async function executeFetchTask(
   // 1. DuckDB worklist (has chain from call data)
   // 2. ClickHouse token_metadata (has chain from previous fetches)
   // 3. Fallback to trying all EVM chains for unknown EVM addresses
-  const { getDuckDBWorklistService, getClickHouseClient } = await import('@quantbot/storage');
+  const { getDuckDBWorklistService, getClickHouseClient } = await import('@quantbot/infra/storage');
 
   // First, try DuckDB worklist
   const worklistService = getDuckDBWorklistService();

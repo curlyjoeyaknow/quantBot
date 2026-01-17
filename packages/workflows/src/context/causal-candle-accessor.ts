@@ -7,9 +7,9 @@
 
 import { DateTime } from 'luxon';
 import type { ClockPort } from '@quantbot/core';
-import type { StorageEngine } from '@quantbot/storage';
-import type { CausalCandleAccessor, Candle, CandleInterval } from '@quantbot/backtest';
-import { filterCandlesByCloseTimeInterval, getLastClosedCandleInterval } from '@quantbot/backtest';
+import type { StorageEngine } from '@quantbot/infra/storage';
+import type { CausalCandleAccessor, Candle, CandleInterval } from '@quantbot/simulation';
+import { filterCandlesByCloseTimeInterval, getLastClosedCandleInterval } from '@quantbot/simulation';
 
 /**
  * Cache entry for candles

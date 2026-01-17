@@ -11,7 +11,7 @@ import { exportAndAnalyzeSlice } from './exportAndAnalyzeSlice.js';
 import {
   createClickHouseSliceExporterAdapterImpl,
   createDuckDbSliceAnalyzerAdapterImpl,
-} from '@quantbot/storage';
+} from '@quantbot/infra/storage';
 
 async function exampleExport1mCandles() {
   const exporter = createClickHouseSliceExporterAdapterImpl();

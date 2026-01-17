@@ -9,7 +9,7 @@
 
 import { promises as fs } from 'fs';
 import { join } from 'path';
-import { ValidationError, logger } from '@quantbot/utils';
+import { ValidationError, logger } from '@quantbot/infra/utils';
 import { getArtifactsDir } from '@quantbot/core';
 import type { RunArtifact } from './artifacts.js';
 import { RunArtifactSchema } from './artifacts.js';
