@@ -5,8 +5,10 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { getResultCache, getPerformanceMonitor, ResultCache } from '../src';
-import type { SimulationResult } from '../src/types';
+// Import directly from backtest source to avoid Vitest SSR module resolution issues
+import { getResultCache, ResultCache } from '../../backtest/src/sim/performance/result-cache.js';
+import { getPerformanceMonitor } from '../../backtest/src/sim/performance/monitor.js';
+import type { SimulationResult } from '../../backtest/src/sim/types/index.js';
 
 describe('Performance Optimizations', () => {
   describe('Result Cache', () => {

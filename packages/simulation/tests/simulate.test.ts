@@ -17,8 +17,10 @@
 // 1. Imports and Common Mocks
 // ============================================================================
 
-import { simulateStrategy, Strategy, StopLossConfig, EntryConfig, ReEntryConfig } from '../src';
-import type { Candle } from '../src/types/candle';
+// Import directly from backtest source to avoid Vitest SSR module resolution issues
+import { simulateStrategy } from '../../backtest/src/sim/core/simulator.js';
+import { Strategy, StopLossConfig, EntryConfig, ReEntryConfig } from '../../backtest/src/sim/types/index.js';
+import type { Candle } from '../../backtest/src/sim/types/candle.js';
 
 /**
  * Mock dataset representing a series of OHLCV candles for use in simulation tests.

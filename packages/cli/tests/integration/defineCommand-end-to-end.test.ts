@@ -21,7 +21,7 @@ import '../../src/commands/api-clients.js';
 
 describe('defineCommand End-to-End Integration', () => {
   const originalExit = process.exit;
-  
+
   beforeEach(() => {
     vi.clearAllMocks();
     // Mock process.exit to prevent actual exit in tests

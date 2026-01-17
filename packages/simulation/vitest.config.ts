@@ -80,7 +80,14 @@ export default defineConfig({
         '@quantbot/analytics',
         '@quantbot/workflows',
         '@quantbot/jobs',
+        '@quantbot/backtest', // Inline to avoid Vitest SSR module resolution issues
       ],
+    },
+    server: {
+      deps: {
+        // Inline @quantbot/backtest to avoid SSR module resolution issues with re-exported classes
+        inline: ['@quantbot/backtest'],
+      },
     },
     coverage: {
       provider: 'v8',

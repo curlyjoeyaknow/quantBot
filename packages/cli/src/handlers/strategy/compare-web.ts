@@ -1,6 +1,6 @@
 /**
  * Strategy Comparison Web UI Handler
- * 
+ *
  * Launches a web UI for comparing strategies with:
  * - TradingView charting for individual trade events
  * - Equity curve comparison between all strategies
@@ -29,4 +29,3 @@ export async function compareWebHandler(
     port,
   };
 }
-

@@ -280,7 +280,10 @@ export class ResearchSimulationAdapter {
     // New ExecutionModel has: latency (VenueLatencyConfig), slippage (VenueSlippageConfig), failures (FailureModel), partialFills (PartialFillModel), costs (CostModel)
 
     // Calculate latency stdDev for normal distribution
-    const latencyStdDev = Math.max(0, (contractModel.latency.p99 - contractModel.latency.p50) / 2.33);
+    const latencyStdDev = Math.max(
+      0,
+      (contractModel.latency.p99 - contractModel.latency.p50) / 2.33
+    );
 
     // Default venue (contract doesn't have venue, so use default)
     const venue = 'unknown';
@@ -315,7 +318,10 @@ export class ResearchSimulationAdapter {
           fixedBps: Math.max(0, Math.round(contractModel.slippage.base * 10000)),
           linearCoefficient: 0,
           sqrtCoefficient: 0,
-          volumeImpactBps: Math.max(0, Math.round((contractModel.slippage.volumeImpact || 0) * 10000)),
+          volumeImpactBps: Math.max(
+            0,
+            Math.round((contractModel.slippage.volumeImpact || 0) * 10000)
+          ),
           minBps: 0,
           maxBps: Math.max(0, Math.round((contractModel.slippage.max || 100) * 10000)),
         },
@@ -324,7 +330,10 @@ export class ResearchSimulationAdapter {
           fixedBps: Math.max(0, Math.round(contractModel.slippage.base * 10000)),
           linearCoefficient: 0,
           sqrtCoefficient: 0,
-          volumeImpactBps: Math.max(0, Math.round((contractModel.slippage.volumeImpact || 0) * 10000)),
+          volumeImpactBps: Math.max(
+            0,
+            Math.round((contractModel.slippage.volumeImpact || 0) * 10000)
+          ),
           minBps: 0,
           maxBps: Math.max(0, Math.round((contractModel.slippage.max || 100) * 10000)),
         },

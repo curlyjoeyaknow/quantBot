@@ -1,7 +1,8 @@
 import { describe, it } from 'vitest';
 import { createHash } from 'crypto';
-import { simulateStrategy } from '../src/core/simulator';
-import type { Candle } from '../src/types/candle';
+// Import directly from backtest source to avoid Vitest SSR module resolution issues
+import { simulateStrategy } from '../../backtest/src/sim/core/simulator.js';
+import type { Candle } from '../../backtest/src/sim/types/candle.js';
 import type {
   EntryConfig,
   ReEntryConfig,

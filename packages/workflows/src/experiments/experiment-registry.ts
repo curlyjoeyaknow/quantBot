@@ -165,10 +165,9 @@ export class ExperimentRegistry {
   ): Promise<ExperimentRegistration | null> {
     if (!this.pythonEngine) {
       // PythonEngine not available - skip deduplication check
-      logger.warn(
-        '[ExperimentRegistry] PythonEngine not available, skipping deduplication check',
-        { parameterVectorHash }
-      );
+      logger.warn('[ExperimentRegistry] PythonEngine not available, skipping deduplication check', {
+        parameterVectorHash,
+      });
       return null;
     }
 
@@ -227,13 +226,10 @@ export class ExperimentRegistry {
 
       return null;
     } catch (error) {
-      logger.warn(
-        '[ExperimentRegistry] Failed to check for duplicates via Python, continuing',
-        {
-          error: error instanceof Error ? error.message : String(error),
-          parameterVectorHash,
-        }
-      );
+      logger.warn('[ExperimentRegistry] Failed to check for duplicates via Python, continuing', {
+        error: error instanceof Error ? error.message : String(error),
+        parameterVectorHash,
+      });
       // On error, return null (don't block experiment registration)
       return null;
     }

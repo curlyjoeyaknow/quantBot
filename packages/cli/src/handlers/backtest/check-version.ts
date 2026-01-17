@@ -20,4 +20,3 @@ export async function checkVersionHandler(
     supportedVersions: service.getSupportedVersions(),
   };
 }
-

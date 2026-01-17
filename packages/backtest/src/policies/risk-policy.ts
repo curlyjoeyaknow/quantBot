@@ -86,12 +86,12 @@ export interface ComboPolicy {
 
 /**
  * Wash-and-rebound policy
- * 
+ *
  * 3-state machine:
  * - IN_POSITION: Track peak, exit on 20% trailing stop from peak
  * - WAIT_FOR_WASH: Wait for 50% drop from peak_at_exit
  * - WAIT_FOR_REBOUND: Wait for 20% rebound from wash_low, then re-enter
- * 
+ *
  * Deterministic 1m execution:
  * - Exit fill = peak * 0.80 (stop price)
  * - Re-entry fill = wash_low * 1.20 (trigger price)

@@ -77,4 +77,3 @@ async function loadStrategy(pathOrId: string): Promise<import('@quantbot/core').
   // For now, assume it's a file path that doesn't exist
   throw new Error(`Strategy not found: ${pathOrId}. Please provide a valid file path.`);
 }
-

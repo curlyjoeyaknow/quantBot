@@ -409,10 +409,11 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
                 created_at_iso: result.createdAtISO,
                 created_at_ts: Math.floor(createdAt.toSeconds()),
                 ok: result.ok,
-                pnl_multiplier: result.ok && result.pnlMultiplier !== undefined ? result.pnlMultiplier : null,
+                pnl_multiplier:
+                  result.ok && result.pnlMultiplier !== undefined ? result.pnlMultiplier : null,
                 trades: result.ok && result.trades !== undefined ? result.trades : null,
-                error_code: result.ok ? null : (result.errorCode || null),
-                error_message: result.ok ? null : (result.errorMessage || null),
+                error_code: result.ok ? null : result.errorCode || null,
+                error_message: result.ok ? null : result.errorMessage || null,
               };
             });
 
@@ -429,14 +430,18 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
                 return;
               }
 
-              const columns: Array<keyof ParquetRow> = Object.keys(firstRow) as Array<keyof ParquetRow>;
+              const columns: Array<keyof ParquetRow> = Object.keys(firstRow) as Array<
+                keyof ParquetRow
+              >;
               const columnDefs = columns
                 .map((col) => {
                   const value = firstRow[col];
                   if (value === null || value === undefined) {
                     return `${String(col)} TEXT`;
                   } else if (typeof value === 'number') {
-                    return Number.isInteger(value) ? `${String(col)} BIGINT` : `${String(col)} DOUBLE`;
+                    return Number.isInteger(value)
+                      ? `${String(col)} BIGINT`
+                      : `${String(col)} DOUBLE`;
                   } else if (typeof value === 'boolean') {
                     return `${String(col)} BOOLEAN`;
                   } else {
@@ -472,7 +477,9 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
 
               // Export to Parquet
               const parquetPath = join(runDir, 'simulation_results.parquet');
-              await db.execute(`COPY temp_simulation_results TO '${parquetPath.replace(/'/g, "''")}' (FORMAT PARQUET)`);
+              await db.execute(
+                `COPY temp_simulation_results TO '${parquetPath.replace(/'/g, "''")}' (FORMAT PARQUET)`
+              );
 
               logger.info('[workflows.context] Stored simulation results to parquet', {
                 runId,
@@ -530,13 +537,17 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
         endTime: number;
         strategy: StrategyRecord;
         call: CallRecord;
-      }): Promise<SimulationEngineResult & { events?: Array<{
-        type: string;
-        timestamp: number;
-        price: number;
-        remainingPosition?: number;
-        pnlSoFar?: number;
-      }> }> {
+      }): Promise<
+        SimulationEngineResult & {
+          events?: Array<{
+            type: string;
+            timestamp: number;
+            price: number;
+            remainingPosition?: number;
+            pnlSoFar?: number;
+          }>;
+        }
+      > {
         // Extract strategy legs from config
         const config = q.strategy.config as Record<string, unknown>;
         const strategyLegs = (
@@ -588,8 +599,16 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
           pnlMultiplier: result.finalPnl,
           trades: result.events.filter((e) => {
             // Count entry and exit events (exit events include: final_exit, stop_loss, target_hit, etc.)
-            const isEntry = e.type === 'entry' || e.type === 'trailing_entry_triggered' || e.type === 're_entry' || e.type === 'ladder_entry';
-            const isExit = e.type === 'final_exit' || e.type === 'stop_loss' || e.type === 'target_hit' || e.type === 'ladder_exit';
+            const isEntry =
+              e.type === 'entry' ||
+              e.type === 'trailing_entry_triggered' ||
+              e.type === 're_entry' ||
+              e.type === 'ladder_entry';
+            const isExit =
+              e.type === 'final_exit' ||
+              e.type === 'stop_loss' ||
+              e.type === 'target_hit' ||
+              e.type === 'ladder_exit';
             return isEntry || isExit;
           }).length,
           events, // Include events for writing to parquet

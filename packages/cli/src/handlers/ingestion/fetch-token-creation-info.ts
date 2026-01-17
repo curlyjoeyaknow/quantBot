@@ -116,7 +116,7 @@ export async function fetchTokenCreationInfoHandler(
         logger.debug('Token creation info fetched (storage not yet implemented)', {
           tokenAddress: creationInfo.tokenAddress,
         });
-        
+
         // TODO: Uncomment when storeTokenCreationInfo is implemented
         // if (storeResult.success) {
         //   results.tokensSucceeded++;

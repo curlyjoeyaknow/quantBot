@@ -663,7 +663,7 @@ export class DataSnapshotService {
 
   /**
    * Computes content hash from data and parameters
-   * 
+   *
    * Phase IV: Python computes hash, TypeScript orchestrates via PythonEngine
    * Falls back to TypeScript computation if PythonEngine not available (backward compatibility)
    */

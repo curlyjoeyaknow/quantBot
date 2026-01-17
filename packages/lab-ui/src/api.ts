@@ -190,11 +190,9 @@ export function registerApi(app: express.Express, db: DuckDb) {
       time_from: string;
       time_to: string;
       params_json: string;
-    }>(
-      db,
-      `SELECT interval, time_from, time_to, params_json FROM backtest_runs WHERE run_id = ?`,
-      [pathOnlyRunId]
-    );
+    }>(db, `SELECT interval, time_from, time_to, params_json FROM backtest_runs WHERE run_id = ?`, [
+      pathOnlyRunId,
+    ]);
 
     if (!pathOnlyRun) {
       return res.status(400).json({ error: 'path-only run not found' });
@@ -292,11 +290,9 @@ export function registerApi(app: express.Express, db: DuckDb) {
       time_from: string;
       time_to: string;
       params_json: string;
-    }>(
-      db,
-      `SELECT interval, time_from, time_to, params_json FROM backtest_runs WHERE run_id = ?`,
-      [pathOnlyRunId]
-    );
+    }>(db, `SELECT interval, time_from, time_to, params_json FROM backtest_runs WHERE run_id = ?`, [
+      pathOnlyRunId,
+    ]);
 
     if (!pathOnlyRun) {
       return res.status(400).json({ error: 'path-only run not found' });

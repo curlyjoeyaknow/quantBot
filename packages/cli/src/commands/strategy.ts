@@ -107,7 +107,9 @@ const strategyModule: PackageCommandModule = {
         const { diffStrategyHandler } = await import('../handlers/strategy/diff-strategy.js');
         return await diffStrategyHandler(
           args as StrategyDiffArgs,
-          _ctx as InstanceType<Awaited<typeof import('../core/command-context.js')>['CommandContext']>
+          _ctx as InstanceType<
+            Awaited<typeof import('../core/command-context.js')>['CommandContext']
+          >
         );
       },
       examples: [
@@ -123,7 +125,9 @@ const strategyModule: PackageCommandModule = {
         const { compareStrategyHandler } = await import('../handlers/strategy/compare-strategy.js');
         return await compareStrategyHandler(
           args as StrategyCompareArgs,
-          _ctx as InstanceType<Awaited<typeof import('../core/command-context.js')>['CommandContext']>
+          _ctx as InstanceType<
+            Awaited<typeof import('../core/command-context.js')>['CommandContext']
+          >
         );
       },
       examples: [
@@ -136,10 +140,13 @@ const strategyModule: PackageCommandModule = {
       description: 'List all versions of a strategy',
       schema: strategyVersionsSchema,
       handler: async (args: unknown, _ctx: unknown) => {
-        const { listStrategyVersionsHandler } = await import('../handlers/strategy/list-versions.js');
+        const { listStrategyVersionsHandler } =
+          await import('../handlers/strategy/list-versions.js');
         return await listStrategyVersionsHandler(
           args as StrategyVersionsArgs,
-          _ctx as InstanceType<Awaited<typeof import('../core/command-context.js')>['CommandContext']>
+          _ctx as InstanceType<
+            Awaited<typeof import('../core/command-context.js')>['CommandContext']
+          >
         );
       },
       examples: ['quantbot strategy versions --strategy-id my-strategy'],
@@ -152,7 +159,9 @@ const strategyModule: PackageCommandModule = {
         const { compareWebHandler } = await import('../handlers/strategy/compare-web.js');
         return await compareWebHandler(
           args as StrategyCompareWebArgs,
-          _ctx as InstanceType<Awaited<typeof import('../core/command-context.js')>['CommandContext']>
+          _ctx as InstanceType<
+            Awaited<typeof import('../core/command-context.js')>['CommandContext']
+          >
         );
       },
       examples: [
@@ -164,4 +173,3 @@ const strategyModule: PackageCommandModule = {
 };
 
 commandRegistry.registerPackage(strategyModule);
-

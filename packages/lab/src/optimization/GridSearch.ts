@@ -5,7 +5,12 @@
  * Generates all combinations and evaluates each.
  */
 
-import type { ParameterSpaceDef, ParameterConfig, OptimizationConfig, OptimizationResult } from './types.js';
+import type {
+  ParameterSpaceDef,
+  ParameterConfig,
+  OptimizationConfig,
+  OptimizationResult,
+} from './types.js';
 import { ParameterSpace } from './ParameterSpace.js';
 import { logger } from '@quantbot/utils';
 

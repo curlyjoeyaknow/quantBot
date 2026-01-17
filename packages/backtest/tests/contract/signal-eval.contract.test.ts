@@ -10,8 +10,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
-// Test signal evaluation through simulation package directly (what we're protecting)
-import { evaluateSignalGroup, type SignalGroup, type SignalCondition } from '@quantbot/simulation';
+// Import directly from source to avoid Vitest SSR module resolution issues
+import { evaluateSignalGroup } from '../../src/sim/signals.js';
+import type { SignalGroup, SignalCondition } from '../../src/sim/types/index.js';
 import type { Candle } from '@quantbot/core';
 
 /**

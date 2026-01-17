@@ -70,7 +70,7 @@ export class PythonSimulationService {
     if (!SUPPORTED_CONTRACT_VERSIONS.includes(simInput.contractVersion)) {
       throw new ValidationError(
         `Unsupported contract version: ${simInput.contractVersion}. ` +
-        `Supported versions: ${SUPPORTED_CONTRACT_VERSIONS.join(', ')}`,
+          `Supported versions: ${SUPPORTED_CONTRACT_VERSIONS.join(', ')}`,
         {
           contractVersion: simInput.contractVersion,
           supportedVersions: SUPPORTED_CONTRACT_VERSIONS,
@@ -174,7 +174,7 @@ export class PythonSimulationService {
     if (!SUPPORTED_CONTRACT_VERSIONS.includes(version)) {
       throw new ValidationError(
         `Unsupported contract version: ${version}. ` +
-        `Supported versions: ${SUPPORTED_CONTRACT_VERSIONS.join(', ')}`,
+          `Supported versions: ${SUPPORTED_CONTRACT_VERSIONS.join(', ')}`,
         {
           version,
           supportedVersions: SUPPORTED_CONTRACT_VERSIONS,

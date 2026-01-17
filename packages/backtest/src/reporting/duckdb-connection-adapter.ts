@@ -104,4 +104,3 @@ export function createDuckDbConnectionAdapter(client: DuckDBClient): DuckDbConne
     },
   };
 }
-

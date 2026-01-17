@@ -114,4 +114,3 @@ export interface StrategyComparison {
   /** Similarity score (0-1, 1 = identical) */
   similarity: number;
 }
-

@@ -10,15 +10,15 @@
  */
 
 import { describe, it, expect } from 'vitest';
-// Import directly from simulation (what we're testing the contract for)
-import {
-  runOverlaySimulation,
-  type ExitOverlay,
-  type FeeModel,
-  type PositionModel,
-  type OverlaySimulationRequest,
-  type OverlaySimulationResult,
-} from '@quantbot/simulation';
+// Import directly from source to avoid Vitest SSR module resolution issues
+import { runOverlaySimulation } from '../../src/sim/overlay-simulation.js';
+import type {
+  ExitOverlay,
+  FeeModel,
+  PositionModel,
+  OverlaySimulationRequest,
+  OverlaySimulationResult,
+} from '../../src/sim/overlay-simulation.js';
 import type { Candle } from '@quantbot/core';
 
 /**

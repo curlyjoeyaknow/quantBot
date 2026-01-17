@@ -5,7 +5,14 @@
  */
 
 import type { StrategyDSL } from './dsl-schema.js';
-import type { StrategyDiff, FieldDiff, EntryDiff, ExitDiff, ReEntryDiff, DiffType } from './diff-types.js';
+import type {
+  StrategyDiff,
+  FieldDiff,
+  EntryDiff,
+  ExitDiff,
+  ReEntryDiff,
+  DiffType,
+} from './diff-types.js';
 
 /**
  * Compute diff between two strategies
@@ -44,7 +51,11 @@ export function computeStrategyDiff(strategy1: StrategyDSL, strategy2: StrategyD
 
   // Compare position sizing
   if (!objectsEqual(strategy1.positionSizing, strategy2.positionSizing)) {
-    diff.positionSizing = createFieldDiff('positionSizing', strategy1.positionSizing, strategy2.positionSizing);
+    diff.positionSizing = createFieldDiff(
+      'positionSizing',
+      strategy1.positionSizing,
+      strategy2.positionSizing
+    );
     updateSummary(diff.summary, diff.positionSizing.type);
   }
 
@@ -103,7 +114,10 @@ export function computeStrategyDiff(strategy1: StrategyDSL, strategy2: StrategyD
 /**
  * Compare entry configurations
  */
-function compareEntry(entry1: StrategyDSL['entry'], entry2: StrategyDSL['entry']): EntryDiff | null {
+function compareEntry(
+  entry1: StrategyDSL['entry'],
+  entry2: StrategyDSL['entry']
+): EntryDiff | null {
   const diff: EntryDiff = {
     fields: [],
   };
@@ -205,7 +219,11 @@ function compareReEntry(
 /**
  * Compare two objects recursively
  */
-function compareObjects(obj1: Record<string, unknown>, obj2: Record<string, unknown>, prefix: string): FieldDiff[] {
+function compareObjects(
+  obj1: Record<string, unknown>,
+  obj2: Record<string, unknown>,
+  prefix: string
+): FieldDiff[] {
   const diffs: FieldDiff[] = [];
   const allKeys = new Set([...Object.keys(obj1), ...Object.keys(obj2)]);
 
@@ -288,7 +306,12 @@ function objectsEqual(val1: unknown, val2: unknown): boolean {
 
     for (const key of keys1) {
       if (!keys2.includes(key)) return false;
-      if (!objectsEqual((val1 as Record<string, unknown>)[key], (val2 as Record<string, unknown>)[key])) {
+      if (
+        !objectsEqual(
+          (val1 as Record<string, unknown>)[key],
+          (val2 as Record<string, unknown>)[key]
+        )
+      ) {
         return false;
       }
     }
@@ -402,4 +425,3 @@ function formatFieldDiff(field: FieldDiff): string {
   }
   return `${path}: unchanged`;
 }
-

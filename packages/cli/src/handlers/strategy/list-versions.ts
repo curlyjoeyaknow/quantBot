@@ -21,4 +21,3 @@ export async function listStrategyVersionsHandler(
     message: 'Strategy version listing not yet implemented. Will query strategy repository.',
   };
 }
-

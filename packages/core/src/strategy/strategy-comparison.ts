@@ -41,8 +41,12 @@ export class StrategyComparisonService {
     const content2 = readFileSync(path2, 'utf-8');
 
     // Remove comments and parse JSON (simple approach - assumes valid JSON)
-    const strategy1 = JSON.parse(content1.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')) as StrategyDSL;
-    const strategy2 = JSON.parse(content2.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')) as StrategyDSL;
+    const strategy1 = JSON.parse(
+      content1.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')
+    ) as StrategyDSL;
+    const strategy2 = JSON.parse(
+      content2.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')
+    ) as StrategyDSL;
 
     return this.compare(strategy1, strategy2);
   }
@@ -90,4 +94,3 @@ export class StrategyComparisonService {
     };
   }
 }
-

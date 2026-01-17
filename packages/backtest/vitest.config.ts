@@ -17,8 +17,13 @@ export default defineConfig({
         '@quantbot/utils',
         '@quantbot/storage',
         '@quantbot/backtest',
-        '@quantbot/backtest',
       ],
+    },
+    server: {
+      deps: {
+        // Inline @quantbot/backtest to avoid SSR module resolution issues with re-exported classes
+        inline: ['@quantbot/backtest'],
+      },
     },
     coverage: {
       provider: 'v8',
@@ -34,7 +39,6 @@ export default defineConfig({
       '@quantbot/core': path.resolve(__dirname, '../core/src'),
       '@quantbot/utils': path.resolve(__dirname, '../utils/src'),
       '@quantbot/storage': path.resolve(__dirname, '../storage/src'),
-      '@quantbot/backtest': path.resolve(__dirname, '../simulation/src'),
     },
   },
 });

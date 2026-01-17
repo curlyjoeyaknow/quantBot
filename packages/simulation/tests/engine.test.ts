@@ -7,14 +7,15 @@
  * the result structure matches the expected types.
  */
 
-import {
-  simulateStrategy,
+// Import directly from backtest source to avoid Vitest SSR module resolution issues
+import { simulateStrategy } from '../../backtest/src/sim/engine.js';
+import type {
   Strategy,
   StopLossConfig,
   EntryConfig,
   ReEntryConfig,
-} from '../src/engine';
-import type { Candle } from '../src/types/candle';
+} from '../../backtest/src/sim/config.js';
+import type { Candle } from '../../backtest/src/sim/types/candle.js';
 
 describe('Simulation Engine', () => {
   // Mock candle data for testing

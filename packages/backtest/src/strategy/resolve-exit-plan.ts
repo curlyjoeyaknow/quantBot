@@ -1,6 +1,10 @@
 import type { ExitPlan } from './exit-plan-validate.js';
 import { parseExitPlan } from './exit-plan-validate.js';
-import { loadStrategyConfigJson, ensureBacktestStrategyTables, openDuckDbFromEnv } from './duckdb-strategy-store.js';
+import {
+  loadStrategyConfigJson,
+  ensureBacktestStrategyTables,
+  openDuckDbFromEnv,
+} from './duckdb-strategy-store.js';
 import type { DuckDBClient } from '@quantbot/storage';
 
 export async function resolveExitPlanFromDuckDb(

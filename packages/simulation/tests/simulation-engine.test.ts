@@ -2,14 +2,13 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
 import { DateTime } from 'luxon';
-import {
-  parseSimulationConfig,
-  SimulationScenarioConfig,
-  DefaultTargetResolver,
-  simulateStrategy,
-  Strategy,
-} from '../src';
-import type { Candle } from '../src/types/candle';
+// Import directly from backtest source to avoid Vitest SSR module resolution issues
+import { parseSimulationConfig } from '../../backtest/src/sim/config.js';
+import { DefaultTargetResolver } from '../../backtest/src/sim/target-resolver.js';
+import { simulateStrategy } from '../../backtest/src/sim/core/simulator.js';
+import type { SimulationScenarioConfig } from '../../backtest/src/sim/config.js';
+import type { Strategy } from '../../backtest/src/sim/types/index.js';
+import type { Candle } from '../../backtest/src/sim/types/candle.js';
 
 describe('Simulation configuration parsing', () => {
   it('applies defaults and validates scenarios', () => {

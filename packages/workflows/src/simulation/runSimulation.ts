@@ -165,20 +165,24 @@ export async function runSimulation(
       }
 
       // Run simulation with causal accessor (mandatory - no raw candles allowed)
-      const sim = await ctx.simulation.run({
+      const sim = (await ctx.simulation.run({
         candleAccessor: ctx.ohlcv.causalAccessor, // Only path - enforced by type system
         mint: call.mint,
         startTime,
         endTime,
         strategy,
         call,
-      }) as { pnlMultiplier: number; trades: number; events?: Array<{
-        type: string;
-        timestamp: number;
-        price: number;
-        remainingPosition?: number;
-        pnlSoFar?: number;
-      }> };
+      })) as {
+        pnlMultiplier: number;
+        trades: number;
+        events?: Array<{
+          type: string;
+          timestamp: number;
+          price: number;
+          remainingPosition?: number;
+          pnlSoFar?: number;
+        }>;
+      };
 
       pnlOk.push(sim.pnlMultiplier);
       tradesTotal += sim.trades;
@@ -353,7 +357,9 @@ export async function runSimulation(
 
           // Export to Parquet
           const parquetPath = join(runDir, 'events.parquet');
-          await db.execute(`COPY temp_events TO '${parquetPath.replace(/'/g, "''")}' (FORMAT PARQUET)`);
+          await db.execute(
+            `COPY temp_events TO '${parquetPath.replace(/'/g, "''")}' (FORMAT PARQUET)`
+          );
 
           ctx.logger.info('Stored simulation events to parquet', {
             runId,

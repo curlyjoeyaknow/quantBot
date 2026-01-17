@@ -100,7 +100,10 @@ export class ParameterSpace {
    * Estimate total config count without generating all
    */
   estimateConfigCount(space: ParameterSpaceDef): number {
-    return Object.values(space).reduce((product: number, values: number[] | string[]) => product * values.length, 1);
+    return Object.values(space).reduce(
+      (product: number, values: number[] | string[]) => product * values.length,
+      1
+    );
   }
 
   /**

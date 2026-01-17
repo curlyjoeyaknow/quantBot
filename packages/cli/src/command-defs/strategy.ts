@@ -42,4 +42,3 @@ export const strategyCompareWebSchema = z.object({
 });
 
 export type StrategyCompareWebArgs = z.infer<typeof strategyCompareWebSchema>;
-

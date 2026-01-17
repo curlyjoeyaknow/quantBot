@@ -229,7 +229,9 @@ export class StrategiesRepository {
 
       // Handle error object from Python script
       if (rawResult && typeof rawResult === 'object' && 'error' in rawResult) {
-        logger.warn('Python script returned error', { error: (rawResult as { error: string }).error });
+        logger.warn('Python script returned error', {
+          error: (rawResult as { error: string }).error,
+        });
         return [];
       }
 

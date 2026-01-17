@@ -157,7 +157,15 @@ fastify.get('/public/strategy-compare.js', async (request: FastifyRequest, reply
     try {
       await readFile(jsPath, 'utf-8');
     } catch {
-      const srcPath = join(process.cwd(), 'packages', 'lab', 'src', 'ui', 'public', 'strategy-compare.js');
+      const srcPath = join(
+        process.cwd(),
+        'packages',
+        'lab',
+        'src',
+        'ui',
+        'public',
+        'strategy-compare.js'
+      );
       jsPath = srcPath;
     }
     const js = await readFile(jsPath, 'utf-8');
