@@ -4,7 +4,16 @@
  * Tests that verify wiring paths work end-to-end
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+// Mock API clients to avoid requiring API keys in tests
+vi.mock('@quantbot/api-clients', () => ({
+  getBirdeyeClient: vi.fn(() => ({
+    fetchOhlcv: vi.fn(),
+    fetchTokenCreationInfo: vi.fn(),
+  })),
+}));
+
 import { createProductionContext } from '../../../src/context/createProductionContext.js';
 import { createProductionContextWithPorts } from '../../../src/context/createProductionContext.js';
 import { createDuckdbSimulationContext } from '../../../src/context/createDuckdbSimulationContext.js';

@@ -202,7 +202,9 @@ export class Catalog {
 
     const content = await this.adapter.readFile(manifestPath);
     const parsed = JSON.parse(content);
-    return RunManifestSchema.parse(parsed);
+    // Re-import schema to avoid Vitest SSR module resolution issues
+    const { RunManifestSchema: Schema } = await import('./manifest.js');
+    return Schema.parse(parsed);
   }
 
   /**

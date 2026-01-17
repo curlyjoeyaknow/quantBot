@@ -27,6 +27,28 @@ vi.mock('@quantbot/data/ohlcv', () => ({
   getCoverage: vi.fn(),
 }));
 
+// Mock API clients to avoid requiring API keys in tests
+vi.mock('@quantbot/api-clients', () => ({
+  getBirdeyeClient: vi.fn(() => ({
+    fetchOhlcv: vi.fn(),
+    fetchTokenCreationInfo: vi.fn(),
+    fetchOHLCVData: vi.fn(),
+    getTokenMetadata: vi.fn(),
+    fetchHistoricalPriceAtUnixTime: vi.fn(),
+  })),
+}));
+
+// Also mock the infra path (consolidation shim)
+vi.mock('@quantbot/infra/api-clients', () => ({
+  getBirdeyeClient: vi.fn(() => ({
+    fetchOhlcv: vi.fn(),
+    fetchTokenCreationInfo: vi.fn(),
+    fetchOHLCVData: vi.fn(),
+    getTokenMetadata: vi.fn(),
+    fetchHistoricalPriceAtUnixTime: vi.fn(),
+  })),
+}));
+
 vi.mock('@quantbot/infra/utils', async () => {
   const actual = await vi.importActual<typeof import('@quantbot/infra/utils')>('@quantbot/infra/utils');
   return {

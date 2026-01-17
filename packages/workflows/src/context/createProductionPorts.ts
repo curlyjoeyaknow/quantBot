@@ -18,7 +18,8 @@ import { getBirdeyeClient } from '@quantbot/api-clients';
  * Create production ports with real adapters where available, stubs otherwise
  */
 export async function createProductionPorts(duckdbPath?: string): Promise<ProductionPorts> {
-  // Wire real Birdeye client
+  // Wire real Birdeye client (lazy initialization to avoid requiring API keys at module load)
+  // getBirdeyeClient is called here, but the adapter will handle lazy initialization
   const birdeye = getBirdeyeClient();
   const marketData = createMarketDataBirdeyeAdapter(birdeye);
 

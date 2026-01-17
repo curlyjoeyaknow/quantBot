@@ -113,7 +113,9 @@ describe('MarketDataIngestionService', () => {
     });
 
     it('should fetch token creation info for Solana tokens', async () => {
-      const mockTokens = ['token1'];
+      // Use a valid Solana address format (base58, 32-44 chars)
+      const validSolanaToken = 'So11111111111111111111111111111111111111112';
+      const mockTokens = [validSolanaToken];
       mockClickHouseClient.query.mockResolvedValue({
         json: async () => mockTokens.map((mint) => ({ mint })),
       });
@@ -122,7 +124,7 @@ describe('MarketDataIngestionService', () => {
       const mockCreationInfo = {
         txHash: 'tx1',
         slot: 12345,
-        tokenAddress: 'token1',
+        tokenAddress: validSolanaToken,
         decimals: 9,
         owner: 'owner1',
         blockUnixTime: 1234567890,
@@ -136,7 +138,7 @@ describe('MarketDataIngestionService', () => {
       const service = new MarketDataIngestionService(mockBirdeyeClient as unknown as BirdeyeClient);
       const result = await service.ingestForAllTokens({ chain: 'solana', limit: 1 });
 
-      expect(mockBirdeyeClient.fetchTokenCreationInfo).toHaveBeenCalledWith('token1', 'solana');
+      expect(mockBirdeyeClient.fetchTokenCreationInfo).toHaveBeenCalledWith(validSolanaToken, 'solana');
       expect(mockClickHouseClient.insert).toHaveBeenCalled();
       expect(result.tokenCreationInfoInserted).toBe(1);
     });

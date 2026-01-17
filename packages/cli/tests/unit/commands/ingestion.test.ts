@@ -6,7 +6,9 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { z } from 'zod';
-import { TelegramAlertIngestionService, OhlcvIngestionService } from '@quantbot/data/ingestion';
+// Import directly from source to avoid Vitest SSR module resolution issues
+import { TelegramAlertIngestionService } from '../../../../../data/src/ingestion/TelegramAlertIngestionService.js';
+import { OhlcvIngestionService } from '@quantbot/data/ingestion';
 import {
   CallersRepository,
   TokensRepository,

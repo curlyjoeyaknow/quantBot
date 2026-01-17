@@ -6,6 +6,15 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Mock API clients to avoid requiring API keys in tests
+vi.mock('@quantbot/api-clients', () => ({
+  getBirdeyeClient: vi.fn(() => ({
+    fetchOhlcv: vi.fn(),
+    fetchTokenCreationInfo: vi.fn(),
+  })),
+}));
+
 import { createProductionContext } from '../../../src/context/createProductionContext.js';
 import { createProductionContextWithPorts } from '../../../src/context/createProductionContext.js';
 import type { WorkflowContext } from '../../../src/types.js';
