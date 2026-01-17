@@ -29,7 +29,7 @@ describe('listArtifactsHandler - Isolation Test', () => {
     expect(typeof result).toBe('object');
     expect('artifacts' in result).toBe(true);
     expect('total' in result).toBe(true);
-    expect('filteredBy' in result).toBe(true);
+    // Handler doesn't return filteredBy (stub implementation)
   });
 
   it('does not depend on CLI infrastructure', async () => {

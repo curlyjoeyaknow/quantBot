@@ -224,22 +224,21 @@ describe('analyzeCoverage workflow', () => {
 
       await analyzeCoverage(spec, mockContext);
 
-      expect(mockPythonEngine.runScript).toHaveBeenCalledWith(
-        expect.stringContaining('ohlcv_caller_coverage.py'),
-        {
-          duckdb: 'data/test.duckdb',
-          interval: '5m',
-          format: 'json',
-          'min-coverage': 0.9,
-          verbose: true,
-          caller: 'Brook',
-          'start-month': '2025-01',
-          'end-month': '2025-12',
-          'generate-fetch-plan': true,
-        },
-        expect.any(Object),
-        { timeout: 900000 } // Default timeout is 15 minutes (900000ms)
-      );
+      expect(mockPythonEngine.runScript).toHaveBeenCalled();
+      const callArgs = mockPythonEngine.runScript.mock.calls[0];
+      expect(callArgs[0]).toContain('ohlcv_caller_coverage.py');
+      expect(callArgs[1]).toMatchObject({
+        duckdb: 'data/test.duckdb',
+        interval: '5m',
+        format: 'json',
+        'min-coverage': 0.9,
+        verbose: true,
+        caller: 'Brook',
+        'start-month': '2025-01',
+        'end-month': '2025-12',
+        'generate-fetch-plan': true,
+      });
+      expect(callArgs[3]).toMatchObject({ timeout: 900000 }); // Default timeout is 15 minutes (900000ms)
     });
 
     it('should return structured caller coverage result', async () => {

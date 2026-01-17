@@ -11,6 +11,20 @@ vi.mock('@quantbot/api-clients', () => ({
   getBirdeyeClient: vi.fn(() => ({
     fetchOhlcv: vi.fn(),
     fetchTokenCreationInfo: vi.fn(),
+    fetchOHLCVData: vi.fn(),
+    getTokenMetadata: vi.fn(),
+    fetchHistoricalPriceAtUnixTime: vi.fn(),
+  })),
+}));
+
+// Also mock the infra path (consolidation shim)
+vi.mock('@quantbot/infra/api-clients', () => ({
+  getBirdeyeClient: vi.fn(() => ({
+    fetchOhlcv: vi.fn(),
+    fetchTokenCreationInfo: vi.fn(),
+    fetchOHLCVData: vi.fn(),
+    getTokenMetadata: vi.fn(),
+    fetchHistoricalPriceAtUnixTime: vi.fn(),
   })),
 }));
 

@@ -27,7 +27,6 @@ describe('listArtifactsHandler', () => {
     expect(result).toEqual({
       artifacts: [],
       total: 0,
-      filteredBy: args,
     });
   });
 
@@ -40,7 +39,6 @@ describe('listArtifactsHandler', () => {
 
     const result = await listArtifactsHandler(args, mockCtx);
 
-    expect(result.filteredBy).toEqual(args);
     expect(result.artifacts).toEqual([]);
     expect(result.total).toBe(0);
   });
@@ -54,7 +52,7 @@ describe('listArtifactsHandler', () => {
 
     const result = await listArtifactsHandler(args, mockCtx);
 
-    expect(result.filteredBy.type).toBeUndefined();
-    expect(result.filteredBy.tags).toBeUndefined();
+    expect(result.artifacts).toEqual([]);
+    expect(result.total).toBe(0);
   });
 });

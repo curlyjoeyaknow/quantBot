@@ -195,7 +195,8 @@ describe('analyzeCoverageHandler', () => {
 
       const callArgs = vi.mocked(workflows.analyzeCoverage).mock.calls[0][0];
       expect(callArgs.duckdbPath).toBeDefined();
-      expect(callArgs.duckdbPath).toContain('alerts.duckdb'); // Default path
+      // Default path changed from alerts.duckdb to tele.duckdb
+      expect(callArgs.duckdbPath).toContain('tele.duckdb'); // Default path
     });
 
     it('should resolve relative duckdb paths', async () => {

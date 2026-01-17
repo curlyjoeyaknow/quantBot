@@ -13,8 +13,9 @@ import { createProductionContext } from '../../../src/context/createProductionCo
 import { vi } from 'vitest';
 
 // Mock storage with larger datasets
-vi.mock('@quantbot/storage', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@quantbot/storage')>();
+// DataSnapshotService uses @quantbot/infra/storage, not @quantbot/storage
+vi.mock('@quantbot/infra/storage', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@quantbot/infra/storage')>();
 
   // Generate mock candles for performance testing
   const generateCandles = (count: number) => {

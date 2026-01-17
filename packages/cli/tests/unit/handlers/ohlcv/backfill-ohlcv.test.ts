@@ -11,10 +11,18 @@ import { ValidationError } from '@quantbot/infra/utils';
 const mockFetchCandles = vi.fn();
 const mockInitialize = vi.fn().mockResolvedValue(undefined);
 
-vi.mock('@quantbot/jobs', () => ({
+vi.mock('@quantbot/data/jobs', () => ({
   getOhlcvIngestionEngine: vi.fn(() => ({
     initialize: mockInitialize,
     fetchCandles: mockFetchCandles,
+  })),
+}));
+
+// Mock ClickHouse to avoid connection errors
+vi.mock('@quantbot/storage', () => ({
+  getClickHouseClient: vi.fn(() => ({
+    query: vi.fn(),
+    insert: vi.fn(),
   })),
 }));
 
