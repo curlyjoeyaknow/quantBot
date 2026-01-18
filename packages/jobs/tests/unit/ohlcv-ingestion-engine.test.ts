@@ -150,6 +150,10 @@ describe('OhlcvIngestionEngine', () => {
     
     // Ensure cache returns empty so it proceeds to fetch
     vi.mocked(mockStorageEngine.getCandles).mockResolvedValue([]);
+    
+    // Force getBirdeyeClientInstance to use the mocked client by calling getBirdeyeClient after mocks are set up
+    // This ensures the cached instance uses the mocked client
+    getBirdeyeClient();
   });
 
   afterEach(() => {
@@ -228,6 +232,8 @@ describe('OhlcvIngestionEngine', () => {
       vi.mocked(fetchBirdeyeCandles).mockResolvedValue(mockCandles);
       
       // Ensure historical price returns data so probe doesn't early-exit
+      // Reset instance first to ensure mock is applied
+      resetBirdeyeClientInstance();
       const birdeyeClient = getBirdeyeClient();
       vi.mocked(birdeyeClient.fetchHistoricalPriceAtUnixTime).mockResolvedValue({
         value: 1.0,
@@ -280,6 +286,8 @@ describe('OhlcvIngestionEngine', () => {
       await engine.initialize();
 
       // Ensure historical price returns data so probe doesn't early-exit
+      // Reset instance first to ensure mock is applied
+      resetBirdeyeClientInstance();
       const birdeyeClient = getBirdeyeClient();
       vi.mocked(birdeyeClient.fetchHistoricalPriceAtUnixTime).mockResolvedValue({
         value: 1.0,
