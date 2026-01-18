@@ -31,6 +31,18 @@ vi.mock('@quantbot/infra/storage', () => ({
   createSliceValidatorAdapter: vi.fn(),
 }));
 
+// Mock findWorkspaceRoot to return the actual workspace root
+// This is needed because slice-validator-adapter loads the manifest schema at module load time
+vi.mock('@quantbot/infra/utils', async () => {
+  const actual = await vi.importActual<typeof import('@quantbot/infra/utils')>('@quantbot/infra/utils');
+  // Use process.cwd() to get workspace root (Vitest runs from workspace root)
+  const workspaceRoot = process.cwd();
+  return {
+    ...actual,
+    findWorkspaceRoot: vi.fn(() => workspaceRoot),
+  };
+});
+
 describe('validateSliceHandler - Edge Cases', () => {
   let mockCtx: CommandContext;
   let mockValidator: ReturnType<typeof createSliceValidatorAdapter>;
