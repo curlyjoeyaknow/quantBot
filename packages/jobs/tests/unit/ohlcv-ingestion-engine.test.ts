@@ -15,7 +15,10 @@
 // IMPORTANT: Mocks must be defined BEFORE imports to prevent module resolution issues
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DateTime } from 'luxon';
-import { OhlcvIngestionEngine, resetBirdeyeClientInstance } from '../../src/ohlcv-ingestion-engine.js';
+import {
+  OhlcvIngestionEngine,
+  resetBirdeyeClientInstance,
+} from '../../src/ohlcv-ingestion-engine.js';
 import {
   fetchBirdeyeCandles,
   getBirdeyeClient,
@@ -121,7 +124,7 @@ describe('OhlcvIngestionEngine', () => {
   beforeEach(() => {
     // Reset cached birdeye client instance to ensure mocks are applied
     resetBirdeyeClientInstance();
-    
+
     engine = new OhlcvIngestionEngine();
     vi.clearAllMocks();
     vi.mocked(initClickHouse).mockResolvedValue(undefined);
@@ -147,10 +150,10 @@ describe('OhlcvIngestionEngine', () => {
 
     // Default mock for fetchBirdeyeCandles - return empty by default, tests can override
     vi.mocked(fetchBirdeyeCandles).mockResolvedValue([]);
-    
+
     // Ensure cache returns empty so it proceeds to fetch
     vi.mocked(mockStorageEngine.getCandles).mockResolvedValue([]);
-    
+
     // Force getBirdeyeClientInstance to use the mocked client by calling getBirdeyeClient after mocks are set up
     // This ensures the cached instance uses the mocked client
     getBirdeyeClient();
@@ -195,7 +198,7 @@ describe('OhlcvIngestionEngine', () => {
 
       // Override default empty mock with actual candles
       vi.mocked(fetchBirdeyeCandles).mockResolvedValue(mockCandles);
-      
+
       // Ensure historical price returns data so probe doesn't early-exit
       const birdeyeClient = getBirdeyeClient();
       vi.mocked(birdeyeClient.fetchHistoricalPriceAtUnixTime).mockResolvedValue({
@@ -230,7 +233,7 @@ describe('OhlcvIngestionEngine', () => {
 
       // Override default empty mock with actual candles
       vi.mocked(fetchBirdeyeCandles).mockResolvedValue(mockCandles);
-      
+
       // Ensure historical price returns data so probe doesn't early-exit
       // Reset instance first to ensure mock is applied
       resetBirdeyeClientInstance();
@@ -293,7 +296,7 @@ describe('OhlcvIngestionEngine', () => {
         value: 1.0,
         unixTime: Math.floor(TEST_ALERT_TIME.toSeconds()),
       } as any);
-      
+
       // Mock fetchBirdeyeCandles to throw error
       vi.mocked(fetchBirdeyeCandles).mockRejectedValue(new Error('API error'));
 

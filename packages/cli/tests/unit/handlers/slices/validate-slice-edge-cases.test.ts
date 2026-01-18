@@ -38,7 +38,8 @@ vi.mock('@quantbot/infra/storage', () => ({
 // Mock findWorkspaceRoot to return the actual workspace root
 // This is needed because slice-validator-adapter loads the manifest schema at module load time
 vi.mock('@quantbot/infra/utils', async () => {
-  const actual = await vi.importActual<typeof import('@quantbot/infra/utils')>('@quantbot/infra/utils');
+  const actual =
+    await vi.importActual<typeof import('@quantbot/infra/utils')>('@quantbot/infra/utils');
   // Use process.cwd() to get workspace root (Vitest runs from workspace root)
   const workspaceRoot = process.cwd();
   return {
@@ -152,7 +153,11 @@ describe('validateSliceHandler - Edge Cases', () => {
         parquetFiles: [], // Required field
         createdAtIso: '2024-01-01T00:00:00Z',
         run: { runId: 'test', createdAtIso: '2024-01-01T00:00:00Z' },
-        spec: { dataset: 'test', chain: 'solana', timeRange: { startIso: '2024-01-01', endIso: '2024-01-02' } },
+        spec: {
+          dataset: 'test',
+          chain: 'solana',
+          timeRange: { startIso: '2024-01-01', endIso: '2024-01-02' },
+        },
         layout: { baseUri: 'file:///test', subdirTemplate: 'test' },
         summary: { totalFiles: 0 },
       };
@@ -180,7 +185,11 @@ describe('validateSliceHandler - Edge Cases', () => {
         parquetFiles: [], // Required field
         createdAtIso: '2024-01-01T00:00:00Z',
         run: { runId: 'test', createdAtIso: '2024-01-01T00:00:00Z' },
-        spec: { dataset: 'test', chain: 'solana', timeRange: { startIso: '2024-01-01', endIso: '2024-01-02' } },
+        spec: {
+          dataset: 'test',
+          chain: 'solana',
+          timeRange: { startIso: '2024-01-01', endIso: '2024-01-02' },
+        },
         layout: { baseUri: 'file:///test', subdirTemplate: 'test' },
         summary: { totalFiles: 0 },
         // missing some required fields
@@ -209,7 +218,11 @@ describe('validateSliceHandler - Edge Cases', () => {
         parquetFiles: [],
         createdAtIso: '2024-01-01T00:00:00Z',
         run: { runId: 'test', createdAtIso: '2024-01-01T00:00:00Z' },
-        spec: { dataset: 'test', chain: 'solana', timeRange: { startIso: '2024-01-01', endIso: '2024-01-02' } },
+        spec: {
+          dataset: 'test',
+          chain: 'solana',
+          timeRange: { startIso: '2024-01-01', endIso: '2024-01-02' },
+        },
         layout: { baseUri: 'file:///test', subdirTemplate: 'test' },
         summary: { totalFiles: 0 },
       };
@@ -257,7 +270,11 @@ describe('validateSliceHandler - Edge Cases', () => {
         parquetFiles: [],
         createdAtIso: '2024-01-01T00:00:00Z',
         run: { runId: 'test', createdAtIso: '2024-01-01T00:00:00Z' },
-        spec: { dataset: 'test', chain: 'solana', timeRange: { startIso: '2024-01-01', endIso: '2024-01-02' } },
+        spec: {
+          dataset: 'test',
+          chain: 'solana',
+          timeRange: { startIso: '2024-01-01', endIso: '2024-01-02' },
+        },
         layout: { baseUri: 'file:///test', subdirTemplate: 'test' },
         summary: { totalFiles: 0 },
       };
@@ -280,7 +297,11 @@ describe('validateSliceHandler - Edge Cases', () => {
         parquetFiles: [],
         createdAtIso: '2024-01-01T00:00:00Z',
         run: { runId: 'test', createdAtIso: '2024-01-01T00:00:00Z' },
-        spec: { dataset: 'test', chain: 'solana', timeRange: { startIso: '2024-01-01', endIso: '2024-01-02' } },
+        spec: {
+          dataset: 'test',
+          chain: 'solana',
+          timeRange: { startIso: '2024-01-01', endIso: '2024-01-02' },
+        },
         layout: { baseUri: 'file:///test', subdirTemplate: 'test' },
         summary: { totalFiles: 0 },
       };

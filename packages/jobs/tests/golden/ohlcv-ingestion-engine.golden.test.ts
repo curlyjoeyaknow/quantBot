@@ -17,28 +17,15 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DateTime } from 'luxon';
-import { OhlcvIngestionEngine } from '../../src/ohlcv-ingestion-engine.js';
-import { fetchBirdeyeCandles, getBirdeyeClient } from '@quantbot/api-clients';
-import { getStorageEngine, initClickHouse } from '@quantbot/storage';
-import { storeCandles } from '@quantbot/data/ohlcv';
+import {
+  OhlcvIngestionEngine,
+  resetBirdeyeClientInstance,
+} from '../../src/ohlcv-ingestion-engine.js';
+import { fetchBirdeyeCandles, getBirdeyeClient } from '@quantbot/infra/api-clients';
+import { getStorageEngine, initClickHouse } from '@quantbot/infra/storage';
 import type { Candle } from '@quantbot/core';
 
 // Mock dependencies
-vi.mock('@quantbot/api-clients', () => {
-  const mockBirdeyeClient = {
-    fetchOHLCVData: vi.fn(),
-    getTokenMetadata: vi.fn(),
-    fetchHistoricalPriceAtUnixTime: vi.fn(),
-  };
-  return {
-    birdeyeClient: mockBirdeyeClient,
-    getBirdeyeClient: () => mockBirdeyeClient,
-    fetchBirdeyeCandles: vi.fn(),
-    fetchMultiChainMetadata: vi.fn(),
-  };
-});
-
-// Also mock the infra path (consolidation shim)
 vi.mock('@quantbot/infra/api-clients', () => {
   const mockBirdeyeClient = {
     fetchOHLCVData: vi.fn(),
@@ -47,13 +34,13 @@ vi.mock('@quantbot/infra/api-clients', () => {
   };
   return {
     birdeyeClient: mockBirdeyeClient,
-    getBirdeyeClient: () => mockBirdeyeClient,
+    getBirdeyeClient: vi.fn(() => mockBirdeyeClient),
     fetchBirdeyeCandles: vi.fn(),
     fetchMultiChainMetadata: vi.fn(),
   };
 });
 
-vi.mock('@quantbot/storage', () => {
+vi.mock('@quantbot/infra/storage', () => {
   class MockIngestionRunRepository {
     createRun = vi.fn();
     updateRun = vi.fn();
@@ -88,11 +75,7 @@ vi.mock('@quantbot/storage', () => {
   };
 });
 
-vi.mock('@quantbot/ohlcv', () => ({
-  storeCandles: vi.fn(),
-}));
-
-vi.mock('@quantbot/utils', () => ({
+vi.mock('@quantbot/infra/utils', () => ({
   logger: {
     debug: vi.fn(),
     info: vi.fn(),
@@ -100,6 +83,15 @@ vi.mock('@quantbot/utils', () => ({
     error: vi.fn(),
   },
   isEvmAddress: vi.fn(),
+  ValidationError: class ValidationError extends Error {
+    constructor(
+      message: string,
+      public details?: unknown
+    ) {
+      super(message);
+      this.name = 'ValidationError';
+    }
+  },
 }));
 
 describe('OhlcvIngestionEngine - Golden Path', () => {
@@ -114,7 +106,9 @@ describe('OhlcvIngestionEngine - Golden Path', () => {
   };
 
   beforeEach(() => {
-    engine = new OhlcvIngestionEngine();
+    // Reset cached birdeye client instance to ensure mocks are applied
+    resetBirdeyeClientInstance();
+
     vi.clearAllMocks();
     vi.mocked(initClickHouse).mockResolvedValue(undefined);
     vi.mocked(getStorageEngine).mockReturnValue(mockStorageEngine as any);
@@ -127,9 +121,12 @@ describe('OhlcvIngestionEngine - Golden Path', () => {
     vi.mocked(birdeyeClient.fetchOHLCVData).mockResolvedValue({ items: [] } as any);
     vi.mocked(birdeyeClient.fetchHistoricalPriceAtUnixTime).mockResolvedValue({
       value: 1.0,
+      unixTime: Math.floor(TEST_ALERT_TIME.toSeconds()),
     } as any);
 
     vi.mocked(fetchBirdeyeCandles).mockResolvedValue([]);
+
+    engine = new OhlcvIngestionEngine();
   });
 
   afterEach(() => {
@@ -189,9 +186,9 @@ describe('OhlcvIngestionEngine - Golden Path', () => {
       expect(result.metadata.chunksFetched).toBeGreaterThan(0);
       expect(result.metadata.chunksFromAPI).toBeGreaterThan(0);
 
-      // Assert: Candles stored
-      expect(storeCandles).toHaveBeenCalled();
-      const storeCalls = vi.mocked(storeCandles).mock.calls;
+      // Assert: Candles stored via storageEngine.storeCandles
+      expect(mockStorageEngine.storeCandles).toHaveBeenCalled();
+      const storeCalls = vi.mocked(mockStorageEngine.storeCandles).mock.calls;
       expect(storeCalls.length).toBeGreaterThan(0);
 
       // Assert: Mint address preserved in all calls
@@ -294,7 +291,7 @@ describe('OhlcvIngestionEngine - Golden Path', () => {
       expect(apiCalls[0][0]).toMatch(/7pXsAbCdEfGhIjKlMnOpQrStUvWxYz/); // Exact case
 
       // Assert: Mint address passed exactly to storage
-      const storeCalls = vi.mocked(storeCandles).mock.calls;
+      const storeCalls = vi.mocked(mockStorageEngine.storeCandles).mock.calls;
       expect(storeCalls.length).toBeGreaterThan(0);
       expect(storeCalls[0][0]).toBe(mixedCaseMint);
       expect(storeCalls[0][0].length).toBe(mixedCaseMint.length);
