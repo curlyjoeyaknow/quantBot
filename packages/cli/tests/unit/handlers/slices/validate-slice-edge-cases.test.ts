@@ -27,6 +27,10 @@ vi.mock('fs', async () => {
   };
 });
 
+// Mock both storage paths (consolidation shim and new path)
+vi.mock('@quantbot/storage', () => ({
+  createSliceValidatorAdapter: vi.fn(),
+}));
 vi.mock('@quantbot/infra/storage', () => ({
   createSliceValidatorAdapter: vi.fn(),
 }));
@@ -143,11 +147,22 @@ describe('validateSliceHandler - Edge Cases', () => {
   describe('Manifest validation', () => {
     it('should handle missing manifestId', async () => {
       const manifest = {
-        version: '1.0',
+        version: 1,
         // missing manifestId
+        parquetFiles: [], // Required field
+        createdAtIso: '2024-01-01T00:00:00Z',
+        run: { runId: 'test', createdAtIso: '2024-01-01T00:00:00Z' },
+        spec: { dataset: 'test', chain: 'solana', timeRange: { startIso: '2024-01-01', endIso: '2024-01-02' } },
+        layout: { baseUri: 'file:///test', subdirTemplate: 'test' },
+        summary: { totalFiles: 0 },
       };
 
       vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(manifest));
+      vi.mocked(mockValidator.validate).mockResolvedValue({
+        ok: false,
+        errors: ['Missing required field: manifestId'],
+        warnings: [],
+      });
 
       const args = {
         manifest: '/path/manifest.json',
@@ -161,7 +176,14 @@ describe('validateSliceHandler - Edge Cases', () => {
     it('should handle invalid manifest structure', async () => {
       const manifest = {
         manifestId: 'test',
-        // missing required fields
+        version: 1,
+        parquetFiles: [], // Required field
+        createdAtIso: '2024-01-01T00:00:00Z',
+        run: { runId: 'test', createdAtIso: '2024-01-01T00:00:00Z' },
+        spec: { dataset: 'test', chain: 'solana', timeRange: { startIso: '2024-01-01', endIso: '2024-01-02' } },
+        layout: { baseUri: 'file:///test', subdirTemplate: 'test' },
+        summary: { totalFiles: 0 },
+        // missing some required fields
       };
 
       vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(manifest));
@@ -183,7 +205,13 @@ describe('validateSliceHandler - Edge Cases', () => {
     it('should handle manifest with warnings', async () => {
       const manifest = {
         manifestId: 'test',
-        version: '1.0',
+        version: 1,
+        parquetFiles: [],
+        createdAtIso: '2024-01-01T00:00:00Z',
+        run: { runId: 'test', createdAtIso: '2024-01-01T00:00:00Z' },
+        spec: { dataset: 'test', chain: 'solana', timeRange: { startIso: '2024-01-01', endIso: '2024-01-02' } },
+        layout: { baseUri: 'file:///test', subdirTemplate: 'test' },
+        summary: { totalFiles: 0 },
       };
 
       vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(manifest));
@@ -225,7 +253,13 @@ describe('validateSliceHandler - Edge Cases', () => {
 
       const manifest = {
         manifestId: 'test',
-        version: '1.0',
+        version: 1,
+        parquetFiles: [],
+        createdAtIso: '2024-01-01T00:00:00Z',
+        run: { runId: 'test', createdAtIso: '2024-01-01T00:00:00Z' },
+        spec: { dataset: 'test', chain: 'solana', timeRange: { startIso: '2024-01-01', endIso: '2024-01-02' } },
+        layout: { baseUri: 'file:///test', subdirTemplate: 'test' },
+        summary: { totalFiles: 0 },
       };
 
       vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(manifest));
@@ -242,7 +276,13 @@ describe('validateSliceHandler - Edge Cases', () => {
     it('should handle validator throwing error', async () => {
       const manifest = {
         manifestId: 'test',
-        version: '1.0',
+        version: 1,
+        parquetFiles: [],
+        createdAtIso: '2024-01-01T00:00:00Z',
+        run: { runId: 'test', createdAtIso: '2024-01-01T00:00:00Z' },
+        spec: { dataset: 'test', chain: 'solana', timeRange: { startIso: '2024-01-01', endIso: '2024-01-02' } },
+        layout: { baseUri: 'file:///test', subdirTemplate: 'test' },
+        summary: { totalFiles: 0 },
       };
 
       vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(manifest));

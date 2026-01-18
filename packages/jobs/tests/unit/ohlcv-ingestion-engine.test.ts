@@ -142,8 +142,11 @@ describe('OhlcvIngestionEngine', () => {
       primaryMetadata: undefined,
     });
 
-    // Default mock for fetchBirdeyeCandles
+    // Default mock for fetchBirdeyeCandles - return empty by default, tests can override
     vi.mocked(fetchBirdeyeCandles).mockResolvedValue([]);
+    
+    // Ensure cache returns empty so it proceeds to fetch
+    vi.mocked(mockStorageEngine.getCandles).mockResolvedValue([]);
   });
 
   afterEach(() => {

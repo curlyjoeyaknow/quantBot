@@ -5,7 +5,7 @@
  */
 
 import type { CommandContext } from '../../core/command-context.js';
-import { createSliceValidatorAdapter } from '@quantbot/storage';
+import { createSliceValidatorAdapter } from '@quantbot/infra/storage';
 import { promises as fs } from 'fs';
 import type { z } from 'zod';
 import { validateSliceSchema } from '../../commands/slices.js';

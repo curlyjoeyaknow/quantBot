@@ -28,7 +28,7 @@ import {
   OhlcvRepository,
   LENIENT_VALIDATION,
   type IngestionRunManifest,
-} from '@quantbot/storage';
+} from '@quantbot/infra/storage';
 // TokensRepository removed (PostgreSQL) - metadata storage not critical for OHLCV ingestion
 import type { Candle, Chain } from '@quantbot/core';
 import { logger, ValidationError } from '@quantbot/infra/utils';
