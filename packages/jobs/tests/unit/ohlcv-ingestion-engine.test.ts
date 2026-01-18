@@ -21,8 +21,8 @@ import {
   getBirdeyeClient,
   fetchMultiChainMetadata,
 } from '@quantbot/api-clients';
-import { getStorageEngine, initClickHouse } from '@quantbot/storage';
-import { isEvmAddress } from '@quantbot/utils';
+import { getStorageEngine, initClickHouse } from '@quantbot/infra/storage';
+import { isEvmAddress } from '@quantbot/infra/utils';
 import type { Candle } from '@quantbot/core';
 
 // Mock dependencies
@@ -60,7 +60,8 @@ vi.mock('@quantbot/infra/api-clients', () => {
   };
 });
 
-vi.mock('@quantbot/storage', () => {
+// Mock both storage paths (consolidation shim and new path)
+const mockStorageMocks = () => {
   class MockIngestionRunRepository {
     createRun = vi.fn();
     updateRun = vi.fn();
@@ -93,11 +94,14 @@ vi.mock('@quantbot/storage', () => {
       minSourceTier: 0,
     },
   };
-});
+};
+
+vi.mock('@quantbot/storage', () => mockStorageMocks());
+vi.mock('@quantbot/infra/storage', () => mockStorageMocks());
 
 // storeCandles removed - using OhlcvRepository.upsertCandles() instead
 
-vi.mock('@quantbot/utils', () => ({
+vi.mock('@quantbot/infra/utils', () => ({
   logger: {
     debug: vi.fn(),
     info: vi.fn(),
@@ -118,12 +122,14 @@ describe('OhlcvIngestionEngine', () => {
     vi.clearAllMocks();
     vi.mocked(initClickHouse).mockResolvedValue(undefined);
 
-    // Default mocks for birdeyeClient
+    // Default mocks for birdeyeClient - ensure probe returns data exists
     const birdeyeClient = getBirdeyeClient();
     vi.mocked(birdeyeClient.getTokenMetadata).mockResolvedValue({ name: 'Test', symbol: 'TEST' });
     vi.mocked(birdeyeClient.fetchOHLCVData).mockResolvedValue({ items: [] } as any);
+    // Mock historical price to return data (so probe doesn't early-exit)
     vi.mocked(birdeyeClient.fetchHistoricalPriceAtUnixTime).mockResolvedValue({
       value: 1.0,
+      unixTime: Math.floor(TEST_ALERT_TIME.toSeconds()),
     } as any);
 
     // Default mocks for ingestion functions - default to Solana addresses

@@ -2,8 +2,8 @@
  * Initialization Manager - Storage connections, health checks
  */
 
-import { logger } from '@quantbot/utils';
-import { initClickHouse, getClickHouseClient } from '@quantbot/storage';
+import { logger } from '@quantbot/infra/utils';
+import { initClickHouse, getClickHouseClient } from '@quantbot/infra/storage';
 import { getProgressIndicator } from './progress-indicator.js';
 // PostgreSQL removed - getPostgresPool no longer available
 

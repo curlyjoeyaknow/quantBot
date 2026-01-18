@@ -120,6 +120,7 @@
     "minipass-json-stream": "^1.0.2",
     "pg": "^8.13.0",
     "telegraf": "^4.16.3",
+    "telegram": "^2.26.22",
     "winston": "^3.18.3",
     "winston-daily-rotate-file": "^5.0.0",
     "ws": "^8.18.3",
