@@ -122,7 +122,7 @@ describe('Error Tracking', () => {
 
   describe('trackError', () => {
     it('should track an error', async () => {
-      const { logger } = await import('@quantbot/utils');
+      const { logger } = await import('@quantbot/infra/utils');
       const error = new Error('Test error');
       error.stack = 'Error: Test error\n    at test.js:1:1';
 
@@ -142,7 +142,7 @@ describe('Error Tracking', () => {
     });
 
     it('should track error with custom severity', async () => {
-      const { logger } = await import('@quantbot/utils');
+      const { logger } = await import('@quantbot/infra/utils');
       const error = new Error('Critical error');
 
       await trackError(error, undefined, 'critical');
@@ -160,7 +160,7 @@ describe('Error Tracking', () => {
     });
 
     it('should track error with context', async () => {
-      const { logger } = await import('@quantbot/utils');
+      const { logger } = await import('@quantbot/infra/utils');
       const error = new Error('Test error');
       const context = { service: 'test-service', userId: 123 };
 

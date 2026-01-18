@@ -94,8 +94,12 @@ export {
 
 // Test helpers
 export { shouldRunDbStress, TEST_GATES } from './test-helpers/test-gating.js';
-// Note: test-environment-setup is in @quantbot/utils, not @quantbot/infra
+// Note: test-environment-setup is still in @quantbot/utils package (not moved to infra yet)
 // Import directly from @quantbot/utils/test-helpers/test-environment-setup if needed
+// export {
+//   setupPythonEnvironment,
+//   checkPythonEnvironment,
+// } from './test-helpers/test-environment-setup.js';
 
 // Timing utilities
 export {

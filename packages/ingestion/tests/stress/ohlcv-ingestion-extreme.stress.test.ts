@@ -38,7 +38,7 @@ import { shouldRunTest, TEST_GATES } from '../../../utils/src/test-helpers/test-
 
 // Mock API quota tracking to prevent PostgreSQL connection attempts
 vi.mock('@quantbot/infra/observability', async () => {
-  const actual = await vi.importActual('@quantbot/observability');
+  const actual = await vi.importActual('@quantbot/infra/observability');
   return {
     ...actual,
     recordApiUsage: vi.fn().mockResolvedValue(undefined),
@@ -205,7 +205,7 @@ async function verifyClickHouseCandles(
   toTime: Date
 ): Promise<number> {
   try {
-    const { getClickHouseClient } = await import('@quantbot/storage');
+    const { getClickHouseClient } = await import('@quantbot/infra/storage');
     const client = getClickHouseClient();
     const database = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 
@@ -250,7 +250,7 @@ async function cleanupClickHouseTestData(
   toTime: Date
 ): Promise<void> {
   try {
-    const { getClickHouseClient } = await import('@quantbot/storage');
+    const { getClickHouseClient } = await import('@quantbot/infra/storage');
     const client = getClickHouseClient();
     const database = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 

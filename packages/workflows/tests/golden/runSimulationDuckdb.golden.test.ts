@@ -24,7 +24,7 @@ import { DateTime } from 'luxon';
 
 // Mock dependencies BEFORE imports to prevent module resolution issues
 vi.mock('@quantbot/infra/utils', async () => {
-  const actual = await vi.importActual<typeof import('@quantbot/utils')>('@quantbot/utils');
+  const actual = await vi.importActual<typeof import('@quantbot/infra/utils')>('@quantbot/utils');
   return {
     ...actual,
     logger: {

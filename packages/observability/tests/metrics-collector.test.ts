@@ -23,7 +23,7 @@ vi.mock('../src/influxdb-metrics-writer', () => ({
 
 // Mock EventBus - create inside factory to avoid hoisting issues
 vi.mock('@quantbot/infra/utils', async () => {
-  const actual = await vi.importActual('@quantbot/utils');
+  const actual = await vi.importActual('@quantbot/infra/utils');
   const mockEventBus = {
     subscribe: vi.fn(),
     publish: vi.fn().mockResolvedValue(undefined),
@@ -62,7 +62,7 @@ describe('MetricsCollector', () => {
     const { getMetricsWriter } = await import('../src/influxdb-metrics-writer');
     mockWriter = getMetricsWriter() as typeof mockWriterSingleton;
 
-    const utils = await import('@quantbot/utils');
+    const utils = await import('@quantbot/infra/utils');
     mockEventBus = (utils as any).eventBus || mockEventBusInstance;
 
     // Clear any previous calls

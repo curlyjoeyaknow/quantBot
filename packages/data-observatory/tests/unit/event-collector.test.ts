@@ -59,7 +59,7 @@ describe('StorageEventCollector Unit Tests', () => {
 
       // Mock PythonEngine.runDuckDBStorage
       vi.mock('@quantbot/infra/utils', async () => {
-        const actual = await vi.importActual('@quantbot/utils');
+        const actual = await vi.importActual('@quantbot/infra/utils');
         return {
           ...actual,
           getPythonEngine: vi.fn(() => ({

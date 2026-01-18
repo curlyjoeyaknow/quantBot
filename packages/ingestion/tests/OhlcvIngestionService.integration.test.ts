@@ -48,7 +48,7 @@ import type { PythonEngine } from '@quantbot/infra/utils';
 
 // Mock only external API calls (Birdeye) - use real implementations for everything else
 vi.mock('@quantbot/infra/api-clients', async () => {
-  const actual = await vi.importActual('@quantbot/api-clients');
+  const actual = await vi.importActual('@quantbot/infra/api-clients');
   return {
     ...actual,
     fetchBirdeyeCandles: vi.fn(),
@@ -58,7 +58,7 @@ vi.mock('@quantbot/infra/api-clients', async () => {
 
 // Mock getPostgresPool (needed for calculateAndStoreAthAtl)
 vi.mock('@quantbot/infra/storage', async () => {
-  const actual = await vi.importActual('@quantbot/storage');
+  const actual = await vi.importActual('@quantbot/infra/storage');
   return {
     ...actual,
     getPostgresPool: vi.fn(() => ({
@@ -382,7 +382,7 @@ describe.skip('OhlcvIngestionService (integration)', () => {
     expect(worklist.calls.length).toBe(1);
 
     // Update Postgres mock to return alert with matching timestamp
-    const { getPostgresPool } = await import('@quantbot/storage');
+    const { getPostgresPool } = await import('@quantbot/infra/storage');
     const mockPool = {
       query: vi.fn().mockResolvedValue({
         rows: [

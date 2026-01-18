@@ -12,7 +12,7 @@ import { DataSnapshotService } from '../../../src/research/services/DataSnapshot
 
 // Mock storage to avoid requiring real database connections in tests
 vi.mock('@quantbot/infra/storage', async () => {
-  const actual = await vi.importActual('@quantbot/storage');
+  const actual = await vi.importActual('@quantbot/infra/storage');
   return {
     ...actual,
     getStorageEngine: vi.fn(() => ({

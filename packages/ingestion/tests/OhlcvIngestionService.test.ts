@@ -7,7 +7,7 @@ import type { Chain } from '@quantbot/core';
 
 // Mock storage for worklist service
 vi.mock('@quantbot/infra/storage', async () => {
-  const actual = await vi.importActual('@quantbot/storage');
+  const actual = await vi.importActual('@quantbot/infra/storage');
   return {
     ...actual,
     getDuckDBWorklistService: vi.fn(),
@@ -52,7 +52,7 @@ describe('OhlcvIngestionService', () => {
     mockPythonEngine.runOhlcvWorklist.mockReset();
 
     // Mock the worklist service to use our mocked Python engine
-    const { getDuckDBWorklistService } = await import('@quantbot/storage');
+    const { getDuckDBWorklistService } = await import('@quantbot/infra/storage');
     mockWorklistService = {
       queryWorklist: vi.fn(),
     };

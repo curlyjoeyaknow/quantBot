@@ -28,7 +28,7 @@ import { join } from 'path';
 
 // Mock only logger (not Python engine - golden tests use real implementation)
 vi.mock('@quantbot/infra/utils', async () => {
-  const actual = await vi.importActual('@quantbot/utils');
+  const actual = await vi.importActual('@quantbot/infra/utils');
   return {
     ...actual,
     logger: {

@@ -54,7 +54,7 @@ describe('OHLCVQueryService', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    const storage = await import('@quantbot/storage');
+    const storage = await import('@quantbot/infra/storage');
     mockInfluxClient = storage.influxDBClient;
     mockCache = storage.ohlcvCache;
     mockStorageEngine = storage.getStorageEngine();

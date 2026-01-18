@@ -23,7 +23,7 @@ import { tmpdir } from 'os';
 import {
   setupPythonEnvironment,
   checkPythonEnvironment,
-} from '@quantbot/infra/utils/test-helpers/test-environment-setup.js';
+} from '@quantbot/utils/test-helpers/test-environment-setup.js';
 
 const TEST_DIR = join(tmpdir(), 'quantbot-duckdb-idempotency-tests');
 const TEST_DB = join(TEST_DIR, 'test.duckdb');

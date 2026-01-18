@@ -17,7 +17,7 @@ import { ExecutionRealityService } from '../../../src/research/services/Executio
 
 // Mock storage to avoid requiring real database connections in tests
 vi.mock('@quantbot/infra/storage', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@quantbot/storage')>();
+  const actual = await importOriginal<typeof import('@quantbot/infra/storage')>();
   return {
     ...actual,
     getStorageEngine: vi.fn(() => ({
