@@ -31,37 +31,8 @@ const mockStorageEngine = {
   getCandles: vi.fn(),
 };
 
-vi.mock('@quantbot/api-clients', () => {
-  const mockBirdeyeClient = {
-    fetchOHLCVData: vi.fn(),
-    getTokenMetadata: vi.fn(),
-    fetchHistoricalPriceAtUnixTime: vi.fn(),
-  };
-  return {
-    birdeyeClient: mockBirdeyeClient,
-    getBirdeyeClient: () => mockBirdeyeClient,
-    fetchBirdeyeCandles: vi.fn(),
-    fetchMultiChainMetadata: vi.fn(),
-  };
-});
-
-// Also mock the infra path (consolidation shim)
-vi.mock('@quantbot/infra/api-clients', () => {
-  const mockBirdeyeClient = {
-    fetchOHLCVData: vi.fn(),
-    getTokenMetadata: vi.fn(),
-    fetchHistoricalPriceAtUnixTime: vi.fn(),
-  };
-  return {
-    birdeyeClient: mockBirdeyeClient,
-    getBirdeyeClient: () => mockBirdeyeClient,
-    fetchBirdeyeCandles: vi.fn(),
-    fetchMultiChainMetadata: vi.fn(),
-  };
-});
-
-// Mock both storage paths (consolidation shim and new path)
-const mockStorageMocks = () => {
+// Define storage mocks factory function before vi.mock calls (hoisting)
+function createStorageMocks() {
   class MockIngestionRunRepository {
     createRun = vi.fn();
     updateRun = vi.fn();
@@ -94,10 +65,40 @@ const mockStorageMocks = () => {
       minSourceTier: 0,
     },
   };
-};
+}
 
-vi.mock('@quantbot/storage', () => mockStorageMocks());
-vi.mock('@quantbot/infra/storage', () => mockStorageMocks());
+vi.mock('@quantbot/api-clients', () => {
+  const mockBirdeyeClient = {
+    fetchOHLCVData: vi.fn(),
+    getTokenMetadata: vi.fn(),
+    fetchHistoricalPriceAtUnixTime: vi.fn(),
+  };
+  return {
+    birdeyeClient: mockBirdeyeClient,
+    getBirdeyeClient: () => mockBirdeyeClient,
+    fetchBirdeyeCandles: vi.fn(),
+    fetchMultiChainMetadata: vi.fn(),
+  };
+});
+
+// Also mock the infra path (consolidation shim)
+vi.mock('@quantbot/infra/api-clients', () => {
+  const mockBirdeyeClient = {
+    fetchOHLCVData: vi.fn(),
+    getTokenMetadata: vi.fn(),
+    fetchHistoricalPriceAtUnixTime: vi.fn(),
+  };
+  return {
+    birdeyeClient: mockBirdeyeClient,
+    getBirdeyeClient: () => mockBirdeyeClient,
+    fetchBirdeyeCandles: vi.fn(),
+    fetchMultiChainMetadata: vi.fn(),
+  };
+});
+
+// Mock both storage paths (consolidation shim and new path)
+vi.mock('@quantbot/storage', () => createStorageMocks());
+vi.mock('@quantbot/infra/storage', () => createStorageMocks());
 
 // storeCandles removed - using OhlcvRepository.upsertCandles() instead
 
