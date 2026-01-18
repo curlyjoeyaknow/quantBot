@@ -641,33 +641,63 @@ def store_optimizer_run(
         existing = con.execute("SELECT created_at FROM optimizer.runs_d WHERE run_id = ?", [run_id]).fetchone()
         final_created_at = existing[0] if existing else created_at
         
-        con.execute("""
-            INSERT OR REPLACE INTO optimizer.runs_d (
-                run_id, run_type, created_at, name, date_from, date_to,
-                alerts_total, alerts_ok, config_json, timing_json, summary_json,
-                mode, config_hash, data_fingerprint, code_fingerprint, code_dirty, signature,
-                notes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, [
-            run_id,
-            run_type,
-            final_created_at,
-            name,
-            date_from,
-            date_to,
-            alerts_total,
-            alerts_ok,
-            json.dumps(config, separators=(",", ":"), default=str),
-            json.dumps(timing, separators=(",", ":"), default=str) if timing else None,
-            json.dumps(summary, separators=(",", ":"), default=str),
-            mode,
-            config_hash,
-            data_fingerprint,
-            code_fingerprint,
-            code_dirty,
-            signature,
-            notes,
-        ])
+        # Check which columns exist (for backward compatibility)
+        try:
+            existing_cols = [r[1].lower() for r in con.execute("PRAGMA table_info('optimizer.runs_d')").fetchall()]
+            has_mode = "mode" in existing_cols
+        except Exception:
+            has_mode = False
+        
+        if has_mode:
+            # Full schema with mode contract fields
+            con.execute("""
+                INSERT OR REPLACE INTO optimizer.runs_d (
+                    run_id, run_type, created_at, name, date_from, date_to,
+                    alerts_total, alerts_ok, config_json, timing_json, summary_json,
+                    mode, config_hash, data_fingerprint, code_fingerprint, code_dirty, signature,
+                    notes
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, [
+                run_id,
+                run_type,
+                final_created_at,
+                name,
+                date_from,
+                date_to,
+                alerts_total,
+                alerts_ok,
+                json.dumps(config, separators=(",", ":"), default=str),
+                json.dumps(timing, separators=(",", ":"), default=str) if timing else None,
+                json.dumps(summary, separators=(",", ":"), default=str),
+                mode,
+                config_hash,
+                data_fingerprint,
+                code_fingerprint,
+                code_dirty,
+                signature,
+                notes,
+            ])
+        else:
+            # Legacy schema without mode contract fields
+            con.execute("""
+                INSERT OR REPLACE INTO optimizer.runs_d (
+                    run_id, run_type, created_at, name, date_from, date_to,
+                    alerts_total, alerts_ok, config_json, timing_json, summary_json, notes
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, [
+                run_id,
+                run_type,
+                final_created_at,
+                name,
+                date_from,
+                date_to,
+                alerts_total,
+                alerts_ok,
+                json.dumps(config, separators=(",", ":"), default=str),
+                json.dumps(timing, separators=(",", ":"), default=str) if timing else None,
+                json.dumps(summary, separators=(",", ":"), default=str),
+                notes,
+            ])
         
         # Delete existing trials for this run (in case of rerun)
         con.execute("DELETE FROM optimizer.trials_f WHERE run_id = ?", [run_id])
