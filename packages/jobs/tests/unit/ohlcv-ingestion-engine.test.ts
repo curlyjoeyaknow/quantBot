@@ -20,7 +20,7 @@ import {
   fetchBirdeyeCandles,
   getBirdeyeClient,
   fetchMultiChainMetadata,
-} from '@quantbot/api-clients';
+} from '@quantbot/infra/api-clients';
 import { getStorageEngine, initClickHouse } from '@quantbot/infra/storage';
 import { isEvmAddress } from '@quantbot/infra/utils';
 import type { Candle } from '@quantbot/core';
