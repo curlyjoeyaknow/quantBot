@@ -15,7 +15,7 @@
 // IMPORTANT: Mocks must be defined BEFORE imports to prevent module resolution issues
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DateTime } from 'luxon';
-import { OhlcvIngestionEngine } from '../../src/ohlcv-ingestion-engine.js';
+import { OhlcvIngestionEngine, resetBirdeyeClientInstance } from '../../src/ohlcv-ingestion-engine.js';
 import {
   fetchBirdeyeCandles,
   getBirdeyeClient,
@@ -119,6 +119,9 @@ describe('OhlcvIngestionEngine', () => {
   const TEST_ALERT_TIME = DateTime.utc().minus({ days: 30 });
 
   beforeEach(() => {
+    // Reset cached birdeye client instance to ensure mocks are applied
+    resetBirdeyeClientInstance();
+    
     engine = new OhlcvIngestionEngine();
     vi.clearAllMocks();
     vi.mocked(initClickHouse).mockResolvedValue(undefined);
@@ -186,7 +189,15 @@ describe('OhlcvIngestionEngine', () => {
         },
       ];
 
+      // Override default empty mock with actual candles
       vi.mocked(fetchBirdeyeCandles).mockResolvedValue(mockCandles);
+      
+      // Ensure historical price returns data so probe doesn't early-exit
+      const birdeyeClient = getBirdeyeClient();
+      vi.mocked(birdeyeClient.fetchHistoricalPriceAtUnixTime).mockResolvedValue({
+        value: 1.0,
+        unixTime: Math.floor(TEST_ALERT_TIME.toSeconds()),
+      } as any);
 
       const result = await engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME, {
         interval: '1m',
@@ -194,6 +205,7 @@ describe('OhlcvIngestionEngine', () => {
       });
 
       expect(result['1m'].length).toBeGreaterThan(0);
+      expect(fetchBirdeyeCandles).toHaveBeenCalled();
       // Note: storeCandles is no longer used - OhlcvRepository.upsertCandles is used instead
     });
 
@@ -212,7 +224,15 @@ describe('OhlcvIngestionEngine', () => {
         },
       ];
 
+      // Override default empty mock with actual candles
       vi.mocked(fetchBirdeyeCandles).mockResolvedValue(mockCandles);
+      
+      // Ensure historical price returns data so probe doesn't early-exit
+      const birdeyeClient = getBirdeyeClient();
+      vi.mocked(birdeyeClient.fetchHistoricalPriceAtUnixTime).mockResolvedValue({
+        value: 1.0,
+        unixTime: Math.floor(TEST_ALERT_TIME.toSeconds()),
+      } as any);
 
       await engine.fetchCandles(mixedCaseMint, TEST_CHAIN, TEST_ALERT_TIME, {
         interval: '1m',
@@ -259,6 +279,14 @@ describe('OhlcvIngestionEngine', () => {
     it('should handle API errors gracefully', async () => {
       await engine.initialize();
 
+      // Ensure historical price returns data so probe doesn't early-exit
+      const birdeyeClient = getBirdeyeClient();
+      vi.mocked(birdeyeClient.fetchHistoricalPriceAtUnixTime).mockResolvedValue({
+        value: 1.0,
+        unixTime: Math.floor(TEST_ALERT_TIME.toSeconds()),
+      } as any);
+      
+      // Mock fetchBirdeyeCandles to throw error
       vi.mocked(fetchBirdeyeCandles).mockRejectedValue(new Error('API error'));
 
       await expect(

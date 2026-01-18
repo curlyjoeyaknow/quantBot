@@ -45,6 +45,11 @@ function getBirdeyeClientInstance(): ReturnType<typeof getBirdeyeClient> {
   return birdeyeClientInstance;
 }
 
+// Export reset function for testing
+export function resetBirdeyeClientInstance(): void {
+  birdeyeClientInstance = null;
+}
+
 // --- Interfaces ---
 
 export interface OhlcvIngestionOptions {
