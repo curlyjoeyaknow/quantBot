@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { InMemoryFeatureStore, createFeatureVersionHash } from '../../src/analytics/feature-store.js';
+import {
+  InMemoryFeatureStore,
+  createFeatureVersionHash,
+} from '../../src/analytics/feature-store.js';
 import type { FeatureMetadata } from '../../src/analytics/feature-store.js';
 
 describe('InMemoryFeatureStore', () => {

@@ -84,7 +84,11 @@ export function createMockContext(opts?: {
             // The CausalCandleWrapper might return null if timestamps don't match, so we fallback
             try {
               const wrapper = new CausalCandleWrapper(candles, interval as any);
-              const result = await wrapper.getLastClosedCandle(mint, simulationTime, interval as any);
+              const result = await wrapper.getLastClosedCandle(
+                mint,
+                simulationTime,
+                interval as any
+              );
               // If wrapper returns null but we have candles, return the last candle as fallback
               if (result === null && candles.length > 0) {
                 return candles[candles.length - 1]!;

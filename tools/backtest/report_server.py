@@ -670,7 +670,7 @@ class ReportHandler(BaseHTTPRequestHandler):
                 generate_drilldown_report(
                     csv_path=csv_path_abs,
                     output_path=html_path,
-                    max_trades_per_caller=50,
+                    max_trades_per_caller=None,  # No limit - process all trades
                     risk_per_trade=risk_per_trade,
                     default_tp_mult=tp_mult,
                     default_sl_mult=sl_mult,

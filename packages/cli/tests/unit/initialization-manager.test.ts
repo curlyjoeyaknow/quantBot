@@ -22,14 +22,18 @@ vi.mock('@quantbot/infra/storage', () => ({
   },
 }));
 
-vi.mock('@quantbot/infra/utils', () => ({
-  logger: {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-  },
-}));
+vi.mock('@quantbot/infra/utils', async () => {
+  const actual = await vi.importActual<typeof import('@quantbot/infra/utils')>('@quantbot/infra/utils');
+  return {
+    ...actual,
+    logger: {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn(),
+    },
+  };
+});
 
 describe('InitializationManager', () => {
   beforeEach(() => {

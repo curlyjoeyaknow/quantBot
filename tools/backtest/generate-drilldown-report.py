@@ -335,7 +335,7 @@ def calculate_trade_events(row, ohlcv, risk_per_trade: float = 0.02, default_tp_
         'exit_time_str': exit_time_str,
     }
 
-def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades_per_caller: int = 50, risk_per_trade: float = 0.02, default_tp_mult: float = 80.0, default_sl_mult: float = 0.7, max_workers: int = None):
+def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades_per_caller: int = None, risk_per_trade: float = 0.02, default_tp_mult: float = 80.0, default_sl_mult: float = 0.7, max_workers: int = None):
     """Generate interactive drill-down HTML report."""
     
     print("Loading results...")
@@ -364,8 +364,12 @@ def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades
     all_trade_args = []
     caller_trade_map = {}  # Map to track which caller each trade belongs to
     
-    for caller in callers[:30]:  # Limit to top 30 callers
-        caller_trades = valid[valid['caller'] == caller].head(max_trades_per_caller)
+    # Process ALL callers and ALL trades (no limits)
+    for caller in callers:
+        caller_trades = valid[valid['caller'] == caller]
+        # Apply limit only if specified
+        if max_trades_per_caller is not None:
+            caller_trades = caller_trades.head(max_trades_per_caller)
         
         for idx, (_, row) in enumerate(caller_trades.iterrows()):
             # Convert row to dict for pickling

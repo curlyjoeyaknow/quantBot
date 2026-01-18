@@ -138,7 +138,10 @@ describe('MarketDataIngestionService', () => {
       const service = new MarketDataIngestionService(mockBirdeyeClient as unknown as BirdeyeClient);
       const result = await service.ingestForAllTokens({ chain: 'solana', limit: 1 });
 
-      expect(mockBirdeyeClient.fetchTokenCreationInfo).toHaveBeenCalledWith(validSolanaToken, 'solana');
+      expect(mockBirdeyeClient.fetchTokenCreationInfo).toHaveBeenCalledWith(
+        validSolanaToken,
+        'solana'
+      );
       expect(mockClickHouseClient.insert).toHaveBeenCalled();
       expect(result.tokenCreationInfoInserted).toBe(1);
     });

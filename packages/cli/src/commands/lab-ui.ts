@@ -56,4 +56,3 @@ const labUiModule: PackageCommandModule = {
 };
 
 commandRegistry.registerPackage(labUiModule);
-

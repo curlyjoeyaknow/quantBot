@@ -10,7 +10,7 @@ import { queryCallsDuckdb, type QueryCallsDuckdbContext } from '@quantbot/workfl
 import type { ListCallsArgs } from '../../command-defs/calls.js';
 import { logger } from '@quantbot/utils';
 import { SystemClockAdapter } from '../../core/clock-adapter.js';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 export async function listCallsHandler(
   args: ListCallsArgs,
@@ -42,7 +42,7 @@ export async function listCallsHandler(
         logger.debug(msg, context as Record<string, unknown> | undefined),
     },
     clock: { nowISO: () => new Date(systemClock.nowMs()).toISOString() },
-    ids: { newRunId: () => `list_${uuidv4()}` },
+    ids: { newRunId: () => `list_${randomUUID()}` },
     repos: {
       strategies: { getByName: async () => null },
       calls: { list: async () => [] },

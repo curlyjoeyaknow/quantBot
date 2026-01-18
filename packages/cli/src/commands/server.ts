@@ -64,4 +64,3 @@ const serverModule: PackageCommandModule = {
 };
 
 commandRegistry.registerPackage(serverModule);
-

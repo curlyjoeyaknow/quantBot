@@ -15,11 +15,17 @@ import type { CommandContext } from '../../../../src/core/command-context.js';
 import { promises as fs } from 'fs';
 import { createSliceValidatorAdapter } from '@quantbot/infra/storage';
 
-vi.mock('fs', () => ({
-  promises: {
-    readFile: vi.fn(),
-  },
-}));
+vi.mock('fs', async () => {
+  const actual = await vi.importActual<typeof import('fs')>('fs');
+  return {
+    ...actual,
+    promises: {
+      ...actual.promises,
+      readFile: vi.fn(),
+    },
+    existsSync: vi.fn(),
+  };
+});
 
 vi.mock('@quantbot/infra/storage', () => ({
   createSliceValidatorAdapter: vi.fn(),

@@ -45,6 +45,21 @@ vi.mock('@quantbot/api-clients', () => {
   };
 });
 
+// Also mock the infra path (consolidation shim)
+vi.mock('@quantbot/infra/api-clients', () => {
+  const mockBirdeyeClient = {
+    fetchOHLCVData: vi.fn(),
+    getTokenMetadata: vi.fn(),
+    fetchHistoricalPriceAtUnixTime: vi.fn(),
+  };
+  return {
+    birdeyeClient: mockBirdeyeClient,
+    getBirdeyeClient: () => mockBirdeyeClient,
+    fetchBirdeyeCandles: vi.fn(),
+    fetchMultiChainMetadata: vi.fn(),
+  };
+});
+
 vi.mock('@quantbot/storage', () => {
   class MockIngestionRunRepository {
     createRun = vi.fn();

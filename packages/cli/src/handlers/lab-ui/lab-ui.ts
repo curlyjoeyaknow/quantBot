@@ -44,15 +44,14 @@ export async function labUiHandler(args: LabUiArgs, _ctx: CommandContext) {
   app.get('/policies', (_req, res) => res.render('policies'));
 
   const port = args.port || Number(process.env.PORT ?? 3111);
-  
+
   return new Promise((resolve) => {
     app.listen(port, () => {
-      resolve({ 
-        success: true, 
+      resolve({
+        success: true,
         message: `Lab UI server started on http://localhost:${port}`,
         port,
       });
     });
   });
 }
-

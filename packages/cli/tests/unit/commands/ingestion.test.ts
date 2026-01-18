@@ -6,9 +6,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { z } from 'zod';
-// Import directly from source to avoid Vitest SSR module resolution issues
-import { TelegramAlertIngestionService } from '../../../../../data/src/ingestion/TelegramAlertIngestionService.js';
-import { OhlcvIngestionService } from '@quantbot/data/ingestion';
+import { TelegramAlertIngestionService, OhlcvIngestionService } from '@quantbot/data/ingestion';
 import {
   CallersRepository,
   TokensRepository,
@@ -18,8 +16,8 @@ import {
 import { parseArguments } from '../../../src/core/argument-parser';
 import { formatOutput } from '../../../src/core/output-formatter';
 
-// Mock ingestion services
-vi.mock('@quantbot/ingestion', () => ({
+// Mock ingestion services (use new data package path)
+vi.mock('@quantbot/data/ingestion', () => ({
   TelegramAlertIngestionService: class {
     constructor(
       _callersRepo: unknown,

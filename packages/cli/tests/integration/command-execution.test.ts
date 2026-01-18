@@ -30,7 +30,8 @@ vi.mock('@quantbot/infra/storage', () => ({
 }));
 
 vi.mock('@quantbot/infra/utils', async () => {
-  const actual = await vi.importActual<typeof import('@quantbot/infra/utils')>('@quantbot/infra/utils');
+  const actual =
+    await vi.importActual<typeof import('@quantbot/infra/utils')>('@quantbot/infra/utils');
   return {
     ...actual,
     logger: {

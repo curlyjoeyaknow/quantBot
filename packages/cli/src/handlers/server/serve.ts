@@ -26,6 +26,8 @@ export async function serveHandler(args: ServeArgs, _ctx: CommandContext) {
   type ServerWithStart = typeof server & { start: () => Promise<void> };
   await (server as ServerWithStart).start();
 
-  return { success: true, message: `API server started on ${args.host || '0.0.0.0'}:${args.port || 3000}` };
+  return {
+    success: true,
+    message: `API server started on ${args.host || '0.0.0.0'}:${args.port || 3000}`,
+  };
 }
-
