@@ -8,8 +8,8 @@
  * where PythonEngine should be used for worklist operations.
  */
 
-import { PythonEngine, getPythonEngine } from '@quantbot/utils';
-import { logger } from '@quantbot/utils';
+import { PythonEngine, getPythonEngine } from '@quantbot/infra/utils';
+import { logger } from '@quantbot/infra/utils';
 
 export interface OhlcvWorklistConfig {
   duckdbPath: string;

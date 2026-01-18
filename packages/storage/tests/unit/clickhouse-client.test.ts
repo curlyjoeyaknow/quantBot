@@ -31,7 +31,7 @@ vi.mock('@clickhouse/client', () => {
   };
 });
 
-vi.mock('@quantbot/utils', () => ({
+vi.mock('@quantbot/infra/utils', () => ({
   logger: {
     debug: vi.fn(),
     info: vi.fn(),

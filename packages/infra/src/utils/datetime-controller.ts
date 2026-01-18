@@ -13,7 +13,7 @@
  *
  * Usage:
  * ```typescript
- * import { dt } from '@quantbot/utils';
+ * import { dt } from '@quantbot/infra/utils';
  *
  * // Get current time
  * const now = dt.now();
@@ -214,7 +214,7 @@ export class DateTimeController {
  *
  * Usage:
  * ```typescript
- * import { dt } from '@quantbot/utils';
+ * import { dt } from '@quantbot/infra/utils';
  * const now = dt.now();
  * ```
  */

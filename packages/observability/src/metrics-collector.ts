@@ -6,8 +6,8 @@
  * 2. Manual instrumentation via timer API
  */
 
-import { logger, eventBus } from '@quantbot/utils';
-import type { ApplicationEvent } from '@quantbot/utils';
+import { logger, eventBus } from '@quantbot/infra/utils';
+import type { ApplicationEvent } from '@quantbot/infra/utils';
 import { getMetricsWriter } from './influxdb-metrics-writer.js';
 import type { LatencyMetric, MetricTimer, ThroughputMetric } from './types.js';
 

@@ -5,7 +5,7 @@
  * Tools for calibrating execution models from live trading data.
  */
 
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/infra/utils';
 import type { ExecutionModel, LatencyDistribution, SlippageModel, FailureModel } from './types.js';
 import { z } from 'zod';
 

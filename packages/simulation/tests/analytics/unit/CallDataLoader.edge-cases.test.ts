@@ -17,7 +17,7 @@ const mockStorageEngine = {
 const mockQueryCallsDuckdb = vi.fn();
 const mockCreateQueryCallsDuckdbContext = vi.fn();
 
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/infra/storage', () => ({
   getStorageEngine: vi.fn(() => mockStorageEngine),
 }));
 
@@ -26,7 +26,7 @@ vi.mock('@quantbot/workflows', () => ({
   createQueryCallsDuckdbContext: mockCreateQueryCallsDuckdbContext,
 }));
 
-vi.mock('@quantbot/utils', async () => {
+vi.mock('@quantbot/infra/utils', async () => {
   const actual = await vi.importActual('@quantbot/utils');
   return {
     ...actual,

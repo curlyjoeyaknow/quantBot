@@ -16,7 +16,7 @@ import { OHLCVEngine } from '../src/ohlcv-engine.js';
 import type { Candle } from '@quantbot/core';
 
 // Mock dependencies
-vi.mock('@quantbot/storage', async () => {
+vi.mock('@quantbot/infra/storage', async () => {
   const { vi } = await import('vitest');
   const mockStorageEngine = {
     storeCandles: vi.fn(),
@@ -37,7 +37,7 @@ vi.mock('@quantbot/storage', async () => {
   return mockStorage;
 });
 
-vi.mock('@quantbot/utils', () => ({
+vi.mock('@quantbot/infra/utils', () => ({
   logger: {
     debug: vi.fn(),
     info: vi.fn(),

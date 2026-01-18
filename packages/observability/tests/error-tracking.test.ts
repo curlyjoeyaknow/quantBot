@@ -9,7 +9,7 @@ import { trackError, getErrorStats, _resetErrorRepository } from '../src/error-t
 import { DateTime } from 'luxon';
 
 // Mock logger and PythonEngine - must be async to avoid hoisting issues
-vi.mock('@quantbot/utils', async () => {
+vi.mock('@quantbot/infra/utils', async () => {
   const { vi } = await import('vitest');
   return {
     logger: {
@@ -36,7 +36,7 @@ const mockErrorStore: Array<{
   service?: string;
 }> = [];
 
-vi.mock('@quantbot/storage', async () => {
+vi.mock('@quantbot/infra/storage', async () => {
   const { vi } = await import('vitest');
   return {
     ErrorRepository: class {

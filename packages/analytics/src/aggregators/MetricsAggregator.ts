@@ -4,7 +4,7 @@
  * Aggregates call performance data into metrics and statistics.
  */
 
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 // PostgreSQL removed - use DuckDB workflows instead
 import type { CallPerformance, CallerMetrics, AthDistribution, SystemMetrics } from '../types.js';
 

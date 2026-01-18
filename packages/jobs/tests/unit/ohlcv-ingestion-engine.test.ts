@@ -70,7 +70,7 @@ function createStorageMocks() {
   };
 }
 
-vi.mock('@quantbot/api-clients', () => {
+vi.mock('@quantbot/infra/api-clients', () => {
   const mockBirdeyeClient = {
     fetchOHLCVData: vi.fn(),
     getTokenMetadata: vi.fn(),
@@ -100,7 +100,7 @@ vi.mock('@quantbot/infra/api-clients', () => {
 });
 
 // Mock both storage paths (consolidation shim and new path)
-vi.mock('@quantbot/storage', () => createStorageMocks());
+vi.mock('@quantbot/infra/storage', () => createStorageMocks());
 vi.mock('@quantbot/infra/storage', () => createStorageMocks());
 
 // storeCandles removed - using OhlcvRepository.upsertCandles() instead

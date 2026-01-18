@@ -29,7 +29,7 @@ import { checkCoverage } from './coverage.js';
 import { materialiseSlice } from './slice.js';
 import { loadCandlesFromSlice } from './runBacktest.js';
 import { computePathMetrics } from './metrics/path-metrics.js';
-import { logger, TimingContext, type LogContext } from '@quantbot/utils';
+import { logger, TimingContext, type LogContext } from '@quantbot/infra/utils';
 import { createRunDirectory, getGitProvenance } from './artifacts/index.js';
 import type { AlertArtifact, PathArtifact } from './artifacts/index.js';
 

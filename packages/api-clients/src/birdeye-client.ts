@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosRequestConfig, AxiosError } from 'axios';
 import { config } from 'dotenv';
-import { logger, ConfigurationError, ValidationError } from '@quantbot/utils';
-import { recordApiUsage } from '@quantbot/observability';
+import { logger, ConfigurationError, ValidationError } from '@quantbot/infra/utils';
+import { recordApiUsage } from '@quantbot/infra/observability';
 import { BaseApiClient } from './base-client.js';
 
 config();

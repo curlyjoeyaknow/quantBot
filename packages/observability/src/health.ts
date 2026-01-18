@@ -4,8 +4,8 @@
  * Monitors overall system health and provides health check endpoints.
  */
 
-import { logger } from '@quantbot/utils';
-import { getClickHouseClient } from '@quantbot/storage';
+import { logger } from '@quantbot/infra/utils';
+import { getClickHouseClient } from '@quantbot/infra/storage';
 import { checkApiQuotas } from './quotas.js';
 
 export interface HealthStatus {

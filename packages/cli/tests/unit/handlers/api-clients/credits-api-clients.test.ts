@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { creditsApiClientsHandler } from '../../../../src/commands/api-clients/credits-api-clients.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
-import { checkApiQuotas } from '@quantbot/observability';
+import { checkApiQuotas } from '@quantbot/infra/observability';
 
-vi.mock('@quantbot/observability', () => ({
+vi.mock('@quantbot/infra/observability', () => ({
   checkApiQuotas: vi.fn(),
 }));
 

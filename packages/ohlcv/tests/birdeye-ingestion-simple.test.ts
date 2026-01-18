@@ -22,7 +22,7 @@ const mockBirdeyeClient = {
   getTokenMetadata: vi.fn(),
 };
 
-vi.mock('@quantbot/api-clients', () => ({
+vi.mock('@quantbot/infra/api-clients', () => ({
   birdeyeClient: mockBirdeyeClient,
 }));
 

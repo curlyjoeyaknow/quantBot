@@ -7,7 +7,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { logger, ConfigurationError } from '@quantbot/utils';
+import { logger, ConfigurationError } from '@quantbot/infra/utils';
 import type { Chain } from '@quantbot/core';
 import {
   getStorageEngine,
@@ -17,7 +17,7 @@ import {
   getVersionInfo,
   type IngestionRunManifest,
   SourceTier,
-} from '@quantbot/storage';
+} from '@quantbot/infra/storage';
 import { randomUUID } from 'crypto';
 import { createHash } from 'crypto';
 // Types imported dynamically to break circular dependency

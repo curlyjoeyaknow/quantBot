@@ -1,5 +1,5 @@
 import { LRUCache } from 'lru-cache';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import type { ClockPort } from '@quantbot/core';
 
 /**

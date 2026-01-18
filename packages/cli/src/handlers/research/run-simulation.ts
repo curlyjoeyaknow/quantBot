@@ -12,7 +12,7 @@ import { researchRunSchema } from '../../command-defs/research.js';
 import type { CommandContext } from '../../core/command-context.js';
 import { runSingleSimulation, createExperimentContext } from '@quantbot/workflows';
 import type { SimulationRequest } from '@quantbot/workflows';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import { createSnapshotManager } from '@quantbot/data-observatory';
 import type { DataSnapshotRef } from '@quantbot/data-observatory';
 

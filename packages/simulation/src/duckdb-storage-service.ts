@@ -6,8 +6,8 @@
  */
 
 import { z } from 'zod';
-import type { PythonEngine } from '@quantbot/utils';
-import { logger } from '@quantbot/utils';
+import type { PythonEngine } from '@quantbot/infra/utils';
+import { logger } from '@quantbot/infra/utils';
 
 /**
  * Schema for strategy storage result

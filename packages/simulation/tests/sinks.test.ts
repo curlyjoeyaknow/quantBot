@@ -7,7 +7,7 @@ import type { SimulationRunContext, SimulationTarget } from '../src/engine';
 import type { SimulationScenarioConfig } from '../src/config';
 
 // Mock ClickHouse client
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/infra/storage', () => ({
   getClickHouseClient: vi.fn(() => ({
     insert: vi.fn().mockResolvedValue(undefined),
   })),

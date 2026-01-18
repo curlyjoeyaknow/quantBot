@@ -4,7 +4,7 @@
  * Convenience functions to create observatory components with dependencies wired.
  */
 
-import { getStorageEngine } from '@quantbot/storage';
+import { getStorageEngine } from '@quantbot/infra/storage';
 import { SnapshotManager } from './snapshots/snapshot-manager.js';
 import { StorageEventCollector } from './snapshots/event-collector.js';
 import { DuckDBSnapshotStorage } from './snapshots/duckdb-storage.js';

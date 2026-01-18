@@ -11,7 +11,7 @@ import { createHash } from 'crypto';
 import { tmpdir } from 'os';
 import { getClickHouseClient } from '../clickhouse-client.js';
 import { DuckDBClient } from '../duckdb/duckdb-client.js';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import { readAllBytes } from '../utils/readAllBytes.js';
 import { datasetRegistry } from './dataset-registry.js';
 import { intervalToSeconds } from '../utils/interval-converter.js';

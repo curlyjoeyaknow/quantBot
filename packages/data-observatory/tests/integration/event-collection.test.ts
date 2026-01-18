@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { DateTime } from 'luxon';
-import { getStorageEngine } from '@quantbot/storage';
+import { getStorageEngine } from '@quantbot/infra/storage';
 import { StorageEventCollector } from '../../src/snapshots/event-collector.js';
 import type { SnapshotSpec } from '../../src/snapshots/types.js';
 import type { CanonicalEvent } from '../../src/canonical/schemas.js';

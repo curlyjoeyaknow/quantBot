@@ -17,13 +17,13 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { join } from 'path';
 import { existsSync, unlinkSync, writeFileSync, mkdirSync } from 'fs';
-import { PythonEngine } from '@quantbot/utils';
+import { PythonEngine } from '@quantbot/infra/utils';
 import { execSync } from 'child_process';
 import { tmpdir } from 'os';
 import {
   setupPythonEnvironment,
   checkPythonEnvironment,
-} from '@quantbot/utils/test-helpers/test-environment-setup.js';
+} from '@quantbot/infra/utils/test-helpers/test-environment-setup.js';
 
 const TEST_DIR = join(tmpdir(), 'quantbot-duckdb-idempotency-tests');
 const TEST_DB = join(TEST_DIR, 'test.duckdb');

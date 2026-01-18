@@ -4,9 +4,9 @@
  * Tracks API usage and quotas for external services (Birdeye, Helius, etc.)
  */
 
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 // TODO: ApiQuotaRepository needs to be implemented in storage package
-// import { ApiQuotaRepository } from '@quantbot/storage';
+// import { ApiQuotaRepository } from '@quantbot/infra/storage';
 
 export interface QuotaStatus {
   service: string;

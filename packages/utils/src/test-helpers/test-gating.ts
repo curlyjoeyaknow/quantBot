@@ -9,7 +9,7 @@
  *
  * Usage:
  * ```typescript
- * import { shouldRunDbStress, describe.skipIf } from '@quantbot/utils/test-helpers/test-gating';
+ * import { shouldRunDbStress, describe.skipIf } from '@quantbot/infra/utils/test-helpers/test-gating';
  *
  * describe.skipIf(!shouldRunDbStress())('Database Integration Tests', () => {
  *   // Tests that require real database connections

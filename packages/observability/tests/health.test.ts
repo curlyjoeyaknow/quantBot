@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { performHealthCheck, simpleHealthCheck } from '../src/health.js';
-import { getClickHouseClient } from '@quantbot/storage';
+import { getClickHouseClient } from '@quantbot/infra/storage';
 import { checkApiQuotas } from '../src/quotas.js';
 
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/infra/storage', () => ({
   getClickHouseClient: vi.fn(),
 }));
 

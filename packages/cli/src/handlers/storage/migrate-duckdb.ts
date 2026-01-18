@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { readFileSync } from 'fs';
 import { resolve, join } from 'path';
 import type { CommandContext } from '../../core/command-context.js';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 export const migrateDuckdbSchema = z.object({
   duckdb: z.string().min(1, 'DuckDB path is required'),

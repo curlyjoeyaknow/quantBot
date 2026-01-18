@@ -4,7 +4,7 @@
 
 import type { Command } from 'commander';
 import { z } from 'zod';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/infra/utils';
 import { defineCommand } from '../core/defineCommand.js';
 import { die } from '../core/cliErrors.js';
 import { commandRegistry } from '../core/command-registry.js';

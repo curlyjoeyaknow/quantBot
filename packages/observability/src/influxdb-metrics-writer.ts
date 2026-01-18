@@ -5,7 +5,7 @@
  */
 
 import { InfluxDB, Point, WriteApi } from '@influxdata/influxdb-client';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import type { LatencyMetric, ThroughputMetric } from './types.js';
 import * as fs from 'fs';
 import * as path from 'path';

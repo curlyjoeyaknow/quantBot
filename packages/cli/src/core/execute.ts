@@ -11,7 +11,7 @@
  * - Run ID generation and artifact management
  */
 
-import { ValidationError, ConfigurationError } from '@quantbot/utils';
+import { ValidationError, ConfigurationError } from '@quantbot/infra/utils';
 import { getArtifactsDir } from '@quantbot/core';
 import { validateAndCoerceArgs } from './validation-pipeline.js';
 import { formatOutput } from './output-formatter.js';
@@ -143,8 +143,8 @@ function extractSeedFromResult(result: unknown): number | null {
 }
 import { commandRegistry } from './command-registry.js';
 import { getProgressIndicator, resetProgressIndicator } from './progress-indicator.js';
-import { closeClickHouse } from '@quantbot/storage';
-import { logger } from '@quantbot/utils';
+import { closeClickHouse } from '@quantbot/infra/storage';
+import { logger } from '@quantbot/infra/utils';
 
 /**
  * Find package name for a command by searching the registry

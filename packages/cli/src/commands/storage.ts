@@ -12,7 +12,7 @@ import { defineCommand } from '../core/defineCommand.js';
 import { die } from '../core/cliErrors.js';
 import { coerceNumber, coerceBoolean } from '../core/coerce.js';
 import type { CommandContext } from '../core/command-context.js';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/infra/utils';
 import { queryStorageHandler } from './storage/query-storage.js';
 import { statsStorageHandler } from './storage/stats-storage.js';
 import { listTokensHandler } from './storage/list-tokens.js';

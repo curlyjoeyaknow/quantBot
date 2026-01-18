@@ -17,7 +17,7 @@ import { createHash } from 'crypto';
 // Mock storage to avoid requiring real database connections in tests
 import { vi } from 'vitest';
 
-vi.mock('@quantbot/storage', async (importOriginal) => {
+vi.mock('@quantbot/infra/storage', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@quantbot/storage')>();
   return {
     ...actual,

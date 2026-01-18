@@ -5,7 +5,7 @@
  *
  * Usage:
  * ```typescript
- * import { createPackageLogger } from '@quantbot/utils/logging';
+ * import { createPackageLogger } from '@quantbot/infra/utils/logging';
  *
  * const logger = createPackageLogger('@quantbot/services');
  * logger.info('Service started', { version: '1.0.0' });

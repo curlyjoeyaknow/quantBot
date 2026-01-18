@@ -5,7 +5,7 @@
  */
 
 import { z } from 'zod';
-import { PythonEngine } from '@quantbot/utils';
+import { PythonEngine } from '@quantbot/infra/utils';
 
 export const ParetoSolutionSchema = z.object({
   params: z.record(z.unknown()),

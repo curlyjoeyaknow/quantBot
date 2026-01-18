@@ -12,7 +12,7 @@ import type {
   V1BaselinePerCallerResult,
 } from './v1-baseline-optimizer.js';
 import { policyToId } from './policy-optimizer.js';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 /**
  * Write policy optimization frontier to artifacts

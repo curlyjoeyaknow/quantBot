@@ -5,7 +5,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import type { DuckDbConnection } from '../../adapters/duckdb/duckdbClient.js';
 
 export interface RunStatus {

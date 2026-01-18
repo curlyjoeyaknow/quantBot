@@ -16,7 +16,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { logger, ValidationError, AppError, ServiceUnavailableError } from '@quantbot/utils';
+import { logger, ValidationError, AppError, ServiceUnavailableError } from '@quantbot/infra/utils';
 import type {
   Candle,
   Call,

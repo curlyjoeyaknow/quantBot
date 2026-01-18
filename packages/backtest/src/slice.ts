@@ -16,8 +16,8 @@ import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
 import type { BacktestPlan, CoverageResult, Slice, Interval } from './types.js';
-import { OhlcvRepository } from '@quantbot/storage';
-import { logger } from '@quantbot/utils';
+import { OhlcvRepository } from '@quantbot/infra/storage';
+import { logger } from '@quantbot/infra/utils';
 import { submitArtifact } from '@quantbot/infra/utils';
 import type { SliceManifestV1 } from '@quantbot/core';
 

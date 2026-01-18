@@ -5,8 +5,8 @@
  * Orchestrates data loading, aggregation, and metric calculation.
  */
 
-import { logger } from '@quantbot/utils';
-import { getClickHouseClient } from '@quantbot/storage';
+import { logger } from '@quantbot/infra/utils';
+import { getClickHouseClient } from '@quantbot/infra/storage';
 import type {
   CallPerformance,
   CallerMetrics,

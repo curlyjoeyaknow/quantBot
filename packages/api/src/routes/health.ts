@@ -3,7 +3,7 @@
  */
 
 import { type FastifyInstance } from 'fastify';
-import { performHealthCheck, simpleHealthCheck } from '@quantbot/observability';
+import { performHealthCheck, simpleHealthCheck } from '@quantbot/infra/observability';
 
 export async function healthRoutes(fastify: FastifyInstance) {
   /**

@@ -41,7 +41,7 @@ import {
 } from '../execution/index.js';
 import type { ExecutionModel } from '../types/execution-model.js';
 import { createDeterministicRNG, type DeterministicRNG } from '@quantbot/core';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import { logStep } from '../utils/progress.js';
 import { type SimulationClock, type ClockResolution, createClock } from './clock.js';
 import {

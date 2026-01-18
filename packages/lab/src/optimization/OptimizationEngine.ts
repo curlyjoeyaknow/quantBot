@@ -18,7 +18,7 @@ import type {
 } from './types.js';
 import { GridSearch } from './GridSearch.js';
 import { RandomSearch } from './RandomSearch.js';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import type { OptimizationResult } from './GridSearch.js';
 
 /**

@@ -37,7 +37,7 @@ import {
   loadCompletedIds,
 } from '../../core/scenario-generator.js';
 import { join } from 'path';
-import { ValidationError, ConfigurationError } from '@quantbot/utils';
+import { ValidationError, ConfigurationError } from '@quantbot/infra/utils';
 
 /**
  * Per-call JSONL row (one per call × overlay × lag × interval)

@@ -6,7 +6,7 @@ import type { Chain } from '@quantbot/core';
 // Mock logger is handled in tests/setup.ts
 
 // Mock storage for worklist service
-vi.mock('@quantbot/storage', async () => {
+vi.mock('@quantbot/infra/storage', async () => {
   const actual = await vi.importActual('@quantbot/storage');
   return {
     ...actual,

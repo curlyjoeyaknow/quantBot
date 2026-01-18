@@ -11,7 +11,7 @@ import { join } from 'path';
 import { fileURLToPath } from 'url';
 import AjvClass from 'ajv';
 import addFormats from 'ajv-formats';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import { findWorkspaceRoot } from '@quantbot/infra/utils';
 import { DuckDBClient } from '../duckdb/duckdb-client.js';
 import type { SliceValidator, SliceManifestV1 } from '@quantbot/core';

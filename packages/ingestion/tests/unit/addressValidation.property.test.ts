@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isEvmAddress, isSolanaAddress } from '@quantbot/utils';
+import { isEvmAddress, isSolanaAddress } from '@quantbot/infra/utils';
 import { extractAddresses } from '../../src/addressValidation';
 
 /**

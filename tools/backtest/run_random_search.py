@@ -263,6 +263,8 @@ class RandomSearchConfig:
     # Filtering
     caller_group: Optional[str] = None
     caller: Optional[str] = None  # Single caller filter
+    mcap_min_usd: Optional[float] = None  # Minimum market cap filter (USD)
+    mcap_max_usd: Optional[float] = None  # Maximum market cap filter (USD)
     
     # Random seed for reproducibility
     seed: Optional[int] = None
@@ -317,6 +319,8 @@ class RandomSearchConfig:
             "slippage_bps": self.slippage_bps,
             "caller_group": self.caller_group,
             "caller": self.caller,
+            "mcap_min_usd": self.mcap_min_usd,
+            "mcap_max_usd": self.mcap_max_usd,
             "seed": self.seed,
             "use_extended_exits": self.use_extended_exits,
             "use_tiered_sl": self.use_tiered_sl,
@@ -395,21 +399,20 @@ def sample_params(config: RandomSearchConfig, rng: random.Random) -> Dict[str, A
         "intrabar_order": rng.choice(["sl_first", "tp_first"]),
     }
     
-    # Extended exits
-    if config.use_extended_exits:
-        # Time stop (50% chance)
-        if rng.random() < 0.5:
-            params["time_stop_hours"] = rng.choice([6, 12, 24, 36, 48])
-        
-        # Breakeven move (40% chance)
-        if rng.random() < 0.4:
-            params["breakeven_trigger_pct"] = round(rng.uniform(0.15, 0.40), 2)
-            params["breakeven_offset_pct"] = round(rng.uniform(0.0, 0.02), 3)
-        
-        # Trailing stop (40% chance)
-        if rng.random() < 0.4:
-            params["trail_activation_pct"] = round(rng.uniform(0.30, 0.80), 2)
-            params["trail_distance_pct"] = round(rng.uniform(0.10, 0.25), 2)
+    # Extended exits (always available, but sampled probabilistically)
+    # Time stop (50% chance)
+    if config.use_extended_exits and rng.random() < 0.5:
+        params["time_stop_hours"] = rng.choice([6, 12, 24, 36, 48])
+    
+    # Breakeven move (40% chance)
+    if config.use_extended_exits and rng.random() < 0.4:
+        params["breakeven_trigger_pct"] = round(rng.uniform(0.15, 0.40), 2)
+        params["breakeven_offset_pct"] = round(rng.uniform(0.0, 0.02), 3)
+    
+    # Trailing stop (40% chance, always available in robust mode)
+    if (config.use_extended_exits or config.use_robust_mode) and rng.random() < 0.4:
+        params["trail_activation_pct"] = round(rng.uniform(0.30, 0.80), 2)
+        params["trail_distance_pct"] = round(rng.uniform(0.10, 0.25), 2)
     
     # Tiered stop loss
     if config.use_tiered_sl:
@@ -425,12 +428,29 @@ def sample_params(config: RandomSearchConfig, rng: random.Random) -> Dict[str, A
         if rng.random() < 0.3:
             params["tier_4x_sl"] = round(rng.uniform(2.00, 3.00), 2)   # +100% to +200%
     
-    # Delayed entry
-    if config.use_delayed_entry:
-        params["entry_mode"] = rng.choice(["immediate", "wait_dip"])
-        if params["entry_mode"] == "wait_dip":
-            params["dip_pct"] = round(rng.uniform(0.02, 0.10), 2)
-            params["max_wait_candles"] = rng.choice([5, 10, 15, 30, 60])
+    # Delayed entry (always available in robust mode, or via flag)
+    if config.use_delayed_entry or config.use_robust_mode:
+        if rng.random() < 0.5:  # 50% chance of using delayed entry
+            params["entry_mode"] = rng.choice(["immediate", "wait_dip", "wait_confirm"])
+            if params["entry_mode"] == "wait_dip":
+                params["dip_pct"] = round(rng.uniform(0.02, 0.10), 2)
+                params["max_wait_candles"] = rng.choice([5, 10, 15, 30, 60])
+            elif params["entry_mode"] == "wait_confirm":
+                params["confirm_candles"] = rng.choice([1, 2, 3])
+                params["max_wait_candles"] = rng.choice([5, 10, 15, 30])
+        else:
+            params["entry_mode"] = "immediate"
+    
+    # Re-entry (sampling for future integration)
+    if config.use_robust_mode and rng.random() < 0.3:  # 30% chance
+        params["reentry_enabled"] = True
+        params["max_reentries"] = rng.choice([1, 2, 3])
+        params["reentry_cooldown_candles"] = rng.choice([5, 10, 15, 30])
+        params["reentry_on_sl"] = rng.choice([True, False])
+        # Re-entry trigger: after TP, re-enter if price pulls back by X%
+        params["reentry_pullback_pct"] = round(rng.uniform(0.10, 0.30), 2)
+    else:
+        params["reentry_enabled"] = False
     
     return params
 
@@ -448,7 +468,7 @@ def run_single_backtest(
         k in params for k in [
             "time_stop_hours", "breakeven_trigger_pct", "trail_activation_pct",
             "tier_1_2x_sl", "tier_1_5x_sl", "tier_2x_sl", "tier_3x_sl", "tier_4x_sl",
-            "entry_mode", "dip_pct"
+            "entry_mode", "dip_pct", "confirm_candles", "reentry_enabled"
         ]
     )
     
@@ -560,6 +580,33 @@ def run_random_search(
             if group:
                 all_alerts = [a for a in all_alerts if group.matches(a.caller)]
                 filter_desc = f"caller_group={config.caller_group}"
+        
+        # Filter by market cap if specified
+        if config.mcap_min_usd is not None or config.mcap_max_usd is not None:
+            filtered_alerts = []
+            skipped_no_mcap = 0
+            for a in all_alerts:
+                # Skip alerts without market cap data if filtering is requested
+                if a.mcap_usd is None:
+                    skipped_no_mcap += 1
+                    continue
+                
+                # Apply min/max filters
+                if config.mcap_min_usd is not None and a.mcap_usd < config.mcap_min_usd:
+                    continue
+                if config.mcap_max_usd is not None and a.mcap_usd > config.mcap_max_usd:
+                    continue
+                
+                filtered_alerts.append(a)
+            
+            all_alerts = filtered_alerts
+            if filter_desc:
+                filter_desc += f", mcap=[{config.mcap_min_usd or 0:.0f}, {config.mcap_max_usd or float('inf'):.0f}]"
+            else:
+                filter_desc = f"mcap=[{config.mcap_min_usd or 0:.0f}, {config.mcap_max_usd or float('inf'):.0f}]"
+            
+            if skipped_no_mcap > 0 and verbose:
+                print(f"  (Skipped {skipped_no_mcap} alerts without market cap data)", file=sys.stderr)
         
         if verbose:
             if filter_desc:

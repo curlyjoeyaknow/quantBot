@@ -4,7 +4,7 @@
  * Alert system for critical failures and metric thresholds.
  */
 
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import { getPrometheusMetrics } from './prometheus-metrics.js';
 
 export type AlertSeverity = 'info' | 'warning' | 'critical';

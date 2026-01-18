@@ -4,7 +4,7 @@
  */
 
 import type { CommandContext } from '../../core/command-context.js';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/infra/utils';
 import { analyzeDuckdbSchema, type AnalyzeDuckdbArgs } from '../../command-defs/analytics.js';
 import type { AnalyticsConfig } from '@quantbot/analytics';
 

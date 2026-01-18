@@ -6,7 +6,7 @@
  */
 
 import type { GraphNode, FeatureRefNode, ComparisonNode, CrossNode, LogicalNode } from './types.js';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 /**
  * Feature data for a single timestamp

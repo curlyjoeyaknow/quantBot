@@ -7,7 +7,7 @@
 
 import type { ParameterSpaceDef, ParameterConfig, OptimizationConfig } from './types.js';
 import { ParameterSpace } from './ParameterSpace.js';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import type { OptimizationResult } from './GridSearch.js';
 
 /**

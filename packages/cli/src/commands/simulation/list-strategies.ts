@@ -8,7 +8,7 @@
 
 import type { CommandContext } from '../../core/command-context.js';
 import type { ListStrategiesArgs } from '../../command-defs/simulation.js';
-import { StrategiesRepository } from '@quantbot/storage';
+import { StrategiesRepository } from '@quantbot/infra/storage';
 import process from 'node:process';
 
 /**

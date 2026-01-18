@@ -11,7 +11,7 @@ import type {
   TokensRepository,
   AlertsRepository,
   CallsRepository,
-} from '@quantbot/storage';
+} from '@quantbot/infra/storage';
 
 describe('TelegramCallIngestionService', () => {
   let mockCallersRepo: Partial<CallersRepository>;

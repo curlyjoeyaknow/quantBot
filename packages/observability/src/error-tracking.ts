@@ -5,9 +5,9 @@
  * Uses DuckDB ErrorRepository for persistent storage.
  */
 
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import { join } from 'path';
-import { ErrorRepository, type ErrorEvent as StorageErrorEvent } from '@quantbot/storage';
+import { ErrorRepository, type ErrorEvent as StorageErrorEvent } from '@quantbot/infra/storage';
 
 export interface ErrorEvent {
   timestamp: Date;

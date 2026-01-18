@@ -1,6 +1,6 @@
 import type { CommandContext } from '../../core/command-context.js';
 import { type QuotasObservabilityArgs } from '../../command-defs/observability.js';
-import { checkApiQuotas, type ApiQuotas } from '@quantbot/observability';
+import { checkApiQuotas, type ApiQuotas } from '@quantbot/infra/observability';
 
 interface QuotaRow {
   service: string;

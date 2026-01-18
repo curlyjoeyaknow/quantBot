@@ -106,7 +106,7 @@ vi.mock('path', async () => {
 });
 
 // Mock logger to prevent console output during tests
-vi.mock('@quantbot/utils', () => ({
+vi.mock('@quantbot/infra/utils', () => ({
   logger: {
     info: vi.fn(),
     warn: vi.fn(),

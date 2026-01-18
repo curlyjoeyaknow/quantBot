@@ -6,7 +6,7 @@
  * These can be used as starting points or references.
  */
 
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/infra/utils';
 import type { ExecutionModel, RiskFramework } from './types.js';
 import {
   createPumpfunExecutionModel,

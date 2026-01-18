@@ -26,10 +26,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DateTime } from 'luxon';
 import { OhlcvIngestionService } from '../../src/OhlcvIngestionService';
-import { getPythonEngine } from '@quantbot/utils';
-import { PythonEngine } from '@quantbot/utils';
+import { getPythonEngine } from '@quantbot/infra/utils';
+import { PythonEngine } from '@quantbot/infra/utils';
 import { OhlcvIngestionEngine, getOhlcvIngestionEngine } from '@quantbot/data/jobs';
-import { getStorageEngine } from '@quantbot/storage';
+import { getStorageEngine } from '@quantbot/infra/storage';
 import {
   createTestDuckDB,
   cleanupTestDuckDB,
@@ -47,7 +47,7 @@ import {
 } from './fixtures/pathological-ohlcv';
 
 // Mock only external API calls (Birdeye) - use real implementations for everything else
-vi.mock('@quantbot/api-clients', async () => {
+vi.mock('@quantbot/infra/api-clients', async () => {
   const actual = await vi.importActual('@quantbot/api-clients');
   return {
     ...actual,
@@ -57,7 +57,7 @@ vi.mock('@quantbot/api-clients', async () => {
 });
 
 // Mock getPostgresPool (needed for calculateAndStoreAthAtl)
-vi.mock('@quantbot/storage', async () => {
+vi.mock('@quantbot/infra/storage', async () => {
   const actual = await vi.importActual('@quantbot/storage');
   return {
     ...actual,

@@ -17,9 +17,9 @@
 
 import { join } from 'path';
 import { promises as fs } from 'fs';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import { submitArtifact } from '@quantbot/infra/utils';
-import { DuckDBClient } from '@quantbot/storage';
+import { DuckDBClient } from '@quantbot/infra/storage';
 
 export interface WriteBacktestResultsOptions {
   /**

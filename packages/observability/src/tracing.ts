@@ -4,7 +4,7 @@
  * Simple span-based distributed tracing for request flows.
  */
 
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 /**
  * Generate a unique ID

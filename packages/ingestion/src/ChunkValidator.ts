@@ -5,7 +5,7 @@
  * with detailed logging for debugging
  */
 
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import type { ExtractedBotData } from './BotMessageExtractor.js';
 import type { ResolvedCaller } from './CallerResolver.js';
 

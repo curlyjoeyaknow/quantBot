@@ -7,7 +7,7 @@
 
 import { createClient, type ClickHouseClient } from '@clickhouse/client';
 import { DateTime } from 'luxon';
-import { getClickHouseDatabaseName, logger } from '@quantbot/utils';
+import { getClickHouseDatabaseName, logger } from '@quantbot/infra/utils';
 import type { Candle } from '@quantbot/core';
 
 // ClickHouse connection configuration (lazy evaluation to ensure .env is loaded)

@@ -18,7 +18,7 @@ const mockPool = {
   query: vi.fn(),
 };
 
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/infra/storage', () => ({
   getPostgresPool: vi.fn(() => mockPool),
 }));
 

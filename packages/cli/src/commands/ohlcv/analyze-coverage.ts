@@ -10,7 +10,7 @@
 import type { z } from 'zod';
 import path from 'node:path';
 import process from 'node:process';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import type { CommandContext } from '../../core/command-context.js';
 import { analyzeCoverageSchema } from '../../commands/ohlcv.js';
 import {

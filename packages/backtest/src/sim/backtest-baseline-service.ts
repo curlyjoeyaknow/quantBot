@@ -14,8 +14,8 @@
 
 import { z } from 'zod';
 import { join } from 'path';
-import type { PythonEngine } from '@quantbot/utils';
-import { logger, findWorkspaceRoot } from '@quantbot/utils';
+import type { PythonEngine } from '@quantbot/infra/utils';
+import { logger, findWorkspaceRoot } from '@quantbot/infra/utils';
 
 /**
  * Schema for backtest summary metrics

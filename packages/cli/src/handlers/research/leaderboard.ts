@@ -6,7 +6,7 @@ import type { z } from 'zod';
 import { researchLeaderboardSchema } from '../../command-defs/research.js';
 import type { CommandContext } from '../../core/command-context.js';
 import { getLeaderboard, createExperimentContext } from '@quantbot/workflows';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 export type LeaderboardArgs = z.infer<typeof researchLeaderboardSchema>;
 

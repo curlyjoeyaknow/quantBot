@@ -26,8 +26,8 @@ import {
   createTempDuckDBPath,
 } from '../../../ingestion/tests/helpers/createTestDuckDB.js';
 import type { TestCall } from '../../../ingestion/tests/helpers/createTestDuckDB.js';
-import { initClickHouse, closeClickHouse } from '@quantbot/storage';
-import { shouldRunDbStress } from '@quantbot/utils/test-helpers/test-gating';
+import { initClickHouse, closeClickHouse } from '@quantbot/infra/storage';
+import { shouldRunDbStress } from '@quantbot/infra/utils/test-helpers/test-gating';
 import { vi } from 'vitest';
 import type { Candle } from '@quantbot/core';
 

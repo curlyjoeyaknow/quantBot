@@ -21,8 +21,8 @@ import {
   RunLogRepository,
   ArtifactRepository,
   openDuckDb,
-} from '@quantbot/storage';
-import type { RunStatusInsertData } from '@quantbot/storage';
+} from '@quantbot/infra/storage';
+import type { RunStatusInsertData } from '@quantbot/infra/storage';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

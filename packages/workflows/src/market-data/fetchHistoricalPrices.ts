@@ -9,7 +9,7 @@
  */
 
 import { logger } from '@quantbot/infra/utils';
-import { getBirdeyeClient } from '@quantbot/api-clients';
+import { getBirdeyeClient } from '@quantbot/infra/api-clients';
 import { DateTime } from 'luxon';
 
 /**

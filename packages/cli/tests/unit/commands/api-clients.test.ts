@@ -6,13 +6,13 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { z } from 'zod';
-import { BirdeyeClient, HeliusClient } from '@quantbot/api-clients';
-import { checkApiQuotas } from '@quantbot/observability';
+import { BirdeyeClient, HeliusClient } from '@quantbot/infra/api-clients';
+import { checkApiQuotas } from '@quantbot/infra/observability';
 import { parseArguments } from '../../../src/core/argument-parser';
 import { formatOutput } from '../../../src/core/output-formatter';
 
 // Mock API clients
-vi.mock('@quantbot/api-clients', () => ({
+vi.mock('@quantbot/infra/api-clients', () => ({
   BirdeyeClient: class {
     constructor() {}
   },
@@ -22,7 +22,7 @@ vi.mock('@quantbot/api-clients', () => ({
 }));
 
 // Mock observability
-vi.mock('@quantbot/observability', () => ({
+vi.mock('@quantbot/infra/observability', () => ({
   checkApiQuotas: vi.fn(),
 }));
 

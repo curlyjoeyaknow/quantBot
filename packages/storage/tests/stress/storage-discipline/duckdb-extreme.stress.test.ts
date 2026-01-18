@@ -25,9 +25,9 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from
 import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, chmodSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { DuckDBStorageService } from '@quantbot/storage/duckdb/duckdb-storage.js';
-import { getPythonEngine } from '@quantbot/utils/python/python-engine.js';
-import { shouldRunTest, TEST_GATES } from '@quantbot/utils/test-helpers/test-gating.js';
+import { DuckDBStorageService } from '@quantbot/infra/storage/duckdb/duckdb-storage.js';
+import { getPythonEngine } from '@quantbot/infra/utils/python/python-engine.js';
+import { shouldRunTest, TEST_GATES } from '@quantbot/infra/utils/test-helpers/test-gating.js';
 const VALID_MINT = 'So11111111111111111111111111111111111111112';
 
 // Only run if explicitly enabled

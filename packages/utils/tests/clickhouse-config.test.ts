@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { getClickHouseConfig, getClickHouseDatabaseName } from '@quantbot/utils';
+import { getClickHouseConfig, getClickHouseDatabaseName } from '@quantbot/infra/utils';
 
 describe('ClickHouse config helpers', () => {
   beforeEach(() => {

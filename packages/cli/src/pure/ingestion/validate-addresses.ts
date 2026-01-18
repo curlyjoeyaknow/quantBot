@@ -11,7 +11,7 @@
  */
 
 import type { CommandContext } from '../../core/command-context.js';
-import { isEvmAddress, isSolanaAddress } from '@quantbot/utils';
+import { isEvmAddress, isSolanaAddress } from '@quantbot/infra/utils';
 import type { Chain } from '@quantbot/core';
 
 export type ValidateAddressesArgs = {

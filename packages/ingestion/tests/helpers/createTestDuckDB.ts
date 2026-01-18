@@ -12,8 +12,8 @@ import { writeFileSync, rmSync } from 'fs';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { tmpdir } from 'os';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { getPythonEngine } from '@quantbot/utils';
-import type { PythonEngine } from '@quantbot/utils';
+import { getPythonEngine } from '@quantbot/infra/utils';
+import type { PythonEngine } from '@quantbot/infra/utils';
 import { z } from 'zod';
 
 export interface TestCall {

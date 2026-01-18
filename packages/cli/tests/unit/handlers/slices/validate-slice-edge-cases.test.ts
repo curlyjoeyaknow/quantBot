@@ -28,7 +28,7 @@ vi.mock('fs', async () => {
 });
 
 // Mock both storage paths (consolidation shim and new path)
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/infra/storage', () => ({
   createSliceValidatorAdapter: vi.fn(),
 }));
 vi.mock('@quantbot/infra/storage', () => ({

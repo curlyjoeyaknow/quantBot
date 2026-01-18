@@ -10,7 +10,7 @@
 import type { z } from 'zod';
 import path from 'node:path';
 import { DateTime } from 'luxon';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import type { CommandContext } from '../../core/command-context.js';
 import { analyzeDetailedCoverageSchema } from '../../commands/ohlcv.js';
 import {

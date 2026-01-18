@@ -16,7 +16,7 @@ import {
   TokensRepository,
   AlertsRepository,
   CallsRepository,
-} from '@quantbot/storage';
+} from '@quantbot/infra/storage';
 
 describe('Idempotency Property Tests', () => {
   let callersRepo: CallersRepository;

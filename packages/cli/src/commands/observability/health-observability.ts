@@ -1,6 +1,6 @@
 import type { CommandContext } from '../../core/command-context.js';
 import { type HealthObservabilityArgs } from '../../command-defs/observability.js';
-import { performHealthCheck } from '@quantbot/observability';
+import { performHealthCheck } from '@quantbot/infra/observability';
 
 export async function healthObservabilityHandler(
   _args: HealthObservabilityArgs,

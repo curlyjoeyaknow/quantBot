@@ -3,7 +3,7 @@
  */
 
 import { type FastifyInstance } from 'fastify';
-import { getPrometheusMetrics } from '@quantbot/observability';
+import { getPrometheusMetrics } from '@quantbot/infra/observability';
 
 export async function metricsRoutes(fastify: FastifyInstance) {
   /**

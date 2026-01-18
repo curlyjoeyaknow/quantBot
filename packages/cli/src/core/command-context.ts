@@ -16,7 +16,7 @@ import {
   OhlcvDedupService,
   // PostgreSQL repositories removed - use DuckDB equivalents
   // CallsRepository, TokensRepository, AlertsRepository, SimulationRunsRepository
-} from '@quantbot/storage';
+} from '@quantbot/infra/storage';
 import type { ExperimentRepository } from '@quantbot/core';
 import { OhlcvIngestionService } from '@quantbot/data/ingestion';
 import { MarketDataIngestionService } from '@quantbot/data/jobs';
@@ -25,8 +25,8 @@ import { MarketDataIngestionService } from '@quantbot/data/jobs';
 // import { OhlcvFetchJob } from '@quantbot/data/jobs';
 import { AnalyticsEngine } from '@quantbot/analytics';
 import type { AnalyticsEngine as AnalyticsEngineType } from '@quantbot/analytics';
-import { PythonEngine, type PythonEngine as PythonEngineType } from '@quantbot/utils';
-import { StorageEngine } from '@quantbot/storage';
+import { PythonEngine, type PythonEngine as PythonEngineType } from '@quantbot/infra/utils';
+import { StorageEngine } from '@quantbot/infra/storage';
 // Import directly from source to avoid Vitest SSR module resolution issues
 import { DuckDBStorageService } from '../../../backtest/src/sim/duckdb-storage-service.js';
 import { ClickHouseService } from '../../../backtest/src/sim/clickhouse-service.js';
@@ -35,7 +35,7 @@ import { BacktestBaselineService } from '../../../backtest/src/sim/backtest-base
 import { V1BaselinePythonService } from '../../../backtest/src/services/v1-baseline-python-service.js';
 import { TelegramPipelineService } from '@quantbot/data/ingestion';
 import { AnalyticsService } from '@quantbot/analytics';
-import { getClickHouseClient } from '@quantbot/storage';
+import { getClickHouseClient } from '@quantbot/infra/storage';
 import type { ClickHouseClient } from '@clickhouse/client';
 import { ensureInitialized } from './initialization-manager.js';
 

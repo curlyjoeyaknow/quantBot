@@ -8,7 +8,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createStateDuckdbAdapter } from '../../../src/adapters/stateDuckdbAdapter.js';
-import { getPythonEngine } from '@quantbot/utils';
+import { getPythonEngine } from '@quantbot/infra/utils';
 import { vi } from 'vitest';
 import path from 'node:path';
 import { existsSync, unlinkSync, mkdirSync } from 'node:fs';

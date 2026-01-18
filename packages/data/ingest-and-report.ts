@@ -9,7 +9,7 @@
  */
 
 import { TelegramPipelineService } from '@quantbot/data/ingestion';
-import { PythonEngine } from '@quantbot/utils';
+import { PythonEngine } from '@quantbot/infra/utils';
 import * as duckdb from 'duckdb';
 import * as path from 'path';
 import * as fs from 'fs';

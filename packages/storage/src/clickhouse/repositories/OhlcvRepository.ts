@@ -13,7 +13,7 @@
 
 import { DateTime } from 'luxon';
 import { getClickHouseClient } from '../../clickhouse-client.js';
-import { logger, ValidationError } from '@quantbot/utils';
+import { logger, ValidationError } from '@quantbot/infra/utils';
 import type { Candle, DateRange } from '@quantbot/core';
 import { normalizeChain } from '@quantbot/core';
 import { intervalToSeconds } from '../../utils/interval-converter.js';

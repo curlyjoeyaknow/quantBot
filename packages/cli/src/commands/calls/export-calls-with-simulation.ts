@@ -9,7 +9,7 @@
 import { writeFileSync } from 'fs';
 import { resolve } from 'path';
 import { DateTime } from 'luxon';
-import { NotFoundError } from '@quantbot/utils';
+import { NotFoundError } from '@quantbot/infra/utils';
 import type { CommandContext } from '../../core/command-context.js';
 import type { CallSignal } from '@quantbot/core';
 import {

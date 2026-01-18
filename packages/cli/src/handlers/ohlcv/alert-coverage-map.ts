@@ -11,7 +11,7 @@
 
 import { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
-import { getDuckDBWorklistService } from '@quantbot/storage';
+import { getDuckDBWorklistService } from '@quantbot/infra/storage';
 
 // Console colors
 const c = {

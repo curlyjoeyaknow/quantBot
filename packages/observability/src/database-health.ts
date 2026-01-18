@@ -4,7 +4,7 @@
  * Monitors database connection health and performance.
  */
 
-import { getClickHouseClient } from '@quantbot/storage';
+import { getClickHouseClient } from '@quantbot/infra/storage';
 
 export interface DatabaseHealth {
   clickhouse: {

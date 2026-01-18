@@ -1,6 +1,6 @@
 import { AxiosInstance } from 'axios';
-import { logger, ConfigurationError } from '@quantbot/utils';
-import { recordApiUsage } from '@quantbot/observability';
+import { logger, ConfigurationError } from '@quantbot/infra/utils';
+import { recordApiUsage } from '@quantbot/infra/observability';
 import { BaseApiClient } from './base-client.js';
 
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY || '';

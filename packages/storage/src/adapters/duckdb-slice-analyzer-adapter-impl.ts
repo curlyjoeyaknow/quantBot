@@ -10,7 +10,7 @@
  */
 
 import { DuckDBClient } from '../duckdb/duckdb-client.js';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import { existsSync } from 'fs';
 import type {
   SliceAnalyzer,

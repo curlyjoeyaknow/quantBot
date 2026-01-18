@@ -5,7 +5,7 @@
  * Wraps PythonEngine calls to maintain separation of concerns.
  */
 
-import { PythonEngine, getPythonEngine, findWorkspaceRoot, logger } from '@quantbot/utils';
+import { PythonEngine, getPythonEngine, findWorkspaceRoot, logger } from '@quantbot/infra/utils';
 import { z } from 'zod';
 import { join } from 'path';
 

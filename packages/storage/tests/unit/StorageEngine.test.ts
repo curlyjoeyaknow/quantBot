@@ -141,7 +141,7 @@ vi.mock('../../src/postgres/repositories/CallersRepository', () => ({
     }
   },
 }));
-vi.mock('@quantbot/utils', async () => {
+vi.mock('@quantbot/infra/utils', async () => {
   const actual = await vi.importActual<typeof import('@quantbot/utils')>('@quantbot/utils');
   return {
     ...actual,

@@ -10,10 +10,10 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { OHLCVQueryService } from '../src/ohlcv-query';
-import type { OHLCVData, TokenInfo } from '@quantbot/storage';
+import type { OHLCVData, TokenInfo } from '@quantbot/infra/storage';
 
 // Mock dependencies - must be defined inside vi.mock factory to avoid hoisting issues
-vi.mock('@quantbot/storage', async () => {
+vi.mock('@quantbot/infra/storage', async () => {
   const { vi } = await import('vitest');
   const mockStorageEngine = {
     getCandles: vi.fn(),
@@ -34,7 +34,7 @@ vi.mock('@quantbot/storage', async () => {
   };
 });
 
-vi.mock('@quantbot/utils', () => ({
+vi.mock('@quantbot/infra/utils', () => ({
   logger: {
     debug: vi.fn(),
     info: vi.fn(),

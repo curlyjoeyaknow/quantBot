@@ -6,7 +6,7 @@
 
 import type { CommandContext } from '../../core/command-context.js';
 import { type ClickHouseQueryArgs } from '../../command-defs/simulation.js';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/infra/utils';
 
 export async function clickHouseQueryHandler(args: ClickHouseQueryArgs, ctx: CommandContext) {
   const service = ctx.services.clickHouse();

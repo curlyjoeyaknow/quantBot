@@ -16,7 +16,7 @@ import { DataSnapshotService } from '../../../src/research/services/DataSnapshot
 import { ExecutionRealityService } from '../../../src/research/services/ExecutionRealityService.js';
 
 // Mock storage to avoid requiring real database connections in tests
-vi.mock('@quantbot/storage', async (importOriginal) => {
+vi.mock('@quantbot/infra/storage', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@quantbot/storage')>();
   return {
     ...actual,

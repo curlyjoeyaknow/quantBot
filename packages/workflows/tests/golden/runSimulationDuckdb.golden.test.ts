@@ -23,7 +23,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
 
 // Mock dependencies BEFORE imports to prevent module resolution issues
-vi.mock('@quantbot/utils', async () => {
+vi.mock('@quantbot/infra/utils', async () => {
   const actual = await vi.importActual<typeof import('@quantbot/utils')>('@quantbot/utils');
   return {
     ...actual,

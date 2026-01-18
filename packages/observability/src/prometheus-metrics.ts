@@ -5,7 +5,7 @@
  * Simple, fast, and cheap metrics collection.
  */
 
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import { Registry, Counter, Histogram, Gauge, collectDefaultMetrics } from 'prom-client';
 
 /**

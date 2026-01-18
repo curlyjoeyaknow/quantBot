@@ -9,7 +9,7 @@
 
 import type { CommandContext } from '../../core/command-context.js';
 import { type ErrorsObservabilityArgs } from '../../command-defs/observability.js';
-import { getErrorStats } from '@quantbot/observability';
+import { getErrorStats } from '@quantbot/infra/observability';
 import type { ClockPort } from '@quantbot/core';
 
 /**

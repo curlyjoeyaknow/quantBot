@@ -31,13 +31,13 @@ import { DateTime } from 'luxon';
 import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { initClickHouse, closeClickHouse } from '@quantbot/storage';
+import { initClickHouse, closeClickHouse } from '@quantbot/infra/storage';
 import { OhlcvIngestionService } from '../../src/OhlcvIngestionService';
 // Import test helpers directly (not exported from main package)
 import { shouldRunTest, TEST_GATES } from '../../../utils/src/test-helpers/test-gating';
 
 // Mock API quota tracking to prevent PostgreSQL connection attempts
-vi.mock('@quantbot/observability', async () => {
+vi.mock('@quantbot/infra/observability', async () => {
   const actual = await vi.importActual('@quantbot/observability');
   return {
     ...actual,

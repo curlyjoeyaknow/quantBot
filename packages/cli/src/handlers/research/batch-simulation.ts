@@ -8,7 +8,7 @@ import type { CommandContext } from '../../core/command-context.js';
 import { researchBatchSchema } from '../../command-defs/research.js';
 import { runBatchSimulation, createExperimentContext } from '@quantbot/workflows';
 import type { BatchSimulationRequest } from '@quantbot/workflows';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 export type BatchSimulationArgs = z.infer<typeof researchBatchSchema>;
 

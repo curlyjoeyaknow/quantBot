@@ -16,7 +16,7 @@
 import type { Command } from 'commander';
 import { execute } from './execute.js';
 import { commandRegistry } from './command-registry.js';
-import { NotFoundError } from '@quantbot/utils';
+import { NotFoundError } from '@quantbot/infra/utils';
 
 type CoerceFn<TIn, TOut> = (raw: TIn) => TOut;
 

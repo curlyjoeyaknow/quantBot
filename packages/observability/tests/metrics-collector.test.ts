@@ -6,7 +6,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MetricsCollector, getMetricsCollector, startTimer } from '../src/metrics-collector';
-import type { ApplicationEvent } from '@quantbot/utils';
+import type { ApplicationEvent } from '@quantbot/infra/utils';
 
 // Mock the InfluxDB writer - must return same instance
 const mockWriterSingleton = {
@@ -22,7 +22,7 @@ vi.mock('../src/influxdb-metrics-writer', () => ({
 }));
 
 // Mock EventBus - create inside factory to avoid hoisting issues
-vi.mock('@quantbot/utils', async () => {
+vi.mock('@quantbot/infra/utils', async () => {
   const actual = await vi.importActual('@quantbot/utils');
   const mockEventBus = {
     subscribe: vi.fn(),

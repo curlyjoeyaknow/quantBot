@@ -3,8 +3,8 @@ import {
   fetchMultiChainMetadata,
   batchFetchMultiChainMetadata,
   getMetadataCache,
-} from '@quantbot/api-clients';
-import type { BirdeyeClient } from '@quantbot/api-clients';
+} from '@quantbot/infra/api-clients';
+import type { BirdeyeClient } from '@quantbot/infra/api-clients';
 
 // Mock retryWithBackoff is handled in tests/setup.ts
 

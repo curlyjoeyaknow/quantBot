@@ -20,14 +20,14 @@ import { TokenDataRepository } from '../../src/duckdb/repositories/TokenDataRepo
 import { DuckDBClient } from '../../src/duckdb/duckdb-client.js';
 import { DateTime } from 'luxon';
 import { z } from 'zod';
-import type { PythonEngine } from '@quantbot/utils';
+import type { PythonEngine } from '@quantbot/infra/utils';
 
 // Mock PythonEngine to avoid requiring real Python
 const mockPythonEngine = {
   runScript: vi.fn(),
 } as unknown as PythonEngine;
 
-vi.mock('@quantbot/utils', async () => {
+vi.mock('@quantbot/infra/utils', async () => {
   const actual = await vi.importActual('@quantbot/utils');
   return {
     ...actual,

@@ -10,7 +10,7 @@
  */
 
 import { getClickHouseClient } from '../../clickhouse-client.js';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import type { IngestionRunManifest, SourceTier } from '../types/quality-score.js';
 
 export interface IngestionRun {

@@ -8,8 +8,8 @@
  */
 
 import { z } from 'zod';
-import type { PythonEngine } from '@quantbot/utils';
-import { logger, AppError, TimeoutError, findWorkspaceRoot } from '@quantbot/utils';
+import type { PythonEngine } from '@quantbot/infra/utils';
+import { logger, AppError, TimeoutError, findWorkspaceRoot } from '@quantbot/infra/utils';
 import { join } from 'path';
 
 // =============================================================================

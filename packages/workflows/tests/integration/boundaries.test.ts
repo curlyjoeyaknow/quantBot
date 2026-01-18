@@ -20,7 +20,7 @@ import {
   createTempDuckDBPath,
 } from '../../../ingestion/tests/helpers/createTestDuckDB.js';
 import type { TestCall } from '../../../ingestion/tests/helpers/createTestDuckDB.js';
-import { initClickHouse, closeClickHouse } from '@quantbot/storage';
+import { initClickHouse, closeClickHouse } from '@quantbot/infra/storage';
 import { shouldRunDbStress } from '../../../utils/src/test-helpers/test-gating';
 import { DateTime } from 'luxon';
 import { vi } from 'vitest';

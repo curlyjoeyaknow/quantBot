@@ -45,7 +45,7 @@ declare const axios: {
 };
 import { DateTime } from 'luxon';
 import type { Candle } from '@quantbot/core';
-import { logger, ConfigurationError, ApiError } from '@quantbot/utils';
+import { logger, ConfigurationError, ApiError } from '@quantbot/infra/utils';
 
 /* ============================================================================
  * Constants & System Configuration

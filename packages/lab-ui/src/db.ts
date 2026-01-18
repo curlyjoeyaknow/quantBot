@@ -1,5 +1,5 @@
-import { openDuckDb as storageOpenDuckDb } from '@quantbot/storage';
-import type { DuckDbConnection } from '@quantbot/storage';
+import { openDuckDb as storageOpenDuckDb } from '@quantbot/infra/storage';
+import type { DuckDbConnection } from '@quantbot/infra/storage';
 
 // Re-export the working storage adapter
 export type DuckDb = DuckDbConnection;

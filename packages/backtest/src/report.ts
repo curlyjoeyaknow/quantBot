@@ -10,7 +10,7 @@
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import type { Trade, BacktestEvent, CoverageResult, StrategyV1, BacktestSummary } from './types.js';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 /**
  * Calculate summary metrics

@@ -8,7 +8,7 @@ import { resolve } from 'path';
 import type { CommandContext } from '../../core/command-context.js';
 import { queryCallsDuckdb, type QueryCallsDuckdbContext } from '@quantbot/workflows';
 import type { ListCallsArgs } from '../../command-defs/calls.js';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import { SystemClockAdapter } from '../../core/clock-adapter.js';
 import { randomUUID } from 'crypto';
 

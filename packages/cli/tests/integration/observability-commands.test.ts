@@ -6,11 +6,11 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CommandRegistry } from '../../src/core/command-registry';
-import { performHealthCheck, checkApiQuotas } from '@quantbot/observability';
+import { performHealthCheck, checkApiQuotas } from '@quantbot/infra/observability';
 import { z } from 'zod';
 
 // Mock observability package
-vi.mock('@quantbot/observability', () => ({
+vi.mock('@quantbot/infra/observability', () => ({
   performHealthCheck: vi.fn(),
   checkApiQuotas: vi.fn(),
   getErrorStats: vi.fn(),

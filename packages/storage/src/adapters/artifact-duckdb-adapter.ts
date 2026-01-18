@@ -9,7 +9,7 @@ import { z } from 'zod';
 import type { ArtifactRepository, ArtifactQueryFilter } from '@quantbot/core';
 import type { Artifact, ArtifactMetadata } from '@quantbot/core';
 import { DuckDBClient } from '../duckdb/duckdb-client.js';
-import { logger, NotFoundError, AppError, findWorkspaceRoot } from '@quantbot/utils';
+import { logger, NotFoundError, AppError, findWorkspaceRoot } from '@quantbot/infra/utils';
 
 const ArtifactResultSchema = z.object({
   metadata: z.record(z.string(), z.unknown()),

@@ -77,7 +77,7 @@ vi.mock('path', () => ({
 }));
 
 // Mock logger
-vi.mock('@quantbot/utils', async () => {
+vi.mock('@quantbot/infra/utils', async () => {
   const actual = await vi.importActual('@quantbot/utils');
   return {
     ...actual,

@@ -8,8 +8,8 @@
  */
 
 import { createHash } from 'crypto';
-import { DuckDBClient } from '@quantbot/storage';
-import { logger } from '@quantbot/utils';
+import { DuckDBClient } from '@quantbot/infra/storage';
+import { logger } from '@quantbot/infra/utils';
 import { submitArtifact } from '@quantbot/infra/utils';
 import type { FeaturesSpec } from './types.js';
 import { FeaturesSpecSchema } from './types.js';

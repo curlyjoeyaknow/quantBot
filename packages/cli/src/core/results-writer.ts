@@ -15,7 +15,7 @@ import { writeFileSync } from 'fs';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { DateTime } from 'luxon';
-import { ConfigurationError } from '@quantbot/utils';
+import { ConfigurationError } from '@quantbot/infra/utils';
 import type { RunMetadata } from './run-meta.js';
 import { getGitSha, generateConfigHash, generateSweepId } from './run-meta.js';
 

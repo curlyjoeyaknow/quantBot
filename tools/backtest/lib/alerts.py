@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any, List
+from typing import Any, List, Optional
 
 import duckdb
 
@@ -24,6 +24,7 @@ class Alert:
     mint: str
     ts_ms: int
     caller: str
+    mcap_usd: Optional[float] = None  # Market cap in USD at alert time (if available)
 
     @property
     def ts(self) -> datetime:
@@ -73,6 +74,7 @@ def load_alerts(
     Load alerts from DuckDB for a date range.
 
     Tries caller_links_d first, falls back to user_calls_d.
+    Optionally joins with canon.alerts_final to get market cap data.
     Date range is inclusive of date_from, exclusive of date_to + 1 day.
 
     Args:
@@ -91,6 +93,20 @@ def load_alerts(
 
         has_caller_links = _table_exists(conn, "caller_links_d")
         has_user_calls = _table_exists(conn, "user_calls_d")
+        
+        # Check if canon.alerts_final exists and has market cap data
+        # Note: Currently market cap data may not be available in canon.alerts_final
+        # This join is disabled until market cap data is available
+        has_canon_alerts_final = False
+        # Uncomment when market cap data is available:
+        # try:
+        #     conn.execute("SELECT 1 FROM canon.alerts_final LIMIT 1").fetchone()
+        #     # Check if mcap_usd column exists
+        #     cols = _get_table_columns(conn, "canon.alerts_final")
+        #     if "mcap_usd" in cols:
+        #         has_canon_alerts_final = True
+        # except Exception:
+        #     pass
 
         if not has_caller_links and not has_user_calls:
             raise SystemExit(f"No alerts source found in DuckDB: {duckdb_path}")
@@ -99,11 +115,11 @@ def load_alerts(
 
         # Try caller_links_d first
         if has_caller_links:
-            alerts = _load_from_caller_links(conn, chain, from_ms, to_ms_excl)
+            alerts = _load_from_caller_links(conn, chain, from_ms, to_ms_excl, has_canon_alerts_final)
 
         # Fallback to user_calls_d if no alerts from caller_links_d
         if not alerts and has_user_calls:
-            alerts = _load_from_user_calls(conn, chain, from_ms, to_ms_excl)
+            alerts = _load_from_user_calls(conn, chain, from_ms, to_ms_excl, has_canon_alerts_final)
 
         alerts.sort(key=lambda a: (a.ts_ms, a.mint))
         return alerts
@@ -114,32 +130,66 @@ def _load_from_caller_links(
     chain: str,
     from_ms: int,
     to_ms_excl: int,
+    has_canon_alerts_final: bool = False,
 ) -> List[Alert]:
-    """Load alerts from caller_links_d table."""
+    """Load alerts from caller_links_d table, optionally joining with canon.alerts_final for market cap."""
     cols = _get_table_columns(conn, "caller_links_d")
     has_chain = "chain" in cols
     caller_expr = _build_caller_expr(cols)
 
-    sql = f"""
-    SELECT DISTINCT
-      mint::TEXT AS mint,
-      trigger_ts_ms::BIGINT AS ts_ms,
-      {caller_expr}
-    FROM caller_links_d
-    WHERE mint IS NOT NULL
-      AND trigger_ts_ms >= ?
-      AND trigger_ts_ms <  ?
-    """
+    # Try to join with canon.alerts_final for market cap if available
+    if has_canon_alerts_final:
+        # Build caller expression with table prefix for join
+        # Remove "AS caller" from the original expression since we'll add it in SQL
+        caller_expr_no_alias = caller_expr.replace(" AS caller", "").replace("::TEXT AS caller", "::TEXT")
+        caller_expr_with_prefix = caller_expr_no_alias.replace("caller_name", "c.caller_name").replace("trigger_from_name", "c.trigger_from_name")
+        
+        sql = f"""
+        SELECT DISTINCT
+          c.mint::TEXT AS mint,
+          c.trigger_ts_ms::BIGINT AS ts_ms,
+          {caller_expr_with_prefix} AS caller,
+          a.mcap_usd::DOUBLE AS mcap_usd
+        FROM caller_links_d c
+        LEFT JOIN canon.alerts_final a
+          ON a.mint = c.mint
+          AND a.alert_ts_ms = c.trigger_ts_ms
+        WHERE c.mint IS NOT NULL
+          AND c.trigger_ts_ms >= ?
+          AND c.trigger_ts_ms <  ?
+        """
+    else:
+        sql = f"""
+        SELECT DISTINCT
+          mint::TEXT AS mint,
+          trigger_ts_ms::BIGINT AS ts_ms,
+          {caller_expr},
+          NULL::DOUBLE AS mcap_usd
+        FROM caller_links_d
+        WHERE mint IS NOT NULL
+          AND trigger_ts_ms >= ?
+          AND trigger_ts_ms <  ?
+        """
+    
     params: List[Any] = [from_ms, to_ms_excl]
 
     if has_chain:
-        sql += " AND lower(chain) = lower(?)"
+        sql += " AND lower(c.chain) = lower(?)" if has_canon_alerts_final else " AND lower(chain) = lower(?)"
         params.append(chain)
 
     alerts = []
-    for mint, ts_ms, caller in conn.execute(sql, params).fetchall():
+    for row in conn.execute(sql, params).fetchall():
+        if has_canon_alerts_final:
+            mint, ts_ms, caller, mcap_usd = row
+        else:
+            mint, ts_ms, caller, mcap_usd = row
         if mint:
-            alerts.append(Alert(mint=mint, ts_ms=int(ts_ms), caller=(caller or "").strip()))
+            alerts.append(Alert(
+                mint=mint,
+                ts_ms=int(ts_ms),
+                caller=(caller or "").strip(),
+                mcap_usd=float(mcap_usd) if mcap_usd is not None else None
+            ))
 
     return alerts
 
@@ -149,8 +199,9 @@ def _load_from_user_calls(
     chain: str,
     from_ms: int,
     to_ms_excl: int,
+    has_canon_alerts_final: bool = False,
 ) -> List[Alert]:
-    """Load alerts from user_calls_d table."""
+    """Load alerts from user_calls_d table, optionally joining with canon.alerts_final for market cap."""
     cols = _get_table_columns(conn, "user_calls_d")
     has_chain = "chain" in cols
 
@@ -164,26 +215,50 @@ def _load_from_user_calls(
 
     caller_expr = _build_caller_expr(cols)
 
-    sql = f"""
-    SELECT DISTINCT
-      mint::TEXT AS mint,
-      {ts_col}::BIGINT AS ts_ms,
-      {caller_expr}
-    FROM user_calls_d
-    WHERE mint IS NOT NULL
-      AND {ts_col} >= ?
-      AND {ts_col} <  ?
-    """
+    # Try to join with canon.alerts_final for market cap if available
+    if has_canon_alerts_final:
+        sql = f"""
+        SELECT DISTINCT
+          u.mint::TEXT AS mint,
+          u.{ts_col}::BIGINT AS ts_ms,
+          {caller_expr.replace('COALESCE(caller_name', 'COALESCE(u.caller_name').replace('trigger_from_name', 'u.trigger_from_name')},
+          a.mcap_usd::DOUBLE AS mcap_usd
+        FROM user_calls_d u
+        LEFT JOIN canon.alerts_final a
+          ON a.mint = u.mint
+          AND a.alert_ts_ms = u.{ts_col}
+        WHERE u.mint IS NOT NULL
+          AND u.{ts_col} >= ?
+          AND u.{ts_col} <  ?
+        """
+    else:
+        sql = f"""
+        SELECT DISTINCT
+          mint::TEXT AS mint,
+          {ts_col}::BIGINT AS ts_ms,
+          {caller_expr},
+          NULL::DOUBLE AS mcap_usd
+        FROM user_calls_d
+        WHERE mint IS NOT NULL
+          AND {ts_col} >= ?
+          AND {ts_col} <  ?
+        """
+    
     params: List[Any] = [from_ms, to_ms_excl]
 
     if has_chain:
-        sql += " AND lower(chain) = lower(?)"
+        sql += " AND lower(u.chain) = lower(?)" if has_canon_alerts_final else " AND lower(chain) = lower(?)"
         params.append(chain)
 
     alerts = []
-    for mint, ts_ms, caller in conn.execute(sql, params).fetchall():
+    for row in conn.execute(sql, params).fetchall():
+        mint, ts_ms, caller, mcap_usd = row
         if mint:
-            alerts.append(Alert(mint=mint, ts_ms=int(ts_ms), caller=(caller or "").strip()))
+            alerts.append(Alert(
+                mint=mint,
+                ts_ms=int(ts_ms),
+                caller=(caller or "").strip(),
+                mcap_usd=float(mcap_usd) if mcap_usd is not None else None
+            ))
 
     return alerts
-

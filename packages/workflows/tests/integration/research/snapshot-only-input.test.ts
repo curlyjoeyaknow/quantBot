@@ -13,7 +13,7 @@ import { ResearchSimulationAdapter } from '../../../src/research/simulation-adap
 import type { SimulationRequest } from '../../../src/research/contract.js';
 import type { WorkflowContext } from '../../../src/types.js';
 import { DateTime } from 'luxon';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/infra/utils';
 import type { StrategyConfig } from '@quantbot/backtest';
 
 // Mock DataSnapshotService to verify it's called with snapshot ref

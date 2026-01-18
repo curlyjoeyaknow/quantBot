@@ -12,7 +12,7 @@
  */
 
 import type { SimulationMetrics } from './types.js';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 /**
  * Stability score

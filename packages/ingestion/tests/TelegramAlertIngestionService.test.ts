@@ -17,7 +17,7 @@ vi.mock('../src/MultiChainMetadataService', () => ({
 }));
 
 // Mock api-clients
-vi.mock('@quantbot/api-clients', () => ({
+vi.mock('@quantbot/infra/api-clients', () => ({
   getBirdeyeClient: vi.fn(() => ({
     getTokenMetadata: vi.fn().mockResolvedValue({ name: 'Test Token', symbol: 'TEST' }),
   })),

@@ -4,7 +4,7 @@
  * Tracks performance metrics for simulation operations.
  */
 
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 /**
  * Performance metrics

@@ -37,7 +37,7 @@ vi.mock('@quantbot/analytics/aggregators/MetricsAggregator.js', () => ({
     }
   },
 }));
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/infra/storage', () => ({
   getPostgresPool: vi.fn(() => ({
     query: vi.fn().mockResolvedValue({ rows: [] }),
   })),

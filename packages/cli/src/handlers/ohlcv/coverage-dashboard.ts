@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
-import { getDuckDBWorklistService } from '@quantbot/storage';
-import { dt } from '@quantbot/utils';
+import { getDuckDBWorklistService } from '@quantbot/infra/storage';
+import { dt } from '@quantbot/infra/utils';
 
 export const coverageDashboardSchema = z.object({
   refreshInterval: z.coerce.number().int().min(1).default(5),

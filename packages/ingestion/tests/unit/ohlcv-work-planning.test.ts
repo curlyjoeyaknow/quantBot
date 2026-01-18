@@ -12,11 +12,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
 import { generateOhlcvWorklist } from '../../src/ohlcv-work-planning.js';
-import { getDuckDBWorklistService } from '@quantbot/storage';
+import { getDuckDBWorklistService } from '@quantbot/infra/storage';
 import type { OhlcvWorkItem } from '../../src/ohlcv-work-planning.js';
 
 // Mock dependencies
-vi.mock('@quantbot/utils', () => ({
+vi.mock('@quantbot/infra/utils', () => ({
   logger: {
     debug: vi.fn(),
     info: vi.fn(),
@@ -25,7 +25,7 @@ vi.mock('@quantbot/utils', () => ({
   },
 }));
 
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/infra/storage', () => ({
   getDuckDBWorklistService: vi.fn(),
 }));
 

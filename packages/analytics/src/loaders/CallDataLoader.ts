@@ -5,8 +5,8 @@
  */
 
 import { DateTime } from 'luxon';
-import { logger } from '@quantbot/utils';
-import { StorageEngine, getStorageEngine } from '@quantbot/storage';
+import { logger } from '@quantbot/infra/utils';
+import { StorageEngine, getStorageEngine } from '@quantbot/infra/storage';
 import type { CallPerformance } from '../types.js';
 import { calculateAthFromCandleObjects } from '../utils/ath-calculator.js';
 // Dynamic import to avoid build-time dependency on workflows

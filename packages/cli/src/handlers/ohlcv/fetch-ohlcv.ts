@@ -7,10 +7,10 @@
 
 import { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
-import { fetchBirdeyeCandles } from '@quantbot/api-clients';
+import { fetchBirdeyeCandles } from '@quantbot/infra/api-clients';
 import { storeCandles } from '@quantbot/data/ohlcv';
 import { DateTime } from 'luxon';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 export const fetchOhlcvSchema = z.object({
   mint: z.string().min(1, 'Mint address is required'),

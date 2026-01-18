@@ -12,8 +12,8 @@
 
 import { promises as fs } from 'fs';
 import { join } from 'path';
-import { DuckDBClient } from '@quantbot/storage';
-import { logger } from '@quantbot/utils';
+import { DuckDBClient } from '@quantbot/infra/storage';
+import { logger } from '@quantbot/infra/utils';
 import { submitArtifact } from '@quantbot/infra/utils';
 import type { SimulationEvent, FillEvent, PositionSnapshot, SimulationState } from './types.js';
 

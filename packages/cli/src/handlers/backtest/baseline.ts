@@ -16,7 +16,7 @@ import { join } from 'path';
 import type { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
 import { backtestBaselineSchema } from '../../command-defs/backtest.js';
-import { findWorkspaceRoot } from '@quantbot/utils';
+import { findWorkspaceRoot } from '@quantbot/infra/utils';
 
 export type BacktestBaselineArgs = z.infer<typeof backtestBaselineSchema>;
 

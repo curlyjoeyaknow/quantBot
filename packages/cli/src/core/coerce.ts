@@ -5,7 +5,7 @@
  * Use these in defineCommand's coerce() function.
  */
 
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/infra/utils';
 
 function isString(x: unknown): x is string {
   return typeof x === 'string';

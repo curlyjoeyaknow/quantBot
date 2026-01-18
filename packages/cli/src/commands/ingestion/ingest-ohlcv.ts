@@ -13,7 +13,7 @@
 
 import path from 'node:path';
 import process from 'node:process';
-import { ConfigurationError } from '@quantbot/utils';
+import { ConfigurationError } from '@quantbot/infra/utils';
 
 import { ingestOhlcv, createOhlcvIngestionContext } from '@quantbot/workflows';
 import type { IngestOhlcvSpec } from '@quantbot/workflows';

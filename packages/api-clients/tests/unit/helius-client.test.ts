@@ -16,7 +16,7 @@ import {
 } from '@quantbot/api-clients/helius-client';
 
 // Mock utils
-vi.mock('@quantbot/utils', () => ({
+vi.mock('@quantbot/infra/utils', () => ({
   logger: {
     debug: vi.fn(),
     info: vi.fn(),
@@ -65,7 +65,7 @@ vi.mock('@quantbot/utils', () => ({
 }));
 
 // Mock observability
-vi.mock('@quantbot/observability', () => ({
+vi.mock('@quantbot/infra/observability', () => ({
   recordApiUsage: vi.fn().mockResolvedValue(undefined),
 }));
 

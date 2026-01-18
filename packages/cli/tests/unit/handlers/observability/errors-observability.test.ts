@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { errorsObservabilityHandler } from '../../../../src/commands/observability/errors-observability.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
-import { getErrorStats } from '@quantbot/observability';
+import { getErrorStats } from '@quantbot/infra/observability';
 
-vi.mock('@quantbot/observability', () => ({
+vi.mock('@quantbot/infra/observability', () => ({
   getErrorStats: vi.fn(),
 }));
 

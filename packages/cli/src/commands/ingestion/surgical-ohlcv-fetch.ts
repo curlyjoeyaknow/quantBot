@@ -13,7 +13,7 @@
 import type { z } from 'zod';
 import path from 'node:path';
 import process from 'node:process';
-import { ConfigurationError, logger } from '@quantbot/utils';
+import { ConfigurationError, logger } from '@quantbot/infra/utils';
 import type { CommandContext } from '../../core/command-context.js';
 import { surgicalOhlcvFetchSchema } from '../ingestion.js';
 import {

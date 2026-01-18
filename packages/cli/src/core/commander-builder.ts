@@ -8,7 +8,7 @@ import type { Command } from 'commander';
 import { commandRegistry } from './command-registry.js';
 import { execute } from './execute.js';
 import type { z } from 'zod';
-import { NotFoundError } from '@quantbot/utils';
+import { NotFoundError } from '@quantbot/infra/utils';
 
 // Note: Commander options are currently added manually in registerXCommands functions.
 // Future enhancement: parse Zod schemas to auto-generate Commander options.

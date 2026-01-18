@@ -17,7 +17,7 @@ const mockStorageEngine = {
 const mockQueryCallsDuckdb = vi.fn();
 const mockCreateQueryCallsDuckdbContext = vi.fn();
 
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/infra/storage', () => ({
   getStorageEngine: vi.fn(() => mockStorageEngine),
 }));
 

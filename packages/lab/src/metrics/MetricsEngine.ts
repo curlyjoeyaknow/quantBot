@@ -14,7 +14,7 @@
 
 import type { SimulationMetrics, EquityPoint } from './types.js';
 import type { SimulationEvent, FillEvent, PositionSnapshot } from '../simulation/types.js';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 /**
  * MetricsEngine

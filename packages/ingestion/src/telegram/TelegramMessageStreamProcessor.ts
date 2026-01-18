@@ -7,7 +7,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import type { NormalizedTelegramMessage, NormalizeErr } from './normalize.js';
 
 export interface StreamProcessorOptions {

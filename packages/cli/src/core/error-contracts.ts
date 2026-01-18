@@ -13,7 +13,7 @@ import {
   NotFoundError,
   ApiError,
   DatabaseError,
-} from '@quantbot/utils';
+} from '@quantbot/infra/utils';
 
 /**
  * Error contract schema (for validation)

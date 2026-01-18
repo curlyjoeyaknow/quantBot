@@ -20,8 +20,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DateTime } from 'luxon';
 import { OhlcvIngestionService } from '../src/OhlcvIngestionService';
-import { getPythonEngine } from '@quantbot/utils';
-import { getStorageEngine } from '@quantbot/storage';
+import { getPythonEngine } from '@quantbot/infra/utils';
+import { getStorageEngine } from '@quantbot/infra/storage';
 
 // Mock @quantbot/jobs to handle case where package isn't built
 // Test is skipped, but vitest still parses imports
@@ -44,10 +44,10 @@ import {
   cleanupTestDuckDB,
   createTempDuckDBPath,
 } from './helpers/createTestDuckDB.js';
-import type { PythonEngine } from '@quantbot/utils';
+import type { PythonEngine } from '@quantbot/infra/utils';
 
 // Mock only external API calls (Birdeye) - use real implementations for everything else
-vi.mock('@quantbot/api-clients', async () => {
+vi.mock('@quantbot/infra/api-clients', async () => {
   const actual = await vi.importActual('@quantbot/api-clients');
   return {
     ...actual,
@@ -57,7 +57,7 @@ vi.mock('@quantbot/api-clients', async () => {
 });
 
 // Mock getPostgresPool (needed for calculateAndStoreAthAtl)
-vi.mock('@quantbot/storage', async () => {
+vi.mock('@quantbot/infra/storage', async () => {
   const actual = await vi.importActual('@quantbot/storage');
   return {
     ...actual,

@@ -21,7 +21,7 @@ import type {
   StopLossConfig,
   TakeProfitConfig,
 } from './types.js';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 /**
  * RiskEngine

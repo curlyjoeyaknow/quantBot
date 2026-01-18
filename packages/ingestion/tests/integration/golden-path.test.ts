@@ -19,7 +19,7 @@ import {
   TokensRepository,
   AlertsRepository,
   CallsRepository,
-} from '@quantbot/storage';
+} from '@quantbot/infra/storage';
 import { PublicKey } from '@solana/web3.js';
 
 describe('Golden Path Integration Tests', () => {

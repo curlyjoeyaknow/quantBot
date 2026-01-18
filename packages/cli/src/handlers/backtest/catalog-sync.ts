@@ -6,9 +6,9 @@
  */
 
 import type { CommandContext } from '../../core/command-context.js';
-import { DuckDBClient } from '@quantbot/storage';
+import { DuckDBClient } from '@quantbot/infra/storage';
 import { initializeCatalog, catalogAllRuns, getCatalogStats } from '@quantbot/backtest';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 export interface CatalogSyncArgs {
   baseDir?: string;

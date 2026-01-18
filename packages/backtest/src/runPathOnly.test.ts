@@ -126,7 +126,7 @@ vi.mock('fs/promises', () => ({
 }));
 
 // Mock @quantbot/utils
-vi.mock('@quantbot/utils', () => {
+vi.mock('@quantbot/infra/utils', () => {
   class MockTimingContext {
     private partsMap: Record<string, number> = {};
     start = vi.fn();

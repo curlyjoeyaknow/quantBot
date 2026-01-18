@@ -5,7 +5,7 @@
  * Integrates with artifact manager to write manifest.json.
  */
 
-import { getCurrentGitCommitHash, ValidationError } from '@quantbot/utils';
+import { getCurrentGitCommitHash, ValidationError } from '@quantbot/infra/utils';
 import { createRunManifest, hashObject, type RunManifest } from '@quantbot/core';
 import type { ArtifactPaths } from './artifact-manager.js';
 import { writeArtifact } from './artifact-manager.js';

@@ -6,8 +6,8 @@
  */
 
 import { DateTime } from 'luxon';
-import { logger } from '@quantbot/utils';
-import { getStorageEngine } from '@quantbot/storage';
+import { logger } from '@quantbot/infra/utils';
+import { getStorageEngine } from '@quantbot/infra/storage';
 import type { CallPerformance, PeriodMetrics } from '../types.js';
 import { calculatePeriodAthAtlFromCandles } from './ath-calculator.js';
 

@@ -11,7 +11,7 @@
  * This file now only contains isBase58 and extractAddresses.
  */
 
-import { isSolanaAddress } from '@quantbot/utils';
+import { isSolanaAddress } from '@quantbot/infra/utils';
 
 const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 

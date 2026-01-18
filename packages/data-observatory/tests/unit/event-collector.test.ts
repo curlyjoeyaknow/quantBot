@@ -7,7 +7,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
 import { StorageEventCollector } from '../../src/snapshots/event-collector.js';
-import type { StorageEngine } from '@quantbot/storage';
+import type { StorageEngine } from '@quantbot/infra/storage';
 import type { SnapshotSpec } from '../../src/snapshots/types.js';
 import type { CallEvent, CandleEvent } from '../../src/canonical/schemas.js';
 
@@ -58,7 +58,7 @@ describe('StorageEventCollector Unit Tests', () => {
       };
 
       // Mock PythonEngine.runDuckDBStorage
-      vi.mock('@quantbot/utils', async () => {
+      vi.mock('@quantbot/infra/utils', async () => {
         const actual = await vi.importActual('@quantbot/utils');
         return {
           ...actual,

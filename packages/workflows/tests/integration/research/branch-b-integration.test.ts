@@ -11,7 +11,7 @@ import { SimulationRequestSchema } from '../../../src/research/contract.js';
 import { DataSnapshotService } from '../../../src/research/services/DataSnapshotService.js';
 
 // Mock storage to avoid requiring real database connections in tests
-vi.mock('@quantbot/storage', async () => {
+vi.mock('@quantbot/infra/storage', async () => {
   const actual = await vi.importActual('@quantbot/storage');
   return {
     ...actual,

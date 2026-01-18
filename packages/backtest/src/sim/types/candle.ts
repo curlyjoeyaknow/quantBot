@@ -4,7 +4,7 @@
  * Core OHLCV candle types for the simulation engine.
  */
 
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/infra/utils';
 
 /**
  * OHLCV candle data structure

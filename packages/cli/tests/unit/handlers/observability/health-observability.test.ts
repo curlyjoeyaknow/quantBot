@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { healthObservabilityHandler } from '../../../../src/commands/observability/health-observability.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
-import { performHealthCheck } from '@quantbot/observability';
+import { performHealthCheck } from '@quantbot/infra/observability';
 
-vi.mock('@quantbot/observability', () => ({
+vi.mock('@quantbot/infra/observability', () => ({
   performHealthCheck: vi.fn(),
 }));
 

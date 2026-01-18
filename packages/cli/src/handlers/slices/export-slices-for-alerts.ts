@@ -9,8 +9,8 @@ import { z } from 'zod';
 import { exportSlicesForAlerts } from '@quantbot/workflows';
 import type { ExportSlicesForAlertsSpec } from '@quantbot/workflows';
 import { createQueryCallsDuckdbContext } from '@quantbot/workflows';
-import { ClickHouseSliceExporterAdapterImpl } from '@quantbot/storage';
-import { getDuckDBPath } from '@quantbot/utils';
+import { ClickHouseSliceExporterAdapterImpl } from '@quantbot/infra/storage';
+import { getDuckDBPath } from '@quantbot/infra/utils';
 
 /**
  * Schema for export slices command args

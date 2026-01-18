@@ -10,7 +10,7 @@ import type { CommandContext } from '../../core/command-context.js';
 import {
   createClickHouseSliceExporterAdapterImpl,
   createDuckDbSliceAnalyzerAdapterImpl,
-} from '@quantbot/storage';
+} from '@quantbot/infra/storage';
 import type { z } from 'zod';
 import { exportSliceSchema } from '../../commands/slices.js';
 

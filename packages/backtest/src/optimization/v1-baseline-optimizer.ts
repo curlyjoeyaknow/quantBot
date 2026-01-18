@@ -20,7 +20,7 @@ import {
   type CapitalSimulationResult,
   type CapitalSimulatorConfig,
 } from './capital-simulator.js';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 // =============================================================================
 // Types

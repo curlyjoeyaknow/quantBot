@@ -9,7 +9,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 // Set timeout for integration tests (30 seconds)
 vi.setConfig({ testTimeout: 30_000 });
 import { DateTime } from 'luxon';
-import { getStorageEngine } from '@quantbot/storage';
+import { getStorageEngine } from '@quantbot/infra/storage';
 import { SnapshotManager } from '../../src/snapshots/snapshot-manager.js';
 import { StorageEventCollector } from '../../src/snapshots/event-collector.js';
 import { DuckDBSnapshotStorage } from '../../src/snapshots/duckdb-storage.js';

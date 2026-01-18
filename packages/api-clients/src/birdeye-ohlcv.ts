@@ -13,7 +13,7 @@
  */
 
 import type { Candle } from '@quantbot/core';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import { BirdeyeClient, getBirdeyeClient, type BirdeyeOHLCVResponse } from './birdeye-client.js';
 
 /**

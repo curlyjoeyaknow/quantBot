@@ -7,7 +7,7 @@
  */
 
 import bs58 from 'bs58';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/infra/utils';
 import type { Chain } from '@quantbot/core';
 
 /**

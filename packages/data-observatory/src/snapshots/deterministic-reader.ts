@@ -6,7 +6,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { ConfigurationError } from '@quantbot/utils';
+import { ConfigurationError } from '@quantbot/infra/utils';
 import type { DataSnapshotRef, SnapshotQueryOptions } from './types.js';
 import type { CanonicalEvent } from '../canonical/schemas.js';
 import type { SnapshotStorage } from './snapshot-manager.js';

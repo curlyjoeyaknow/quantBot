@@ -5,7 +5,7 @@
  * and WAL files are prevented.
  */
 
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 /**
  * DuckDB connection cleanup options

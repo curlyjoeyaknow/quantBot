@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { checkDatabaseHealth } from '../src/database-health.js';
-import { getClickHouseClient } from '@quantbot/storage';
+import { getClickHouseClient } from '@quantbot/infra/storage';
 
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/infra/storage', () => ({
   getClickHouseClient: vi.fn(),
 }));
 

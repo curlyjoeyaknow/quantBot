@@ -9,11 +9,11 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { exportAndAnalyzeSlice } from '../../src/slices/exportAndAnalyzeSlice.js';
-import { createClickHouseSliceExporterAdapterImpl } from '@quantbot/storage';
-import { createDuckDbSliceAnalyzerAdapterImpl } from '@quantbot/storage';
-import { createSliceValidatorAdapter } from '@quantbot/storage';
+import { createClickHouseSliceExporterAdapterImpl } from '@quantbot/infra/storage';
+import { createDuckDbSliceAnalyzerAdapterImpl } from '@quantbot/infra/storage';
+import { createSliceValidatorAdapter } from '@quantbot/infra/storage';
 import { generateTestRunId, getTestOutputDir } from './helpers/test-fixtures.js';
-import { shouldRunDbStress } from '@quantbot/utils/test-helpers/test-gating';
+import { shouldRunDbStress } from '@quantbot/infra/utils/test-helpers/test-gating';
 import type {
   SliceSpec,
   ParquetLayoutSpec,

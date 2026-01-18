@@ -4,8 +4,8 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TelegramPipelineService } from '../../src/TelegramPipelineService';
-import type { PythonEngine, PythonManifest } from '@quantbot/utils';
-import { PythonManifestSchema } from '@quantbot/utils';
+import type { PythonEngine, PythonManifest } from '@quantbot/infra/utils';
+import { PythonManifestSchema } from '@quantbot/infra/utils';
 
 describe('TelegramPipelineService', () => {
   let mockEngine: PythonEngine;

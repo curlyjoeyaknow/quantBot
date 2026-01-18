@@ -17,7 +17,7 @@ import {
 } from '@quantbot/api-clients/base-client';
 
 // Mock utils
-vi.mock('@quantbot/utils', () => ({
+vi.mock('@quantbot/infra/utils', () => ({
   logger: {
     debug: vi.fn(),
     info: vi.fn(),

@@ -8,7 +8,7 @@
  * All methods return empty/default values.
  */
 
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 export interface OHLCVData {
   timestamp: number;

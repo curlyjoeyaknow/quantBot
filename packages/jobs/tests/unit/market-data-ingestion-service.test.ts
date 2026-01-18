@@ -4,19 +4,19 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MarketDataIngestionService } from '../../src/market-data-ingestion-service.js';
-import { BirdeyeClient } from '@quantbot/api-clients';
-import { getClickHouseClient } from '@quantbot/storage';
+import { BirdeyeClient } from '@quantbot/infra/api-clients';
+import { getClickHouseClient } from '@quantbot/infra/storage';
 
 // Mock dependencies
-vi.mock('@quantbot/api-clients', () => ({
+vi.mock('@quantbot/infra/api-clients', () => ({
   BirdeyeClient: vi.fn(),
 }));
 
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/infra/storage', () => ({
   getClickHouseClient: vi.fn(),
 }));
 
-vi.mock('@quantbot/utils', () => ({
+vi.mock('@quantbot/infra/utils', () => ({
   logger: {
     info: vi.fn(),
     debug: vi.fn(),

@@ -9,7 +9,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { analyzeCoverage } from '../../../src/ohlcv/analyzeCoverage.js';
 import type { AnalyzeCoverageContext } from '../../../src/ohlcv/analyzeCoverage.js';
 import { DateTime } from 'luxon';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/infra/utils';
 
 describe('analyzeCoverage workflow', () => {
   let mockContext: AnalyzeCoverageContext;

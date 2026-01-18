@@ -10,7 +10,7 @@ import type { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
 import { querySchema } from '../../commands/storage.js';
 import { SAFE_TABLES } from '../../commands/storage.js';
-import { getClickHouseDatabaseName, ValidationError } from '@quantbot/utils';
+import { getClickHouseDatabaseName, ValidationError } from '@quantbot/infra/utils';
 
 /**
  * Input arguments (already validated by Zod)

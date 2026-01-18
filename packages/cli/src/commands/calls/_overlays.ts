@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/infra/utils';
 import type { ExitOverlay } from '@quantbot/backtest';
 
 type Overlay = ExitOverlay;

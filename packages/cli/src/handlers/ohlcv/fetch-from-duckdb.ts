@@ -7,9 +7,9 @@
 
 import { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
-import { logger } from '@quantbot/utils';
-import { getDuckDBWorklistService } from '@quantbot/storage';
-import { fetchBirdeyeCandles } from '@quantbot/api-clients';
+import { logger } from '@quantbot/infra/utils';
+import { getDuckDBWorklistService } from '@quantbot/infra/storage';
+import { fetchBirdeyeCandles } from '@quantbot/infra/api-clients';
 import { storeCandles, getCoverage } from '@quantbot/data/ohlcv';
 import type { Chain } from '@quantbot/core';
 

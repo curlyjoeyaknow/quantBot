@@ -12,9 +12,9 @@ import {
   TimeoutError,
   isRetryableError,
   retryWithBackoff,
-} from '@quantbot/utils';
-import type { EventLogService } from '@quantbot/observability';
-import type { PrometheusMetricsService } from '@quantbot/observability';
+} from '@quantbot/infra/utils';
+import type { EventLogService } from '@quantbot/infra/observability';
+import type { PrometheusMetricsService } from '@quantbot/infra/observability';
 
 /**
  * Rate limiter configuration

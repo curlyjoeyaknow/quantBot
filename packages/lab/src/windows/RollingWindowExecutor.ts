@@ -13,7 +13,7 @@
 
 import { createHash } from 'crypto';
 import type { WindowConfig, TimeWindow, WindowResult } from './types.js';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 /**
  * RollingWindowExecutor

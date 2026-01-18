@@ -13,7 +13,7 @@ import type { CommandContext } from '../../core/command-context.js';
 import { telegramSchema } from '../../commands/ingestion.js';
 import { ingestTelegramJson } from '@quantbot/workflows';
 import { createProductionContextWithPorts } from '@quantbot/workflows';
-import { CallersRepository, TokenDataRepository } from '@quantbot/storage';
+import { CallersRepository, TokenDataRepository } from '@quantbot/infra/storage';
 
 /**
  * Input arguments (already validated by Zod)

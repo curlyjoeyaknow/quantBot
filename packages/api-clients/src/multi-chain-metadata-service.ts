@@ -9,9 +9,9 @@
  * We must try all three chains to determine which one actually has the token.
  */
 
-import { logger, retryWithBackoff, isEvmAddress, isSolanaAddress } from '@quantbot/utils';
+import { logger, retryWithBackoff, isEvmAddress, isSolanaAddress } from '@quantbot/infra/utils';
 import type { Chain } from '@quantbot/core';
-import { getBirdeyeClient, BirdeyeClient } from '@quantbot/api-clients';
+import { getBirdeyeClient, BirdeyeClient } from '@quantbot/infra/api-clients';
 import { getMetadataCache } from './multi-chain-metadata-cache.js';
 
 export interface TokenMetadata {

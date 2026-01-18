@@ -19,7 +19,7 @@ vi.mock('@quantbot/data/jobs', () => ({
 }));
 
 // Mock ClickHouse to avoid connection errors
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/infra/storage', () => ({
   getClickHouseClient: vi.fn(() => ({
     query: vi.fn(),
     insert: vi.fn(),

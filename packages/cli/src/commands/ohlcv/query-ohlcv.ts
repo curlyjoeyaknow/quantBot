@@ -10,7 +10,7 @@ import type { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
 import { querySchema } from '../../commands/ohlcv.js';
 import { validateMintAddress } from '../../core/argument-parser.js';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/infra/utils';
 
 /**
  * Input arguments (already validated by Zod)

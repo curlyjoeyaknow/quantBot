@@ -6,8 +6,8 @@
  */
 
 import path from 'node:path';
-import { ConfigurationError, logger } from '@quantbot/utils';
-import { getBirdeyeClient } from '@quantbot/api-clients';
+import { ConfigurationError, logger } from '@quantbot/infra/utils';
+import { getBirdeyeClient } from '@quantbot/infra/api-clients';
 import type { CommandContext } from '../../core/command-context.js';
 import type { z } from 'zod';
 import { fetchTokenCreationInfoSchema } from '../../commands/ingestion.js';

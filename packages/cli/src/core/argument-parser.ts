@@ -3,7 +3,7 @@
  */
 
 import { z } from 'zod';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/infra/utils';
 import { validateMintAddress as validateMintAddressImpl } from './address-validator.js';
 
 /**

@@ -16,7 +16,7 @@ import { join } from 'path';
 import { z } from 'zod';
 import { DateTime } from 'luxon';
 import { DuckDBClient } from '../duckdb/duckdb-client.js';
-import { logger, findWorkspaceRoot } from '@quantbot/utils';
+import { logger, findWorkspaceRoot } from '@quantbot/infra/utils';
 
 /**
  * Event row schema (as stored in DuckDB)

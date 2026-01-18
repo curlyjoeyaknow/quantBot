@@ -5,7 +5,7 @@
 import { readdir, readFile } from 'fs/promises';
 import { join, extname } from 'path';
 import { upsertRunMetadata } from '@quantbot/backtest';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 type BacktestRunMode =
   | 'path-only'

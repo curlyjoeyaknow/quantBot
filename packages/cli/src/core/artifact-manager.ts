@@ -7,7 +7,7 @@
 
 import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
-import { NotFoundError } from '@quantbot/utils';
+import { NotFoundError } from '@quantbot/infra/utils';
 import { getArtifactsDir } from '@quantbot/core';
 import type { RunIdComponents } from './run-id-manager.js';
 import { generateRunId } from './run-id-manager.js';

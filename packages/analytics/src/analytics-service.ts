@@ -6,8 +6,8 @@
  */
 
 import { z } from 'zod';
-import type { PythonEngine } from '@quantbot/utils';
-import { logger, AppError, TimeoutError } from '@quantbot/utils';
+import type { PythonEngine } from '@quantbot/infra/utils';
+import { logger, AppError, TimeoutError } from '@quantbot/infra/utils';
 import { join } from 'path';
 
 /**

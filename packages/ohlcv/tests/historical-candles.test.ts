@@ -21,11 +21,11 @@ const mockGetStorageEngine = vi.hoisted(() =>
   }))
 );
 
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/infra/storage', () => ({
   getStorageEngine: mockGetStorageEngine,
 }));
 
-vi.mock('@quantbot/utils', () => ({
+vi.mock('@quantbot/infra/utils', () => ({
   logger: {
     debug: vi.fn(),
     info: vi.fn(),

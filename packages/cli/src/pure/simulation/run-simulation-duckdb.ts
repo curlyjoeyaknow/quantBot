@@ -10,7 +10,7 @@
  * - Pure orchestration: get workflow from context, call workflow, return result
  */
 
-import { ValidationError, ConfigurationError } from '@quantbot/utils';
+import { ValidationError, ConfigurationError } from '@quantbot/infra/utils';
 import type { CommandContext } from '../../core/command-context.js';
 import {
   runSimulationDuckdb,

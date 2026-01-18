@@ -5,7 +5,7 @@
  */
 
 import { z } from 'zod';
-import { PythonEngine } from '@quantbot/utils';
+import { PythonEngine } from '@quantbot/infra/utils';
 import type { OptimizationResult } from './types.js';
 
 export const BayesianParameterSpaceSchema = z.object({

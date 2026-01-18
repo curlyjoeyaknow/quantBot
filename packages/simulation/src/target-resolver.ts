@@ -4,7 +4,7 @@ import { DateTime } from 'luxon';
 import { parse as parseCsv } from 'csv-parse/sync';
 import { SimulationScenarioConfig, DataSelectionConfig } from './config.js';
 import { SimulationTarget } from './engine.js';
-import { ValidationError, AppError } from '@quantbot/utils';
+import { ValidationError, AppError } from '@quantbot/infra/utils';
 
 type CsvRecord = Record<string, string>;
 

@@ -18,7 +18,7 @@ vi.mock('../../src/clickhouse-client', () => ({
   getClickHouseClient: vi.fn(),
 }));
 
-vi.mock('@quantbot/utils', () => ({
+vi.mock('@quantbot/infra/utils', () => ({
   logger: {
     debug: vi.fn(),
     info: vi.fn(),

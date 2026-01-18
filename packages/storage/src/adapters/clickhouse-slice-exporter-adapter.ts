@@ -2,7 +2,7 @@ import { promises as fs } from 'fs';
 import { join, dirname } from 'path';
 import { createHash } from 'crypto';
 import { getClickHouseClient } from '../clickhouse-client.js';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import { readAllBytes } from '../utils/readAllBytes.js';
 import type {
   SliceExporterPort,

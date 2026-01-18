@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { quotasObservabilityHandler } from '../../../../src/commands/observability/quotas-observability.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
-import { checkApiQuotas } from '@quantbot/observability';
+import { checkApiQuotas } from '@quantbot/infra/observability';
 
-vi.mock('@quantbot/observability', () => ({
+vi.mock('@quantbot/infra/observability', () => ({
   checkApiQuotas: vi.fn(),
 }));
 

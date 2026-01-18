@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { PythonEngine } from '@quantbot/utils';
+import { PythonEngine } from '@quantbot/infra/utils';
 import { V1BaselinePythonService } from '../v1-baseline-python-service.js';
 
 describe('V1BaselinePythonService Integration', () => {

@@ -15,8 +15,8 @@
 import { DateTime } from 'luxon';
 import type { Candle, Chain } from '@quantbot/core';
 import { normalizeChain } from '@quantbot/core';
-import { logger } from '@quantbot/utils';
-import { getStorageEngine, initClickHouse } from '@quantbot/storage';
+import { logger } from '@quantbot/infra/utils';
+import { getStorageEngine, initClickHouse } from '@quantbot/infra/storage';
 import { storeCandles as storeCandlesOffline } from './ohlcv-storage.js';
 
 export interface OHLCVEngineFetchOptions {

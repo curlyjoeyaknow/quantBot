@@ -10,7 +10,7 @@
 
 import path from 'node:path';
 import { DateTime } from 'luxon';
-import { ConfigurationError, isSolanaAddress, isEvmAddress, logger } from '@quantbot/utils';
+import { ConfigurationError, isSolanaAddress, isEvmAddress, logger } from '@quantbot/infra/utils';
 import { ingestOhlcv, createOhlcvIngestionContext } from '@quantbot/workflows';
 import type { IngestOhlcvSpec } from '@quantbot/workflows';
 import { getCoverage } from '@quantbot/data/ohlcv';
@@ -18,7 +18,7 @@ import type { CommandContext } from '../../core/command-context.js';
 import { ensureOhlcvCoverageSchema } from '../../commands/ingestion.js';
 import type { z } from 'zod';
 import type { DuckDBStorageService } from '@quantbot/backtest';
-import { fetchMultiChainMetadata, getBirdeyeClient, heliusRestClient } from '@quantbot/api-clients';
+import { fetchMultiChainMetadata, getBirdeyeClient, heliusRestClient } from '@quantbot/infra/api-clients';
 
 export type EnsureOhlcvCoverageArgs = z.infer<typeof ensureOhlcvCoverageSchema>;
 

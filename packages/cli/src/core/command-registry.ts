@@ -3,7 +3,7 @@
  */
 
 import type { CommandDefinition, PackageCommandModule } from '../types/index.js';
-import { ConfigurationError, ValidationError } from '@quantbot/utils';
+import { ConfigurationError, ValidationError } from '@quantbot/infra/utils';
 
 /**
  * Command registry for managing CLI commands

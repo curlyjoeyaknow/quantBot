@@ -5,7 +5,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { logger, DatabaseError, findWorkspaceRoot } from '@quantbot/utils';
+import { logger, DatabaseError, findWorkspaceRoot } from '@quantbot/infra/utils';
 import { join } from 'path';
 import { z } from 'zod';
 import type { StrategyConfig } from '@quantbot/core';

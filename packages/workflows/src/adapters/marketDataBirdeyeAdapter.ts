@@ -7,7 +7,7 @@ import type {
   HistoricalPriceResponse,
   Chain,
 } from '@quantbot/core';
-import type { BirdeyeClient } from '@quantbot/api-clients';
+import type { BirdeyeClient } from '@quantbot/infra/api-clients';
 import { ValidationError } from '@quantbot/infra/utils';
 
 // TokenMetadata from MarketDataPort (has chain field)

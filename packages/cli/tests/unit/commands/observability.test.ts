@@ -6,12 +6,12 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { z } from 'zod';
-import { performHealthCheck, checkApiQuotas } from '@quantbot/observability';
+import { performHealthCheck, checkApiQuotas } from '@quantbot/infra/observability';
 import { parseArguments } from '../../../src/core/argument-parser';
 import { formatOutput } from '../../../src/core/output-formatter';
 
 // Mock observability package
-vi.mock('@quantbot/observability', () => ({
+vi.mock('@quantbot/infra/observability', () => ({
   performHealthCheck: vi.fn(),
   checkApiQuotas: vi.fn(),
   getErrorStats: vi.fn(),

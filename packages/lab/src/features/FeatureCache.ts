@@ -10,7 +10,7 @@
 import { promises as fs } from 'fs';
 import { join, dirname } from 'path';
 import { createHash } from 'crypto';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import type { FeaturesSpec } from './types.js';
 import { FeatureSetCompiler } from './FeatureSetCompiler.js';
 

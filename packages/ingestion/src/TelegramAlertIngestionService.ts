@@ -11,10 +11,10 @@
  */
 
 import { DateTime } from 'luxon';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import type { Chain } from '@quantbot/core';
 import { createTokenAddress } from '@quantbot/core';
-import { CallersRepository } from '@quantbot/storage';
+import { CallersRepository } from '@quantbot/infra/storage';
 import { parseExport, type ParsedMessage } from './TelegramExportParser.js';
 import { PublicKey } from '@solana/web3.js';
 import { extractAddresses } from './addressValidation.js';

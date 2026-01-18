@@ -9,7 +9,7 @@
  * - Hours (for longer-term strategies)
  */
 
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/infra/utils';
 
 /**
  * Time resolution type

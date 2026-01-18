@@ -3,7 +3,7 @@ import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import type { RunSummaryRow } from './run-list.js';
-import { DuckDBClient } from '@quantbot/storage';
+import { DuckDBClient } from '@quantbot/infra/storage';
 
 /**
  * Metadata structure from metadata.json files

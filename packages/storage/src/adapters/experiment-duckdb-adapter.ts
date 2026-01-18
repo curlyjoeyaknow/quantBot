@@ -14,7 +14,7 @@ import type {
 } from '@quantbot/core';
 import { DateTime } from 'luxon';
 import { DuckDBClient } from '../duckdb/duckdb-client.js';
-import { logger, NotFoundError, AppError, findWorkspaceRoot } from '@quantbot/utils';
+import { logger, NotFoundError, AppError, findWorkspaceRoot } from '@quantbot/infra/utils';
 
 const ExperimentSchema = z.object({
   run_id: z.string(),

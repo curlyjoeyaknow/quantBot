@@ -2,7 +2,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { OutputTargetConfig } from './config.js';
 import { SimulationResultSink, SimulationRunContext, SimulationLogger } from './engine.js';
-import { AppError } from '@quantbot/utils';
+import { AppError } from '@quantbot/infra/utils';
 
 type CsvSinkConfig = Extract<OutputTargetConfig, { type: 'csv' }>;
 type JsonSinkConfig = Extract<OutputTargetConfig, { type: 'json' }>;

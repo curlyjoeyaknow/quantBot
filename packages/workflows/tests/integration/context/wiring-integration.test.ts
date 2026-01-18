@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Mock API clients to avoid requiring API keys in tests
-vi.mock('@quantbot/api-clients', () => ({
+vi.mock('@quantbot/infra/api-clients', () => ({
   getBirdeyeClient: vi.fn(() => ({
     fetchOhlcv: vi.fn(),
     fetchTokenCreationInfo: vi.fn(),

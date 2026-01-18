@@ -6,7 +6,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import { healthRoutes } from './routes/health.js';
 import { ohlcvRoutes } from './routes/ohlcv.js';
 import { simulationRoutes } from './routes/simulation.js';

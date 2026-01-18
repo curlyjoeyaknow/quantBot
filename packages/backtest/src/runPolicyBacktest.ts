@@ -30,7 +30,7 @@ import { planBacktest } from './plan.js';
 import { checkCoverage } from './coverage.js';
 import { materialiseSlice } from './slice.js';
 import { loadCandlesFromSlice } from './runBacktest.js';
-import { logger, TimingContext, type LogContext } from '@quantbot/utils';
+import { logger, TimingContext, type LogContext } from '@quantbot/infra/utils';
 import { DateTime } from 'luxon';
 import { createRunDirectory, getGitProvenance } from './artifacts/index.js';
 import type { AlertArtifact, TradeArtifact, SummaryArtifact } from './artifacts/index.js';

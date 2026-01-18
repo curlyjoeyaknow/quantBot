@@ -12,7 +12,7 @@ import {
 import type { SnapshotStorage } from '../../src/snapshots/snapshot-manager.js';
 import type { DataSnapshotRef, SnapshotQueryOptions } from '../../src/snapshots/types.js';
 import type { CanonicalEvent } from '../../src/canonical/schemas.js';
-import { ConfigurationError } from '@quantbot/utils';
+import { ConfigurationError } from '@quantbot/infra/utils';
 
 describe('DeterministicDataReader', () => {
   let mockStorage: SnapshotStorage;

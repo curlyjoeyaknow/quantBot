@@ -7,7 +7,7 @@
 
 import type { SimInput } from '../types/contracts.js';
 import { SimInputSchema } from '../types/contracts.js';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/infra/utils';
 
 /**
  * Validate simulation input contract

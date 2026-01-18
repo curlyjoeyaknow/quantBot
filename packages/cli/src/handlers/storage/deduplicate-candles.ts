@@ -6,8 +6,8 @@
  */
 
 import type { CommandContext } from '../../core/command-context.js';
-import { logger } from '@quantbot/utils';
-import { getClickHouseClient } from '@quantbot/storage';
+import { logger } from '@quantbot/infra/utils';
+import { getClickHouseClient } from '@quantbot/infra/storage';
 
 export interface DeduplicateCandlesArgs {
   token?: string;

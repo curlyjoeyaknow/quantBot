@@ -5,7 +5,7 @@
  * Handles all I/O operations: DuckDB connections, Parquet file reading, SQL execution.
  */
 
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import type {
   SliceAnalyzerPort,
   SliceManifest,

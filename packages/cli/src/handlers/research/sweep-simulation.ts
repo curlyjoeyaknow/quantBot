@@ -8,7 +8,7 @@ import type { CommandContext } from '../../core/command-context.js';
 import { researchSweepSchema } from '../../command-defs/research.js';
 import { runParameterSweep, createExperimentContext } from '@quantbot/workflows';
 import type { ParameterSweepRequest } from '@quantbot/workflows';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 export type SweepSimulationArgs = z.infer<typeof researchSweepSchema>;
 

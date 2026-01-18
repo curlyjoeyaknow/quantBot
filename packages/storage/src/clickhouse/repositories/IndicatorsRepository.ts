@@ -9,7 +9,7 @@
 
 import { DateTime } from 'luxon';
 import { getClickHouseClient } from '../../clickhouse-client.js';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 export interface IndicatorValue {
   indicatorType: string;

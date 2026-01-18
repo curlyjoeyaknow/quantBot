@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 import type { Candle } from '@quantbot/core';
-import { NotFoundError } from '@quantbot/utils';
+import { NotFoundError } from '@quantbot/infra/utils';
 import {
   CostConfig,
   EntryConfig,

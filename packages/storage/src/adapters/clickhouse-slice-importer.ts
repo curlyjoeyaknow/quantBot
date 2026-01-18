@@ -11,7 +11,7 @@
 
 import { createReadStream } from 'fs';
 import { getClickHouseClient } from '../clickhouse-client.js';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import type { SliceManifestV1 } from '@quantbot/core';
 
 const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';

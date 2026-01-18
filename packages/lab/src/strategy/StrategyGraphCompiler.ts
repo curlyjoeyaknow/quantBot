@@ -9,7 +9,7 @@
 
 import { createHash } from 'crypto';
 import type { ConditionTree, GraphNode, StrategyGraph } from './types.js';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 /**
  * StrategyGraphCompiler

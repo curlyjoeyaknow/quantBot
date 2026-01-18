@@ -11,8 +11,8 @@
  */
 
 import type { CommandContext } from '../../core/command-context.js';
-import { logger } from '@quantbot/utils';
-import { PythonEngine } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
+import { PythonEngine } from '@quantbot/infra/utils';
 import { z } from 'zod';
 
 export interface AnalyzeCandleQualityArgs {

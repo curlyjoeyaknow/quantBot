@@ -2,7 +2,7 @@
  * Error Handler - User-friendly error messages, no secret leakage
  */
 
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 /**
  * Sensitive patterns that should never appear in error messages

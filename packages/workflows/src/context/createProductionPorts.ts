@@ -6,7 +6,7 @@ import { createMarketDataBirdeyeAdapter } from '../adapters/marketDataBirdeyeAda
 import { createStateDuckdbAdapter } from '../adapters/stateDuckdbAdapter.js';
 import { createQueryClickhouseAdapter } from '../adapters/queryClickhouseAdapter.js';
 import { createExecutionStubAdapter } from '../adapters/executionStubAdapter.js';
-import { getBirdeyeClient } from '@quantbot/api-clients';
+import { getBirdeyeClient } from '@quantbot/infra/api-clients';
 
 // Execution Port Migration:
 // - Current: ExecutionStubAdapter (safety-first, dry-run by default)

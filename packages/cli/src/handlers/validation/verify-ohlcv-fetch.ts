@@ -7,8 +7,8 @@
 import { DateTime } from 'luxon';
 import { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
-import { PythonEngine } from '@quantbot/utils';
-import { logger } from '@quantbot/utils';
+import { PythonEngine } from '@quantbot/infra/utils';
+import { logger } from '@quantbot/infra/utils';
 
 export interface VerifyOhlcvFetchArgs {
   mint: string;

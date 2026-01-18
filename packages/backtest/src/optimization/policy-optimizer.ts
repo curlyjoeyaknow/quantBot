@@ -18,7 +18,7 @@ import {
 } from './scoring.js';
 import type { PolicyResultRow, CallRecord } from '../types.js';
 import { POLICY_GRID } from '../policies/risk-policy.js';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 // =============================================================================
 // Types

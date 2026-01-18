@@ -14,7 +14,7 @@ import { readFileSync } from 'fs';
 import { extname } from 'path';
 import * as yaml from 'js-yaml';
 import type { z } from 'zod';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/infra/utils';
 
 /**
  * Detect config format by file extension
