@@ -51,6 +51,7 @@ from lib.tp_sl_query import run_tp_sl_query
 from lib.extended_exits import run_extended_exit_query, ExitConfig
 from lib.trial_ledger import (
     ensure_trial_schema,
+    init_optimizer_run,
     store_optimizer_run,
     # Pipeline phases (audit trail + resume)
     store_phase_start,
@@ -718,6 +719,19 @@ def run_random_search(
             skip_discovery = True
             if verbose:
                 print(f"⏭  Skipping discovery phase (already completed)", file=sys.stderr)
+    
+    # Initialize run record early (before phases reference it)
+    # This ensures the run exists in the database before phases are stored
+    if not skip_discovery:
+        init_optimizer_run(
+            duckdb_path=config.duckdb_path,
+            run_id=run_id,
+            run_type="random_search",
+            name=f"random_{config.n_trials}_{config.date_from}_{config.date_to}",
+            date_from=config.date_from,
+            date_to=config.date_to,
+            config=config.to_dict(),
+        )
     
     # Run trials
     results: List[TrialResult] = []

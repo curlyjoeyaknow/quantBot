@@ -499,6 +499,91 @@ def ensure_trial_schema(duckdb_path: str) -> None:
 # Storage Functions
 # =============================================================================
 
+def init_optimizer_run(
+    duckdb_path: str,
+    run_id: str,
+    run_type: str,
+    name: str,
+    date_from: str,
+    date_to: str,
+    config: Dict[str, Any],
+    mode: Optional[str] = None,
+    config_hash: Optional[str] = None,
+    data_fingerprint: Optional[str] = None,
+    code_fingerprint: Optional[str] = None,
+    code_dirty: bool = False,
+    signature: Optional[str] = None,
+) -> None:
+    """
+    Initialize an optimizer run record (create early, update later with results).
+    
+    This is called before phases start to ensure the run exists for foreign key constraints.
+    """
+    from tools.shared.duckdb_adapter import get_write_connection
+    ensure_trial_schema(duckdb_path)
+    
+    with get_write_connection(duckdb_path) as con:
+        created_at = datetime.now(UTC).replace(tzinfo=None)
+        
+        # Check which columns exist (for backward compatibility)
+        try:
+            existing_cols = [r[1].lower() for r in con.execute("PRAGMA table_info('optimizer.runs_d')").fetchall()]
+            has_mode = "mode" in existing_cols
+        except Exception:
+            has_mode = False
+        
+        if has_mode:
+            # Full schema with mode contract fields
+            con.execute("""
+                INSERT OR IGNORE INTO optimizer.runs_d (
+                    run_id, run_type, created_at, name, date_from, date_to,
+                    alerts_total, alerts_ok, config_json, timing_json, summary_json,
+                    mode, config_hash, data_fingerprint, code_fingerprint, code_dirty, signature,
+                    notes
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, [
+                run_id,
+                run_type,
+                created_at,
+                name,
+                date_from,
+                date_to,
+                0,  # Will be updated later
+                0,  # Will be updated later
+                json.dumps(config, separators=(",", ":"), default=str),
+                None,  # Will be updated later
+                json.dumps({}, separators=(",", ":")),  # Empty summary for now
+                mode,
+                config_hash,
+                data_fingerprint,
+                code_fingerprint,
+                code_dirty,
+                signature,
+                None,
+            ])
+        else:
+            # Legacy schema without mode contract fields
+            con.execute("""
+                INSERT OR IGNORE INTO optimizer.runs_d (
+                    run_id, run_type, created_at, name, date_from, date_to,
+                    alerts_total, alerts_ok, config_json, timing_json, summary_json, notes
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, [
+                run_id,
+                run_type,
+                created_at,
+                name,
+                date_from,
+                date_to,
+                0,  # Will be updated later
+                0,  # Will be updated later
+                json.dumps(config, separators=(",", ":"), default=str),
+                None,  # Will be updated later
+                json.dumps({}, separators=(",", ":")),  # Empty summary for now
+                None,
+            ])
+
+
 def store_optimizer_run(
     duckdb_path: str,
     run_id: str,
@@ -552,7 +637,10 @@ def store_optimizer_run(
         best_result = max(results, key=lambda r: r.get("summary", {}).get("total_r", 0)) if results else {}
         summary = best_result.get("summary", {})
         
-        # Insert run
+        # Insert or update run (preserve created_at if already exists from init_optimizer_run)
+        existing = con.execute("SELECT created_at FROM optimizer.runs_d WHERE run_id = ?", [run_id]).fetchone()
+        final_created_at = existing[0] if existing else created_at
+        
         con.execute("""
             INSERT OR REPLACE INTO optimizer.runs_d (
                 run_id, run_type, created_at, name, date_from, date_to,
@@ -563,7 +651,7 @@ def store_optimizer_run(
         """, [
             run_id,
             run_type,
-            created_at,
+            final_created_at,
             name,
             date_from,
             date_to,
