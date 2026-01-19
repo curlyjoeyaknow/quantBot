@@ -469,9 +469,21 @@ importers:
 
   packages/data-observatory:
     dependencies:
+      '@quantbot/core':
+        specifier: workspace:*
+        version: link:../core
+      '@quantbot/infra':
+        specifier: workspace:*
+        version: link:../infra
       '@quantbot/lab':
         specifier: workspace:*
         version: link:../lab
+      '@quantbot/storage':
+        specifier: workspace:*
+        version: link:../storage
+      '@quantbot/utils':
+        specifier: workspace:*
+        version: link:../utils
     devDependencies:
       '@types/luxon':
         specifier: ^3.7.1
@@ -573,6 +585,9 @@ importers:
       '@quantbot/core':
         specifier: workspace:*
         version: link:../core
+      '@quantbot/infra':
+        specifier: workspace:*
+        version: link:../infra
       '@quantbot/ohlcv':
         specifier: workspace:*
         version: link:../ohlcv
@@ -790,9 +805,21 @@ importers:
       '@quantbot/infra':
         specifier: workspace:*
         version: link:../infra
+      '@quantbot/labcatalog':
+        specifier: workspace:*
+        version: link:../labcatalog
+      '@quantbot/storage':
+        specifier: workspace:*
+        version: link:../storage
+      '@quantbot/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@quantbot/workflows':
         specifier: workspace:*
         version: link:../workflows
+      duckdb:
+        specifier: ^1.0.0
+        version: 1.4.3(encoding@0.1.13)
       fast-check:
         specifier: ^4.4.0
         version: 4.4.0
@@ -943,9 +970,15 @@ importers:
       '@quantbot/core':
         specifier: workspace:*
         version: link:../core
+      '@quantbot/data':
+        specifier: workspace:*
+        version: link:../data
       '@quantbot/data-observatory':
         specifier: workspace:*
         version: link:../data-observatory
+      '@quantbot/infra':
+        specifier: workspace:*
+        version: link:../infra
       '@quantbot/ingestion':
         specifier: workspace:*
         version: link:../ingestion

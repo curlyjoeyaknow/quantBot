@@ -38,6 +38,19 @@ export type { IngestionRun, RunStats } from './clickhouse/repositories/Ingestion
 
 // DuckDB client and repositories (new - preferred)
 export { DuckDBClient, getDuckDBClient } from './duckdb/duckdb-client.js';
+export {
+  DuckDBDataHelperService,
+  getDuckDBDataHelperService,
+  DEFAULT_DB_PATH,
+} from './duckdb/duckdb-data-helper-service.js';
+export type {
+  AlertFilters,
+  CallerFilters,
+  AlertRecord,
+  CallerRecord,
+  ViewSchema,
+  DatabaseInfo,
+} from './duckdb/duckdb-data-helper-service.js';
 export { connectionManager, ensureConnectionCleanup } from './duckdb/connection-utils.js';
 export type { ConnectionCleanupOptions } from './duckdb/connection-utils.js';
 export { TokenDataRepository } from './duckdb/repositories/TokenDataRepository.js';

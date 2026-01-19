@@ -21,7 +21,7 @@ export const FeatureMetadataSchema = z.object({
   featureType: z.enum(['indicator', 'pattern', 'metric', 'signal']),
   version: FeatureVersionSchema,
   dependencies: z.array(z.string()),
-  parameters: z.record(z.unknown()),
+  parameters: z.record(z.string(), z.unknown()),
 });
 
 export type FeatureMetadata = z.infer<typeof FeatureMetadataSchema>;

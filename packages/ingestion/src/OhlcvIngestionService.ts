@@ -17,7 +17,7 @@ import {
   getVersionInfo,
   type IngestionRunManifest,
   SourceTier,
-} from '@quantbot/infra/storage';
+} from '@quantbot/storage';
 import { randomUUID } from 'crypto';
 import { createHash } from 'crypto';
 // Types imported dynamically to break circular dependency

@@ -200,7 +200,20 @@ export * from './sinks.js';
 // =============================================================================
 // Analytics - Historical analytics and performance metrics
 // =============================================================================
-export * from './analytics/index.js';
+// Export analytics module but avoid duplicate exports
+export {
+  AnalyticsEngine,
+  type AnalyticsOptions,
+  type AnalyticsResult,
+  MetricsAggregator,
+  CallDataLoader,
+  type LoadCallsOptions,
+  AnalyticsService,
+  type CallerAnalysisResult,
+  type MintAnalysisResult,
+  type CorrelationAnalysisResult,
+  type AnalyticsConfig,
+} from './analytics/index.js';
 
 // =============================================================================
 // Backwards Compatibility Exports

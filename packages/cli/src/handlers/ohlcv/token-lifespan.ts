@@ -21,7 +21,11 @@
 
 import { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
-import { getDuckDBWorklistService, openDuckDb, type DuckDbConnection } from '@quantbot/infra/storage';
+import {
+  getDuckDBWorklistService,
+  openDuckDb,
+  type DuckDbConnection,
+} from '@quantbot/infra/storage';
 import { getBirdeyeClient } from '@quantbot/infra/api-clients';
 import { dt } from '@quantbot/infra/utils';
 import path from 'node:path';

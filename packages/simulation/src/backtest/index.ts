@@ -186,14 +186,17 @@ export {
   type SlippageModel,
   type CostModel,
   type FailureModel,
+} from '../execution-models/types.js';
+
+export {
   createPumpfunExecutionModel,
   createPumpswapExecutionModel,
   createMinimalExecutionModel,
   calculateSlippage,
   sampleLatency,
-  type FeeConfig,
-  type ExecutionConfig,
-} from './execution/index.js';
+} from '../execution-models/index.js';
+
+export { type FeeConfig, type ExecutionConfig } from './policies/policy-executor.js';
 
 // Execution config factory (for CLI integration)
 export {
