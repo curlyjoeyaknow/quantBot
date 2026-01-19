@@ -7,7 +7,7 @@
 import { createHash } from 'crypto';
 import { z } from 'zod';
 
-export const ParameterVectorSchema = z.record(z.unknown());
+export const ParameterVectorSchema = z.record(z.string(), z.unknown());
 
 export type ParameterVector = z.infer<typeof ParameterVectorSchema>;
 

@@ -174,8 +174,6 @@ graph TD
     lab --> labUI
 ```
 
-
-
 ### Critical Issues Identified
 
 #### Issue 1: Massive Duplication - `@quantbot/backtest/src/sim/` is a COPY of `@quantbot/simulation/src/`
@@ -245,8 +243,6 @@ graph TD
     workflows --> cli
 ```
 
-
-
 ### Package Mapping
 
 | Current Packages | Target Package | Action ||-----------------|----------------|--------|| `@quantbot/core` | `@quantbot/core` | **KEEP** - Foundation || `@quantbot/utils` | `@quantbot/infra` | **MERGE** into infra || `@quantbot/storage` | `@quantbot/infra` | **MERGE** into infra || `@quantbot/observability` | `@quantbot/infra` | **MERGE** into infra || `@quantbot/api-clients` | `@quantbot/infra` | **MERGE** into infra || `@quantbot/simulation` | `@quantbot/simulation` | **KEEP** - Primary simulation || `@quantbot/backtest` | `@quantbot/simulation` | **MERGE** - Remove sim/ copy, keep backtest-specific || `@quantbot/analytics` | `@quantbot/simulation` | **MERGE** - Period metrics || `@quantbot/ohlcv` | `@quantbot/data` | **MERGE** into data || `@quantbot/ingestion` | `@quantbot/data` | **MERGE** into data || `@quantbot/jobs` | `@quantbot/data` | **MERGE** into data || `@quantbot/lab` | `@quantbot/lab` | **KEEP** - Research core || `@quantbot/labcatalog` | `@quantbot/lab` | **MERGE** into lab || `@quantbot/data-observatory` | `@quantbot/lab` | **MERGE** into lab || `@quantbot/lab-ui` | `@quantbot/cli` | **MERGE** into CLI as subcommand/mode || `@quantbot/workflows` | `@quantbot/workflows` | **KEEP** - Orchestration || `@quantbot/cli` | `@quantbot/cli` | **KEEP** - App layer || `@quantbot/api` | `@quantbot/cli` | **MERGE** into CLI as server mode |---
@@ -311,9 +307,6 @@ graph TD
                                  └── tsconfig.json
    ```
 
-
-
-
 2. **Move files** from source packages to infra
 3. **Create subpath exports** for backward compatibility:
    ```json
@@ -328,17 +321,11 @@ graph TD
                                  }
    ```
 
-
-
-
 4. **Create compatibility shims** in old package locations (temporary):
    ```typescript
                                  // packages/utils/src/index.ts
                                  export * from '@quantbot/infra/utils';
    ```
-
-
-
 
 5. **Update all imports** across codebase
 6. **Delete old packages** after migration complete
@@ -365,9 +352,6 @@ graph TD
                                  │   └── index.ts
    ```
 
-
-
-
 2. **Move files** preserving internal organization
 3. **Create subpath exports**:
    ```json
@@ -380,9 +364,6 @@ graph TD
                                    }
                                  }
    ```
-
-
-
 
 4. **Maintain offline/online boundary** internally:
 
@@ -424,9 +405,6 @@ graph TD
                                    }
                                  }
    ```
-
-
-
 
 4. **Deprecate old packages** with re-export shims
 

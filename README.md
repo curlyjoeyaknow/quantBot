@@ -12,6 +12,8 @@ This is a **backtesting-only research lab** — no live trading. The architectur
 - **Policy Layer** — Simulate stop/exit strategies on those paths
 - **Optimization Layer** — Search for optimal policies under constraints
 
+**Note**: Live monitoring and real-time trading features are implemented in the `quantBot-signaloutbox` repository/worktree (separate from this backtesting-only repo).
+
 ---
 
 ## 🎯 Core Priority

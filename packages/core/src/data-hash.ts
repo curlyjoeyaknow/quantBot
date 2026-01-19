@@ -12,7 +12,7 @@ export const DataHashSchema = z.object({
   contentHash: z.string(),
   source: z.string(),
   ingestedAt: z.number(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type DataHash = z.infer<typeof DataHashSchema>;

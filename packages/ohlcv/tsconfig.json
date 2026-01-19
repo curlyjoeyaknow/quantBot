@@ -14,6 +14,10 @@
     "paths": {
       "@quantbot/core": ["../core/src"],
       "@quantbot/core/*": ["../core/src/*"],
+      "@quantbot/infra": ["../infra/src"],
+      "@quantbot/infra/*": ["../infra/src/*"],
+      "@quantbot/infra/utils": ["../infra/src/utils/index.ts", "../infra/dist/utils/index.d.ts"],
+      "@quantbot/infra/storage": ["../infra/src/storage/index.ts", "../infra/dist/storage/index.d.ts"],
       "@quantbot/utils": ["../utils/src"],
       "@quantbot/utils/*": ["../utils/src/*"],
       "@quantbot/storage": ["../storage/src"],
@@ -34,6 +38,7 @@
   ],
   "references": [
     { "path": "../core" },
+    { "path": "../infra" },
     { "path": "../utils" },
     { "path": "../storage" },
     { "path": "../api-clients" }

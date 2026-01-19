@@ -636,11 +636,15 @@ QuantBot uses **Semantic Versioning (Semver)** for all packages in the monorepo:
 
 ### Version Bump Requirements
 
+**⚠️ CRITICAL: ALL packages MUST have a valid version number, including private packages.**
+
 **Every PR that changes source code in a package MUST bump that package's version**, unless:
 
-- The package is marked as `"private": true` (internal packages)
-- The package is marked as `"experimental": true` (experimental packages)
-- Only documentation or test files are changed (no source code changes)
+- Only documentation files are changed (`*.md`, `docs/**`)
+- Only test files are changed (`*.test.ts`, `tests/**`)
+- Only configuration files are changed (`*.config.ts`, `tsconfig.json`)
+
+**Note**: Private packages (`"private": true`) and experimental packages still require versions. The `private` flag only prevents publishing to npm, it does not exempt packages from versioning requirements.
 
 ### How to Bump Versions
 
