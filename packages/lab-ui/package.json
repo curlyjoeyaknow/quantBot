@@ -10,7 +10,11 @@
     "start": "node --enable-source-maps dist/server.js"
   },
   "dependencies": {
-    "@quantbot/cli": "workspace:*"
+    "@quantbot/cli": "workspace:*",
+    "@quantbot/infra": "workspace:*",
+    "ejs": "^3.1.10",
+    "express": "^5.0.1",
+    "nanoid": "^5.0.9"
   },
   "devDependencies": {
     "@types/ejs": "^3.1.5",

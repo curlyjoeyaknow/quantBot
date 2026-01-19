@@ -24,25 +24,26 @@ export function registerServerCommands(program: Command): void {
     .option('--swagger', 'Enable Swagger documentation', false)
     .option('--no-swagger', 'Disable Swagger documentation');
 
-  defineCommand(serveCmd, {
-    name: 'serve',
-    packageName: 'server',
-    coerce: (raw) => ({
-      ...raw,
-      port: coerceNumber(raw.port),
-      enableSwagger: coerceBoolean(raw.swagger),
-    }),
-    schema: serveSchema,
-    handler: async (args: unknown, ctx) => {
-      const typedArgs = args as ServeArgs;
-      return await serveHandler(typedArgs, ctx);
-    },
-    examples: [
-      'quantbot serve',
-      'quantbot serve --port 8080',
-      'quantbot serve --port 8080 --host localhost --swagger',
-    ],
-  });
+  // Old defineCommand registration - replaced by registry system below
+  // defineCommand(serveCmd, {
+  //   name: 'serve',
+  //   packageName: 'server',
+  //   coerce: (raw) => ({
+  //     ...raw,
+  //     port: coerceNumber(raw.port),
+  //     enableSwagger: coerceBoolean(raw.swagger),
+  //   }),
+  //   schema: serveSchema,
+  //   handler: async (args: unknown, ctx) => {
+  //     const typedArgs = args as ServeArgs;
+  //     return await serveHandler(typedArgs, ctx);
+  //   },
+  //   examples: [
+  //     'quantbot serve',
+  //     'quantbot serve --port 8080',
+  //     'quantbot serve --port 8080 --host localhost --swagger',
+  //   ],
+  // });
 }
 
 // Register in command registry
@@ -54,9 +55,9 @@ const serverModule: PackageCommandModule = {
       name: 'serve',
       description: 'Start the QuantBot API server',
       schema: serveSchema,
-      handler: async (args: unknown, ctx) => {
+      handler: async (args: unknown, ctx: unknown) => {
         const typedArgs = args as ServeArgs;
-        return await serveHandler(typedArgs, ctx);
+        return await serveHandler(typedArgs, ctx as any);
       },
       examples: ['quantbot serve', 'quantbot serve --port 8080'],
     },

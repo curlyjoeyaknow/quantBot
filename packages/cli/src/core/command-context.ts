@@ -28,11 +28,11 @@ import type { AnalyticsEngine as AnalyticsEngineType } from '@quantbot/analytics
 import { PythonEngine, type PythonEngine as PythonEngineType } from '@quantbot/infra/utils';
 import { StorageEngine } from '@quantbot/infra/storage';
 // Import directly from source to avoid Vitest SSR module resolution issues
-import { DuckDBStorageService } from '../../../backtest/src/sim/duckdb-storage-service.js';
-import { ClickHouseService } from '../../../backtest/src/sim/clickhouse-service.js';
-import { SimulationService } from '../../../backtest/src/sim/simulation-service.js';
-import { BacktestBaselineService } from '../../../backtest/src/sim/backtest-baseline-service.js';
-import { V1BaselinePythonService } from '../../../backtest/src/services/v1-baseline-python-service.js';
+import { DuckDBStorageService } from '../../../simulation/src/duckdb-storage-service.js';
+import { ClickHouseService } from '../../../simulation/src/clickhouse-service.js';
+import { SimulationService } from '../../../simulation/src/simulation-service.js';
+import { BacktestBaselineService } from '../../../simulation/src/backtest-baseline-service.js';
+import { V1BaselinePythonService } from '../../../simulation/src/backtest/services/v1-baseline-python-service.js';
 import { TelegramPipelineService } from '@quantbot/ingestion';
 import { AnalyticsService } from '@quantbot/analytics';
 import { getClickHouseClient } from '@quantbot/infra/storage';

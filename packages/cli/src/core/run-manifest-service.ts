@@ -125,25 +125,20 @@ export async function createAndWriteRunManifest(
   // Hash risk model (if provided)
   const riskModelHash = components.riskModel ? hashObject(components.riskModel) : undefined;
 
-  // Create manifest
+  // Create manifest using the new signature
   const manifest = createRunManifest(
     components.runId,
     {
-      seed: components.seed,
-      gitSha,
-      snapshotId,
-      snapshotContentHash,
-      dataSnapshotHash, // backward compatibility
-      strategyHash,
-      executionModelHash,
-      costModelHash,
-      riskModelHash,
-      engineVersion: components.engineVersion,
-      command: components.command,
-      packageName: components.packageName,
-      metadata: components.metadata,
+      seed: String(components.seed),
+      status: 'pending',
+      callsSimulated: 0,
+      callsSucceeded: 0,
+      callsFailed: 0,
+      summary: {
+        totalTrades: 0,
+      },
     },
-    './catalog'
+    new Date().toISOString()
   );
 
   // Write manifest to disk

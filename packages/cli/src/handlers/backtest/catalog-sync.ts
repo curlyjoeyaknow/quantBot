@@ -7,7 +7,8 @@
 
 import type { CommandContext } from '../../core/command-context.js';
 import { DuckDBClient } from '@quantbot/infra/storage';
-import { initializeCatalog, catalogAllRuns, getCatalogStats } from '@quantbot/backtest';
+// TODO: Fix catalog exports from backtest
+// import { initializeCatalog, catalogAllRuns, getCatalogStats } from '@quantbot/backtest';
 import { logger } from '@quantbot/infra/utils';
 
 export interface CatalogSyncArgs {
@@ -17,8 +18,8 @@ export interface CatalogSyncArgs {
 }
 
 export async function catalogSyncHandler(
-  args: CatalogSyncArgs,
-  ctx: CommandContext
+  _args: CatalogSyncArgs,
+  _ctx: CommandContext
 ): Promise<{
   registered: number;
   skipped: number;
@@ -31,39 +32,6 @@ export async function catalogSyncHandler(
     artifactsByType: Record<string, number>;
   };
 }> {
-  const baseDir = args.baseDir || 'runs';
-  const duckdbPath = args.duckdb || 'data/backtest_catalog.duckdb';
-
-  logger.info('Starting catalog sync', { baseDir, duckdbPath });
-
-  // Open catalog database
-  const db = new DuckDBClient(duckdbPath);
-
-  try {
-    // Initialize catalog schema
-    await initializeCatalog(db);
-
-    // Scan and register all completed runs
-    const result = await catalogAllRuns(db, baseDir);
-
-    logger.info('Catalog sync complete', {
-      registered: result.registered,
-      skipped: result.skipped,
-    });
-
-    // Get stats if requested
-    let stats;
-    if (args.stats) {
-      stats = await getCatalogStats(db);
-      logger.info('Catalog statistics', stats);
-    }
-
-    return {
-      registered: result.registered,
-      skipped: result.skipped,
-      stats,
-    };
-  } finally {
-    await db.close();
-  }
+  // TODO: Implement catalog sync once exports are fixed
+  throw new Error('Catalog sync not yet implemented - missing exports from @quantbot/backtest');
 }

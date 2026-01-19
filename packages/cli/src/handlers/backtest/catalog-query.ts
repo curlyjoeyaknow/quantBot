@@ -6,7 +6,8 @@
 
 import type { CommandContext } from '../../core/command-context.js';
 import { DuckDBClient } from '@quantbot/infra/storage';
-import { queryRuns, getArtifactPath } from '@quantbot/backtest';
+// TODO: Fix catalog exports from backtest
+// import { queryRuns, getArtifactPath } from '@quantbot/backtest';
 import { logger } from '@quantbot/infra/utils';
 
 export interface CatalogQueryArgs {
@@ -22,35 +23,9 @@ export interface CatalogQueryArgs {
 }
 
 export async function catalogQueryHandler(
-  args: CatalogQueryArgs,
-  ctx: CommandContext
+  _args: CatalogQueryArgs,
+  _ctx: CommandContext
 ): Promise<any> {
-  const duckdbPath = args.duckdb || 'data/backtest_catalog.duckdb';
-
-  const db = new DuckDBClient(duckdbPath);
-
-  try {
-    // If runId and artifactType provided, get artifact path
-    if (args.runId && args.artifactType) {
-      const path = await getArtifactPath(db, args.runId, args.artifactType as any);
-      logger.info('Artifact path', { runId: args.runId, artifactType: args.artifactType, path });
-      return { runId: args.runId, artifactType: args.artifactType, path };
-    }
-
-    // Otherwise, query runs
-    const runs = await queryRuns(db, {
-      runType: args.runType,
-      status: args.status,
-      gitBranch: args.gitBranch,
-      fromDate: args.fromDate,
-      toDate: args.toDate,
-      limit: args.limit,
-    });
-
-    logger.info('Query results', { count: runs.length });
-
-    return { runs, count: runs.length };
-  } finally {
-    await db.close();
-  }
+  // TODO: Implement catalog query once exports are fixed
+  throw new Error('Catalog query not yet implemented - missing exports from @quantbot/backtest');
 }

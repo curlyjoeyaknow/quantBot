@@ -60,13 +60,13 @@ export async function replayManifestHandler(args: ReplayManifestArgs, ctx: Comma
   }
 
   const manifestData = validatedManifest.data;
-  const runId = manifestData.run_id;
+  const runId = manifestData.runId;
 
   logger.info(`[research.replay-manifest] Replaying simulation ${runId} from manifest`);
 
   // CRITICAL: Load snapshot ref from snapshot_id in manifest
   // This ensures we use the exact same data snapshot as the original run
-  if (!manifestData.snapshot_id) {
+  if (!(manifestData as any).snapshot_id && !(manifestData as any).snapshotId) {
     throw new ValidationError(
       'Manifest does not contain snapshot_id. Cannot replay without snapshot reference. ' +
         'This manifest was created before snapshot refs were added. ' +
@@ -85,19 +85,19 @@ export async function replayManifestHandler(args: ReplayManifestArgs, ctx: Comma
     process.env.SNAPSHOT_DB_PATH || join(manifestDir, '../data/snapshots.duckdb');
 
   logger.info(
-    `[research.replay-manifest] Loading snapshot ${manifestData.snapshot_id} from ${snapshotDbPath}`
+    `[research.replay-manifest] Loading snapshot ${(manifestData as any).snapshot_id || (manifestData as any).snapshotId} from ${snapshotDbPath}`
   );
 
   try {
     const snapshotManager = createSnapshotManager(snapshotDbPath);
-    const snapshotRef = await snapshotManager.getSnapshot(manifestData.snapshot_id);
+    const snapshotRef = await snapshotManager.getSnapshot((manifestData as any).snapshot_id || (manifestData as any).snapshotId);
 
     if (!snapshotRef) {
       throw new ValidationError(
-        `Snapshot ${manifestData.snapshot_id} not found in snapshot storage. ` +
+        `Snapshot ${(manifestData as any).snapshot_id || (manifestData as any).snapshotId} not found in snapshot storage. ` +
           `Cannot replay without the original snapshot.`,
         {
-          snapshotId: manifestData.snapshot_id,
+          snapshotId: (manifestData as any).snapshot_id || (manifestData as any).snapshotId,
           snapshotDbPath,
           runId,
         }
@@ -105,15 +105,16 @@ export async function replayManifestHandler(args: ReplayManifestArgs, ctx: Comma
     }
 
     // Verify snapshot content hash matches manifest (integrity check)
-    if (snapshotRef.contentHash !== manifestData.snapshot_content_hash) {
+    const expectedHash = (manifestData as any).snapshot_content_hash || (manifestData as any).snapshotContentHash;
+    if (expectedHash && snapshotRef.contentHash !== expectedHash) {
       throw new ValidationError(
         `Snapshot content hash mismatch. ` +
-          `Manifest expects ${manifestData.snapshot_content_hash}, ` +
+          `Manifest expects ${expectedHash}, ` +
           `but snapshot has ${snapshotRef.contentHash}. ` +
           `The snapshot may have been modified or corrupted.`,
         {
-          snapshotId: manifestData.snapshot_id,
-          expectedHash: manifestData.snapshot_content_hash,
+          snapshotId: (manifestData as any).snapshot_id || (manifestData as any).snapshotId,
+          expectedHash: (manifestData as any).snapshot_content_hash || (manifestData as any).snapshotContentHash,
           actualHash: snapshotRef.contentHash,
           runId,
         }
@@ -121,15 +122,15 @@ export async function replayManifestHandler(args: ReplayManifestArgs, ctx: Comma
     }
 
     logger.info(
-      `[research.replay-manifest] Verified snapshot ${manifestData.snapshot_id} ` +
-        `(content hash: ${manifestData.snapshot_content_hash.substring(0, 8)}...)`
+      `[research.replay-manifest] Verified snapshot ${(manifestData as any).snapshot_id || (manifestData as any).snapshotId} ` +
+        `(content hash: ${((manifestData as any).snapshot_content_hash || (manifestData as any).snapshotContentHash).substring(0, 8)}...)`
     );
   } catch (error) {
     if (error instanceof ValidationError) {
       throw error;
     }
     throw new ConfigurationError(
-      `Failed to load snapshot ${manifestData.snapshot_id} from ${snapshotDbPath}: ${
+      `Failed to load snapshot ${(manifestData as any).snapshot_id || (manifestData as any).snapshotId} from ${snapshotDbPath}: ${
         error instanceof Error ? error.message : String(error)
       }`
     );
@@ -157,7 +158,7 @@ export async function replayManifestHandler(args: ReplayManifestArgs, ctx: Comma
   return {
     runId: artifact.metadata.runId,
     manifestRunId: runId,
-    snapshotId: manifestData.snapshot_id,
+    snapshotId: (manifestData as any).snapshot_id || (manifestData as any).snapshotId,
     artifact,
     manifest: manifestData,
   };

@@ -43,7 +43,7 @@ import type { DataSnapshotRef } from '@quantbot/data-observatory';
  */
 function extractManifestComponents(
   result: unknown,
-  defaults: { runId: string; command: string; packageName?: string; seed: number }
+  defaults: { runId: string; command: string; packageName?: string; seed: string }
 ): RunManifestComponents | null {
   if (!result || typeof result !== 'object') {
     return null;
@@ -61,7 +61,7 @@ function extractManifestComponents(
 
     return {
       runId: defaults.runId,
-      seed: (manifest.seed as number) ?? defaults.seed,
+      seed: String((manifest.seed as number) ?? defaults.seed),
       strategyConfig: manifest.strategyConfig ?? {},
       snapshotRef, // Use snapshotRef if provided (preferred)
       dataSnapshot: snapshotRef ? undefined : dataSnapshot, // Only use dataSnapshot if snapshotRef not provided
@@ -91,7 +91,7 @@ function extractManifestComponents(
 
     return {
       runId: defaults.runId,
-      seed: defaults.seed,
+      seed: String(defaults.seed),
       strategyConfig,
       snapshotRef: topLevelSnapshotRef, // Use snapshotRef from top level if available
       dataSnapshot: topLevelSnapshotRef ? undefined : dataSnapshot, // Only use dataSnapshot if no snapshotRef
@@ -107,7 +107,7 @@ function extractManifestComponents(
   if (topLevelSnapshotRef) {
     return {
       runId: defaults.runId,
-      seed: defaults.seed,
+      seed: String(defaults.seed),
       strategyConfig: obj.strategyConfig ?? obj.strategy ?? {},
       snapshotRef: topLevelSnapshotRef,
       executionModel: obj.executionModel,
@@ -311,7 +311,7 @@ export async function executeValidated(
         runId,
         command: fullCommandName,
         packageName,
-        seed: extractSeedFromResult(result) ?? seedFromString(runId),
+        seed: String(extractSeedFromResult(result) ?? seedFromString(runId)),
       });
 
       // Create and write manifest (required for all runs)
@@ -321,7 +321,7 @@ export async function executeValidated(
         // Fallback: create minimal manifest if components not available
         await createAndWriteRunManifest(artifactPaths, {
           runId,
-          seed: seedFromString(runId),
+          seed: String(seedFromString(runId)),
           strategyConfig: {},
           dataSnapshot: { calls: [] },
           command: fullCommandName,
@@ -517,7 +517,7 @@ export async function execute(
         runId,
         command: fullCommandName,
         packageName,
-        seed: extractSeedFromResult(result) ?? seedFromString(runId),
+        seed: String(extractSeedFromResult(result) ?? seedFromString(runId)),
       });
 
       // Create and write manifest (required for all runs)
@@ -527,7 +527,7 @@ export async function execute(
         // Fallback: create minimal manifest if components not available
         await createAndWriteRunManifest(artifactPaths, {
           runId,
-          seed: seedFromString(runId),
+          seed: String(seedFromString(runId)),
           strategyConfig: {},
           dataSnapshot: { calls: [] },
           command: fullCommandName,

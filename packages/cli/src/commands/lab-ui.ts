@@ -21,20 +21,21 @@ export function registerLabUiCommands(program: Command): void {
     .description('Start the QuantBot Lab UI server')
     .option('--port <number>', 'Server port', '3111');
 
-  defineCommand(labUiCmd, {
-    name: 'lab-ui',
-    packageName: 'lab-ui',
-    coerce: (raw) => ({
-      ...raw,
-      port: coerceNumber(raw.port),
-    }),
-    schema: labUiSchema,
-    handler: async (args: unknown, ctx) => {
-      const typedArgs = args as LabUiArgs;
-      return await labUiHandler(typedArgs, ctx);
-    },
-    examples: ['quantbot lab-ui', 'quantbot lab-ui --port 4000'],
-  });
+  // Old defineCommand registration - replaced by registry system below
+  // defineCommand(labUiCmd, {
+  //   name: 'lab-ui',
+  //   packageName: 'lab-ui',
+  //   coerce: (raw) => ({
+  //     ...raw,
+  //     port: coerceNumber(raw.port),
+  //   }),
+  //   schema: labUiSchema,
+  //   handler: async (args: unknown, ctx) => {
+  //     const typedArgs = args as LabUiArgs;
+  //     return await labUiHandler(typedArgs, ctx);
+  //   },
+  //   examples: ['quantbot lab-ui', 'quantbot lab-ui --port 4000'],
+  // });
 }
 
 // Register in command registry
@@ -46,9 +47,9 @@ const labUiModule: PackageCommandModule = {
       name: 'lab-ui',
       description: 'Start the QuantBot Lab UI server',
       schema: labUiSchema,
-      handler: async (args: unknown, ctx) => {
+      handler: async (args: unknown, ctx: unknown) => {
         const typedArgs = args as LabUiArgs;
-        return await labUiHandler(typedArgs, ctx);
+        return await labUiHandler(typedArgs, ctx as any);
       },
       examples: ['quantbot lab-ui', 'quantbot lab-ui --port 4000'],
     },
