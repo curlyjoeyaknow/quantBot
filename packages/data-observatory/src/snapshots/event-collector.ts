@@ -5,8 +5,8 @@
  */
 
 import { DateTime } from 'luxon';
-import type { StorageEngine } from '@quantbot/infra/storage';
-import { logger } from '@quantbot/infra/utils';
+import type { StorageEngine } from '@quantbot/storage';
+import { logger } from '@quantbot/utils';
 import { z } from 'zod';
 import type {
   CanonicalEvent,

@@ -15,7 +15,7 @@ import { researchReplayManifestSchema } from '../../command-defs/research.js';
 import type { CommandContext } from '../../core/command-context.js';
 import { replaySimulation, createExperimentContext } from '@quantbot/workflows';
 import { logger, ValidationError, ConfigurationError } from '@quantbot/infra/utils';
-import { RunManifestSchema } from '@quantbot/core';
+import { RunManifestSchema } from '@quantbot/labcatalog';
 import { createSnapshotManager } from '@quantbot/data-observatory';
 
 export type ReplayManifestArgs = z.infer<typeof researchReplayManifestSchema>;

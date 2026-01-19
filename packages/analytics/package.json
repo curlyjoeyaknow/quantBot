@@ -16,6 +16,11 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@quantbot/core": "workspace:*",
+    "@quantbot/infra": "workspace:*",
+    "@quantbot/utils": "workspace:*",
+    "@quantbot/storage": "workspace:*",
+    "@quantbot/workflows": "workspace:*",
     "@quantbot/simulation": "workspace:*"
   },
   "devDependencies": {

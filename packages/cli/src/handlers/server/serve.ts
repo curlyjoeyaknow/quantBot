@@ -3,7 +3,7 @@
  * Starts the Fastify API server
  */
 
-import type { z } from 'zod';
+import { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
 import { createApiServer } from '../../server/server.js';
 

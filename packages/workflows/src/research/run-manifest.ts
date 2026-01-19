@@ -12,8 +12,8 @@
  * @deprecated Use @quantbot/core RunManifest directly
  */
 
-import type { RunManifest } from '@quantbot/core';
-import { createRunManifest } from '@quantbot/core';
+import type { RunManifest } from '@quantbot/labcatalog';
+import { createRunManifest } from '@quantbot/labcatalog';
 import type { RunMetadata, RunArtifact } from './artifacts.js';
 
 /**
@@ -36,40 +36,20 @@ export function fromCLIManifest(cliManifest: RunManifest): CanonicalRunManifest 
 /**
  * Convert Research OS RunArtifact metadata to Canonical RunManifest
  *
- * @deprecated Use createRunManifest from @quantbot/core instead
+ * @deprecated Use createRunManifest from @quantbot/labcatalog instead - signature has changed
  */
-export async function fromRunArtifact(artifact: RunArtifact): Promise<CanonicalRunManifest> {
-  const metadata = artifact.metadata;
-
-  return createRunManifest({
-    runId: metadata.runId,
-    seed: artifact.request.runConfig.seed,
-    gitSha: metadata.gitSha,
-    gitBranch: metadata.gitBranch,
-    snapshotId: `legacy_${metadata.dataSnapshotHash.substring(0, 16)}`, // Legacy fallback - no snapshotId in old metadata
-    snapshotContentHash: metadata.dataSnapshotHash,
-    dataSnapshotHash: metadata.dataSnapshotHash, // backward compatibility
-    strategyHash: metadata.strategyConfigHash,
-    executionModelHash: metadata.executionModelHash,
-    costModelHash: metadata.costModelHash,
-    riskModelHash: metadata.riskModelHash,
-    runConfigHash: metadata.runConfigHash,
-    engineVersion: metadata.schemaVersion,
-    status: 'completed',
-    simulationTimeMs: metadata.simulationTimeMs,
-    metadata: {
-      createdAtISO: metadata.createdAtISO,
-      schemaVersion: metadata.schemaVersion,
-    },
-  });
+export async function fromRunArtifact(_artifact: RunArtifact): Promise<CanonicalRunManifest> {
+  throw new Error('fromRunArtifact is deprecated - use createRunManifest from @quantbot/labcatalog with correct signature');
+  // const metadata = artifact.metadata;
+  // return createRunManifest(metadata.runId, { ... }, './catalog');
 }
 
 /**
  * Create canonical manifest from components
  *
- * @deprecated Use createRunManifest from @quantbot/core instead
+ * @deprecated Use createRunManifest from @quantbot/labcatalog instead - signature has changed
  */
-export async function createCanonicalManifest(components: {
+export async function createCanonicalManifest(_components: {
   runId: string;
   seed: number;
   gitSha: string;
@@ -95,26 +75,6 @@ export async function createCanonicalManifest(components: {
   simulationTimeMs?: number;
   metadata?: Record<string, unknown>;
 }): Promise<CanonicalRunManifest> {
-  return createRunManifest({
-    runId: components.runId,
-    seed: components.seed,
-    gitSha: components.gitSha,
-    gitBranch: components.gitBranch,
-    snapshotId: `legacy_${components.dataSnapshotHash.substring(0, 16)}`, // Legacy fallback
-    snapshotContentHash: components.dataSnapshotHash,
-    dataSnapshotHash: components.dataSnapshotHash, // backward compatibility
-    strategyHash: components.strategyHash,
-    executionModelHash: components.executionModelHash,
-    costModelHash: components.costModelHash,
-    riskModelHash: components.riskModelHash,
-    runConfigHash: components.runConfigHash,
-    engineVersion: components.engineVersion,
-    command: components.command,
-    packageName: components.packageName,
-    artifactPaths: components.artifactPaths,
-    status: components.status,
-    errorMessage: components.errorMessage,
-    simulationTimeMs: components.simulationTimeMs,
-    metadata: components.metadata,
-  });
+  throw new Error('createCanonicalManifest is deprecated - use createRunManifest from @quantbot/labcatalog with correct signature');
+  // return createRunManifest(components.runId, { ... }, './catalog');
 }

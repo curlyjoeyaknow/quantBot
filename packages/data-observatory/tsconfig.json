@@ -7,13 +7,24 @@
     "declaration": true,
     "declarationMap": true,
     "module": "NodeNext",
-    "moduleResolution": "NodeNext"
+    "moduleResolution": "NodeNext",
+    "baseUrl": ".",
+    "paths": {
+      "@quantbot/core": ["../core/src"],
+      "@quantbot/core/*": ["../core/src/*"],
+      "@quantbot/utils": ["../utils/src"],
+      "@quantbot/utils/*": ["../utils/src/*"],
+      "@quantbot/storage": ["../storage/src"],
+      "@quantbot/storage/*": ["../storage/src/*"],
+      "@quantbot/lab/*": ["../lab/src/*"]
+    }
   },
   "include": ["src/**/*"],
   "references": [
     { "path": "../core" },
     { "path": "../storage" },
-    { "path": "../utils" }
+    { "path": "../utils" },
+    { "path": "../lab" }
   ]
 }
 

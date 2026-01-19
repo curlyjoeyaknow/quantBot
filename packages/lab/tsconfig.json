@@ -14,12 +14,24 @@
     "types": ["node"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@quantbot/core": ["../core/src"],
+      "@quantbot/core/*": ["../core/src/*"],
+      "@quantbot/infra": ["../infra/src"],
+      "@quantbot/infra/*": ["../infra/src/*"],
+      "@quantbot/utils": ["../utils/src"],
+      "@quantbot/utils/*": ["../utils/src/*"],
+      "@quantbot/storage": ["../storage/src"],
+      "@quantbot/storage/*": ["../storage/src/*"]
+    }
   },
   "include": ["src/**/*.ts", "src/**/*.html"],
   "exclude": ["dist", "node_modules", "tests", "**/*.d.ts"],
   "references": [
     { "path": "../core" },
+    { "path": "../infra" },
     { "path": "../utils" },
     { "path": "../storage" }
   ]

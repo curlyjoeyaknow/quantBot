@@ -20,8 +20,8 @@ import { resolve } from 'path';
 import { DateTime } from 'luxon';
 import type { Chain, OhlcvWorkItem } from '@quantbot/core';
 import { normalizeChain } from '@quantbot/core';
-import { logger } from '@quantbot/infra/utils';
-import { getDuckDBWorklistService } from '@quantbot/infra/storage';
+import { logger } from '@quantbot/utils';
+import { getDuckDBWorklistService } from '@quantbot/storage';
 
 // Re-export OhlcvWorkItem from core for backward compatibility
 export type { OhlcvWorkItem } from '@quantbot/core';

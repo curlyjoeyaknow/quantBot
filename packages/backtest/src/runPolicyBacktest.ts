@@ -32,8 +32,8 @@ import { materialiseSlice } from './slice.js';
 import { loadCandlesFromSlice } from './runBacktest.js';
 import { logger, TimingContext, type LogContext } from '@quantbot/infra/utils';
 import { DateTime } from 'luxon';
-import { createRunDirectory, getGitProvenance } from './artifacts/index.js';
-import type { AlertArtifact, TradeArtifact, SummaryArtifact } from './artifacts/index.js';
+import { createRunDirectory, getGitProvenance } from '@quantbot/simulation/backtest';
+import type { AlertArtifact, TradeArtifact, SummaryArtifact } from '@quantbot/simulation/backtest';
 
 // =============================================================================
 // Types
@@ -317,6 +317,7 @@ export async function runPolicyBacktest(
           entry_px: row.entry_px,
           exit_ts_ms: row.exit_ts_ms,
           exit_px: row.exit_px,
+          pnl_pct: row.realized_return_bps / 10000, // Convert bps to percentage
           exit_reason: row.exit_reason,
           realized_return_bps: row.realized_return_bps,
           stop_out: row.stop_out,
@@ -377,6 +378,9 @@ export async function runPolicyBacktest(
   // Step 8: Write summary artifact
   const summaryArtifact: SummaryArtifact = {
     run_id: runId,
+    run_type: 'policy',
+    started_at: new Date().toISOString(),
+    completed_at: new Date().toISOString(),
     calls_processed: coverage.eligible.length,
     calls_excluded: coverage.excluded.length,
     trades_count: policyResults.length,

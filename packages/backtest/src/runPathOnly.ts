@@ -30,8 +30,8 @@ import { materialiseSlice } from './slice.js';
 import { loadCandlesFromSlice } from './runBacktest.js';
 import { computePathMetrics } from './metrics/path-metrics.js';
 import { logger, TimingContext, type LogContext } from '@quantbot/infra/utils';
-import { createRunDirectory, getGitProvenance } from './artifacts/index.js';
-import type { AlertArtifact, PathArtifact } from './artifacts/index.js';
+import { createRunDirectory, getGitProvenance } from '@quantbot/simulation/backtest';
+import type { AlertArtifact, PathArtifact } from '@quantbot/simulation/backtest';
 
 /**
  * Run path-only backtest
@@ -243,22 +243,24 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
         const pathArtifacts: PathArtifact[] = pathMetricsRows.map((row) => ({
           run_id: row.run_id,
           call_id: row.call_id,
-          caller_name: row.caller_name,
-          mint: row.mint,
-          chain: row.chain,
-          interval: row.interval,
-          alert_ts_ms: row.alert_ts_ms,
-          p0: row.p0,
-          hit_2x: row.hit_2x,
-          t_2x_ms: row.t_2x_ms,
-          hit_3x: row.hit_3x,
-          t_3x_ms: row.t_3x_ms,
-          hit_4x: row.hit_4x,
-          t_4x_ms: row.t_4x_ms,
-          dd_bps: row.dd_bps ?? 0,
-          dd_to_2x_bps: row.dd_to_2x_bps,
-          alert_to_activity_ms: row.alert_to_activity_ms,
-          peak_multiple: row.peak_multiple ?? 0,
+          path_metrics: {
+            caller_name: row.caller_name,
+            mint: row.mint,
+            chain: row.chain,
+            interval: row.interval,
+            alert_ts_ms: row.alert_ts_ms,
+            p0: row.p0,
+            hit_2x: row.hit_2x,
+            t_2x_ms: row.t_2x_ms,
+            hit_3x: row.hit_3x,
+            t_3x_ms: row.t_3x_ms,
+            hit_4x: row.hit_4x,
+            t_4x_ms: row.t_4x_ms,
+            dd_bps: row.dd_bps ?? 0,
+            dd_to_2x_bps: row.dd_to_2x_bps,
+            alert_to_activity_ms: row.alert_to_activity_ms,
+            peak_multiple: row.peak_multiple ?? 0,
+          },
         }));
         await runDir.writeArtifact(
           'paths',

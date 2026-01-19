@@ -48,7 +48,8 @@ export class CallDataLoader {
     try {
       // Import workflow and context factory (dynamic import to avoid build-time dependency)
       // Note: This avoids a build-order violation (analytics builds before workflows)
-      const workflowsModule = await import('@quantbot/workflows');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const workflowsModule = await import('@quantbot/workflows' as any);
       const { queryCallsDuckdb, createQueryCallsDuckdbContext } = workflowsModule;
 
       // Build spec object matching QueryCallsDuckdbSpec structure

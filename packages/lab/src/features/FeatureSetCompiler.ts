@@ -8,7 +8,7 @@
  */
 
 import { createHash } from 'crypto';
-import { DuckDBClient } from '@quantbot/infra/storage';
+import { DuckDBClient } from '@quantbot/storage';
 import { logger } from '@quantbot/infra/utils';
 import { submitArtifact } from '@quantbot/infra/utils';
 import type { FeaturesSpec } from './types.js';
@@ -168,7 +168,7 @@ export class FeatureSetCompiler {
         DESCRIBE SELECT * FROM (${featuresQuery}) LIMIT 1
       `);
       const schemaStr = JSON.stringify(
-        schemaResult.rows.map((row) => ({ name: row[0], type: row[1] }))
+        schemaResult.rows.map((row: unknown[]) => ({ name: row[0], type: row[1] }))
       );
       const schemaHash = createHash('sha256').update(schemaStr).digest('hex').slice(0, 16);
 

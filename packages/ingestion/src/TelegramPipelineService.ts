@@ -5,9 +5,9 @@
  * Wraps PythonEngine calls and validates output with Zod schemas.
  */
 
-import type { PythonEngine, PythonManifest } from '@quantbot/infra/utils';
-import { PythonManifestSchema } from '@quantbot/infra/utils';
-import { logger } from '@quantbot/infra/utils';
+import type { PythonEngine, PythonManifest } from '@quantbot/utils';
+import { PythonManifestSchema } from '@quantbot/utils';
+import { logger } from '@quantbot/utils';
 
 /**
  * Schema for Telegram pipeline result (re-exported from PythonEngine)

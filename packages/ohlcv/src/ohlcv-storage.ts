@@ -11,8 +11,8 @@
 
 import { DateTime } from 'luxon';
 import type { Candle, Chain } from '@quantbot/core';
-import { logger } from '@quantbot/infra/utils';
-import { getStorageEngine } from '@quantbot/infra/storage';
+import { logger } from '@quantbot/utils';
+import { getStorageEngine } from '@quantbot/storage';
 
 /**
  * Options for storing candles

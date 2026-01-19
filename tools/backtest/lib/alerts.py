@@ -73,7 +73,11 @@ def load_alerts(
     """
     Load alerts from DuckDB for a date range.
 
-    Tries caller_links_d first, falls back to user_calls_d.
+    Priority order:
+    1. canon.alerts_final (full dataset, 8+ months)
+    2. caller_links_d (fallback, may be subset)
+    3. user_calls_d (last resort)
+    
     Optionally joins with canon.alerts_final to get market cap data.
     Date range is inclusive of date_from, exclusive of date_to + 1 day.
 
@@ -91,35 +95,36 @@ def load_alerts(
         from_ms = int(date_from.timestamp() * 1000)
         to_ms_excl = int((date_to + timedelta(days=1)).timestamp() * 1000)
 
+        # Check for canon.alerts_final first (full dataset)
+        has_canon_alerts_final = False
+        try:
+            conn.execute("SELECT 1 FROM canon.alerts_final LIMIT 1").fetchone()
+            cols = _get_table_columns(conn, "canon.alerts_final")
+            has_canon_alerts_final = True
+            # Check if mcap_usd column exists for market cap filtering
+            has_mcap = "mcap_usd" in cols
+        except Exception:
+            has_mcap = False
+        
         has_caller_links = _table_exists(conn, "caller_links_d")
         has_user_calls = _table_exists(conn, "user_calls_d")
-        
-        # Check if canon.alerts_final exists and has market cap data
-        # Note: Currently market cap data may not be available in canon.alerts_final
-        # This join is disabled until market cap data is available
-        has_canon_alerts_final = False
-        # Uncomment when market cap data is available:
-        # try:
-        #     conn.execute("SELECT 1 FROM canon.alerts_final LIMIT 1").fetchone()
-        #     # Check if mcap_usd column exists
-        #     cols = _get_table_columns(conn, "canon.alerts_final")
-        #     if "mcap_usd" in cols:
-        #         has_canon_alerts_final = True
-        # except Exception:
-        #     pass
 
-        if not has_caller_links and not has_user_calls:
+        if not has_canon_alerts_final and not has_caller_links and not has_user_calls:
             raise SystemExit(f"No alerts source found in DuckDB: {duckdb_path}")
 
         alerts: List[Alert] = []
 
-        # Try caller_links_d first
-        if has_caller_links:
-            alerts = _load_from_caller_links(conn, chain, from_ms, to_ms_excl, has_canon_alerts_final)
+        # Priority 1: Use canon.alerts_final (full dataset)
+        if has_canon_alerts_final:
+            alerts = _load_from_canon_alerts_final(conn, chain, from_ms, to_ms_excl, has_mcap)
 
-        # Fallback to user_calls_d if no alerts from caller_links_d
+        # Priority 2: Fallback to caller_links_d if canon.alerts_final didn't return results
+        if not alerts and has_caller_links:
+            alerts = _load_from_caller_links(conn, chain, from_ms, to_ms_excl, has_mcap)
+
+        # Priority 3: Last resort - user_calls_d
         if not alerts and has_user_calls:
-            alerts = _load_from_user_calls(conn, chain, from_ms, to_ms_excl, has_canon_alerts_final)
+            alerts = _load_from_user_calls(conn, chain, from_ms, to_ms_excl, has_mcap)
 
         alerts.sort(key=lambda a: (a.ts_ms, a.mint))
         return alerts
@@ -130,7 +135,7 @@ def _load_from_caller_links(
     chain: str,
     from_ms: int,
     to_ms_excl: int,
-    has_canon_alerts_final: bool = False,
+    has_mcap: bool = False,
 ) -> List[Alert]:
     """Load alerts from caller_links_d table, optionally joining with canon.alerts_final for market cap."""
     cols = _get_table_columns(conn, "caller_links_d")
@@ -138,7 +143,7 @@ def _load_from_caller_links(
     caller_expr = _build_caller_expr(cols)
 
     # Try to join with canon.alerts_final for market cap if available
-    if has_canon_alerts_final:
+    if has_mcap:
         # Build caller expression with table prefix for join
         # Remove "AS caller" from the original expression since we'll add it in SQL
         caller_expr_no_alias = caller_expr.replace(" AS caller", "").replace("::TEXT AS caller", "::TEXT")
@@ -179,10 +184,7 @@ def _load_from_caller_links(
 
     alerts = []
     for row in conn.execute(sql, params).fetchall():
-        if has_canon_alerts_final:
-            mint, ts_ms, caller, mcap_usd = row
-        else:
-            mint, ts_ms, caller, mcap_usd = row
+        mint, ts_ms, caller, mcap_usd = row
         if mint:
             alerts.append(Alert(
                 mint=mint,
@@ -199,7 +201,7 @@ def _load_from_user_calls(
     chain: str,
     from_ms: int,
     to_ms_excl: int,
-    has_canon_alerts_final: bool = False,
+    has_mcap: bool = False,
 ) -> List[Alert]:
     """Load alerts from user_calls_d table, optionally joining with canon.alerts_final for market cap."""
     cols = _get_table_columns(conn, "user_calls_d")
@@ -216,7 +218,7 @@ def _load_from_user_calls(
     caller_expr = _build_caller_expr(cols)
 
     # Try to join with canon.alerts_final for market cap if available
-    if has_canon_alerts_final:
+    if has_mcap:
         sql = f"""
         SELECT DISTINCT
           u.mint::TEXT AS mint,

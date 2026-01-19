@@ -47,7 +47,7 @@ export class ParameterSpace {
    * Generate cartesian product recursively
    */
   private cartesianProduct(
-    paramValues: Array<number[] | string[]>,
+    paramValues: Array<Array<number | string>>,
     index: number,
     currentConfig: ParameterConfig,
     paramNames: string[],
@@ -100,7 +100,7 @@ export class ParameterSpace {
    * Estimate total config count without generating all
    */
   estimateConfigCount(space: ParameterSpaceDef): number {
-    return Object.values(space).reduce((product, values) => product * values.length, 1);
+    return Object.values(space).reduce<number>((product, values) => product * values.length, 1);
   }
 
   /**

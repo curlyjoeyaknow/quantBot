@@ -7,7 +7,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { logger, NotFoundError, ValidationError } from '@quantbot/infra/utils';
+import { logger, NotFoundError, ValidationError } from '@quantbot/utils';
 import {
   normalizeTelegramMessage,
   type NormalizedTelegramMessage,

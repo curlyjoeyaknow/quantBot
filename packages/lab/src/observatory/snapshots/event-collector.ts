@@ -5,7 +5,7 @@
  */
 
 import { DateTime } from 'luxon';
-import type { StorageEngine } from '@quantbot/infra/storage';
+import type { StorageEngine } from '@quantbot/storage';
 import { logger } from '@quantbot/infra/utils';
 import { z } from 'zod';
 import type {
@@ -124,7 +124,7 @@ export class StorageEventCollector implements EventCollector {
     try {
       // Use PythonEngine directly to query calls from DuckDB
       // This avoids dependency on @quantbot/backtest package
-      const { getPythonEngine } = await import('@quantbot/infra/utils');
+      const { getPythonEngine } = await import('@quantbot/utils');
       const pythonEngine = getPythonEngine();
 
       // Query calls using PythonEngine.runDuckDBStorage
@@ -285,7 +285,7 @@ export class StorageEventCollector implements EventCollector {
   ): Promise<string[]> {
     try {
       // Import ClickHouse client dynamically to avoid circular dependencies
-      const { getClickHouseClient } = await import('@quantbot/infra/storage');
+      const { getClickHouseClient } = await import('@quantbot/storage');
       const ch = getClickHouseClient();
       const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 
@@ -341,7 +341,7 @@ export class StorageEventCollector implements EventCollector {
 
     try {
       // Import ClickHouse client dynamically to avoid circular dependencies
-      const { getClickHouseClient } = await import('@quantbot/infra/storage');
+      const { getClickHouseClient } = await import('@quantbot/storage');
       const ch = getClickHouseClient();
       const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 
@@ -457,7 +457,7 @@ export class StorageEventCollector implements EventCollector {
 
     try {
       // Import ClickHouse client dynamically to avoid circular dependencies
-      const { getClickHouseClient } = await import('@quantbot/infra/storage');
+      const { getClickHouseClient } = await import('@quantbot/storage');
       const ch = getClickHouseClient();
       const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 

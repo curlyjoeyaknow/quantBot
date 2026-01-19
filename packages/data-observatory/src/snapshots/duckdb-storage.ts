@@ -7,8 +7,8 @@
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { writeFileSync, unlinkSync } from 'fs';
-import { DuckDBClient } from '@quantbot/infra/storage';
-import { logger, DatabaseError, findWorkspaceRoot } from '@quantbot/infra/utils';
+import { DuckDBClient } from '@quantbot/storage';
+import { logger, DatabaseError, findWorkspaceRoot } from '@quantbot/utils';
 import { z } from 'zod';
 import type { DataSnapshotRef, SnapshotQueryOptions } from './types.js';
 import { DataSnapshotRefSchema } from './types.js';

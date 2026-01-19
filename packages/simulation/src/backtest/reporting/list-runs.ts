@@ -245,7 +245,8 @@ export async function getAllRunSummaries(
         }
       } else if (existsSync(legacyDuckdbPath)) {
         // Legacy format: read from DuckDB (backward compatibility)
-        const duckdb = await import('duckdb');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const duckdb = await import('duckdb' as any);
         const database = new duckdb.Database(legacyDuckdbPath);
         const db = database.connect();
 

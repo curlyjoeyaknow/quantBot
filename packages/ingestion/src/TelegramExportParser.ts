@@ -6,7 +6,7 @@
 
 import * as fs from 'fs';
 import * as cheerio from 'cheerio';
-import { logger, NotFoundError } from '@quantbot/infra/utils';
+import { logger, NotFoundError } from '@quantbot/utils';
 
 export interface ParsedMessage {
   timestamp: Date;

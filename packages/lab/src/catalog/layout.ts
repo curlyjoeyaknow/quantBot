@@ -159,7 +159,13 @@ export function parseSliceFilePath(
     return null;
   }
 
-  const [, tokenId, startStr, endStr] = match;
+  const tokenId = match[1];
+  const startStr = match[2];
+  const endStr = match[3];
+
+  if (!tokenId || !startStr || !endStr) {
+    return null;
+  }
 
   // Convert compact format back to ISO
   // YYYYMMDDTHHMMSS -> YYYY-MM-DDTHH:MM:SS
@@ -186,7 +192,7 @@ export function parseSliceFilePath(
 export function parseRunDirPath(runDirPath: string): string | null {
   // Expected pattern: .../runs/<runId>/
   const match = runDirPath.match(/\/runs\/([^/]+)\/?$/);
-  return match ? match[1] : null;
+  return match?.[1] ?? null;
 }
 
 /**

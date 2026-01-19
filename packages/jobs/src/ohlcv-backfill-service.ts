@@ -6,7 +6,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { logger, PythonEngine } from '@quantbot/infra/utils';
+import { logger, PythonEngine } from '@quantbot/utils';
 import { getOhlcvIngestionEngine, type OhlcvIngestionEngine } from './ohlcv-ingestion-engine.js';
 import { z } from 'zod';
 
@@ -73,7 +73,7 @@ export class OhlcvBackfillService {
 
   constructor() {
     this.engine = getOhlcvIngestionEngine();
-    // Use PythonEngine directly (from @quantbot/infra/utils) to avoid architecture violations
+    // Use PythonEngine directly (from @quantbot/utils) to avoid architecture violations
     // This is allowed: jobs (Data Ingestion) can import from utils (infrastructure)
     this.pythonEngine = new PythonEngine();
   }

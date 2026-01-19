@@ -23,7 +23,7 @@ import {
   type ProgressCallback,
 } from '@quantbot/workflows';
 import { createOhlcvIngestionContext } from '@quantbot/workflows';
-import { OhlcvFetchJob } from '@quantbot/data/jobs';
+import { OhlcvFetchJob } from '@quantbot/jobs';
 import { DateTime } from 'luxon';
 import { createProgressBar } from '../../core/progress-indicator.js';
 

@@ -108,7 +108,7 @@ export async function exportCallsWithSimulationHandler(
   const workflowCtx = createProductionContext();
 
   const { PythonEngine } = await import('@quantbot/utils');
-  const { DuckDBStorageService } = await import('@quantbot/backtest');
+  const { DuckDBStorageService } = await import('@quantbot/simulation');
   const engine = new PythonEngine();
   const storage = new DuckDBStorageService(engine);
 

@@ -7,11 +7,13 @@
  */
 
 // Lazy import to avoid loading native bindings at module load time
-let duckdbModule: typeof import('duckdb') | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let duckdbModule: any | null = null;
 
 async function getDuckdbModule() {
   if (!duckdbModule) {
-    duckdbModule = await import('duckdb');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    duckdbModule = await import('duckdb' as any);
   }
   // DuckDB module doesn't have default export, it's a namespace
   return duckdbModule;

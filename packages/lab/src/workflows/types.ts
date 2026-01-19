@@ -1,7 +1,7 @@
 // Import types directly from storage package (using package exports)
 // Using type-only imports to avoid runtime dependency issues
-import type { FeatureSpecV1 } from '@quantbot/infra/storage/ports/FeatureComputePort';
-import type { StrategySpecV1, RiskSpecV1 } from '@quantbot/infra/storage/ports/SimulationPort';
+import type { FeatureSpecV1 } from '@quantbot/storage/ports/FeatureComputePort';
+import type { StrategySpecV1, RiskSpecV1 } from '@quantbot/storage/ports/SimulationPort';
 
 export interface SimPresetV1 {
   kind: 'sim_preset_v1';

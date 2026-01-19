@@ -4,8 +4,20 @@
  * Writes optimization frontier to artifacts.
  */
 
-import type { RunDirectory } from '../artifacts/writer.js';
-import type { FrontierArtifact } from '../artifacts/types.js';
+import type { RunDirectory } from '../artifacts/index.js';
+
+// FrontierArtifact type definition
+interface FrontierArtifact {
+  run_id: string;
+  caller_name: string;
+  policy_params: string;
+  meets_constraints: boolean;
+  objective_score: number;
+  avg_return_bps: number;
+  median_return_bps: number;
+  stop_out_rate: number;
+  rank: number;
+}
 import type { OptimizationResult } from './policy-optimizer.js';
 import type {
   V1BaselineOptimizationResult,

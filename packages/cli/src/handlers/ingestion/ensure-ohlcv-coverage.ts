@@ -13,11 +13,11 @@ import { DateTime } from 'luxon';
 import { ConfigurationError, isSolanaAddress, isEvmAddress, logger } from '@quantbot/infra/utils';
 import { ingestOhlcv, createOhlcvIngestionContext } from '@quantbot/workflows';
 import type { IngestOhlcvSpec } from '@quantbot/workflows';
-import { getCoverage } from '@quantbot/data/ohlcv';
+import { getCoverage } from '@quantbot/ohlcv';
 import type { CommandContext } from '../../core/command-context.js';
 import { ensureOhlcvCoverageSchema } from '../../commands/ingestion.js';
 import type { z } from 'zod';
-import type { DuckDBStorageService } from '@quantbot/backtest';
+import type { DuckDBStorageService } from '@quantbot/simulation';
 import { fetchMultiChainMetadata, getBirdeyeClient, heliusRestClient } from '@quantbot/infra/api-clients';
 
 export type EnsureOhlcvCoverageArgs = z.infer<typeof ensureOhlcvCoverageSchema>;

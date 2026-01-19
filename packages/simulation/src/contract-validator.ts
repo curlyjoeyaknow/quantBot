@@ -63,8 +63,8 @@ export function validateSimResult(result: unknown): SimResult {
   try {
     const parsed = SimResultSchema.parse(result);
 
-    // Validate contract version
-    validateContractVersion(parsed.contractVersion);
+    // Contract version validation removed - SimResult doesn't include contractVersion
+    // Version should be validated at the input level (SimInput)
 
     return parsed;
   } catch (error) {

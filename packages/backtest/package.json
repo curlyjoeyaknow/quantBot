@@ -17,6 +17,9 @@
     "test:coverage": "vitest run --coverage --passWithNoTests"
   },
   "dependencies": {
+    "@quantbot/core": "workspace:*",
+    "@quantbot/infra": "workspace:*",
+    "@quantbot/storage": "workspace:*",
     "@quantbot/simulation": "workspace:*"
   },
   "devDependencies": {

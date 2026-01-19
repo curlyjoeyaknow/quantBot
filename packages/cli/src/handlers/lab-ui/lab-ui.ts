@@ -3,7 +3,7 @@
  * Starts the lab UI Express server
  */
 
-import type { z } from 'zod';
+import { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
 import express from 'express';
 import path from 'node:path';

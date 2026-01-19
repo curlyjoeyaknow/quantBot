@@ -32,7 +32,8 @@
   "dependencies": {
     "@quantbot/core": "workspace:*",
     "@quantbot/infra": "workspace:*",
-    "@quantbot/workflows": "workspace:*",
+    "@quantbot/utils": "workspace:*",
+    "@quantbot/storage": "workspace:*",
     "fastify": "^5.6.2",
     "luxon": "^3.5.0",
     "zod": "^4.1.13"

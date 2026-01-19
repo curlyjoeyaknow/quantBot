@@ -30,9 +30,9 @@ export type BayesianOptimizerConfig = z.infer<typeof BayesianOptimizerConfigSche
 
 export const BayesianResultSchema = z.object({
   success: z.boolean(),
-  best_params: z.record(z.unknown()).optional(),
+  best_params: z.record(z.string(), z.unknown()).optional(),
   best_score: z.number().optional(),
-  all_params: z.array(z.record(z.unknown())).optional(),
+  all_params: z.array(z.record(z.string(), z.unknown())).optional(),
   all_scores: z.array(z.number()).optional(),
   n_iterations: z.number().optional(),
   error: z.string().optional(),

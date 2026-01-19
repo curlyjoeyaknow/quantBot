@@ -1,5 +1,6 @@
 import type { Candle } from '@quantbot/core';
-import type duckdb from 'duckdb';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type duckdb = any;
 import { resolveExitPlanFromDuckDb } from '../strategy/resolve-exit-plan.js';
 import { backtestExitStack } from '../engine/backtest-exit-stack.js';
 import { insertCallResults } from '../reporting/backtest-results-duckdb.js';
@@ -29,7 +30,7 @@ export type ExitStackRunArgs = {
   candlesByCallId: Map<string, Candle[]>;
 };
 
-export async function runExitStack(db: duckdb.Database, args: ExitStackRunArgs) {
+export async function runExitStack(db: any, args: ExitStackRunArgs) {
   const plan = await resolveExitPlanFromDuckDb(db, args.strategyId);
 
   const rows: any[] = [];

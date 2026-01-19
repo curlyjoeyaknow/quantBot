@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@quantbot/core": "workspace:*",
+    "@quantbot/infra": "workspace:*",
     "@quantbot/utils": "workspace:*",
     "@quantbot/storage": "workspace:*",
     "lru-cache": "^11.0.0",

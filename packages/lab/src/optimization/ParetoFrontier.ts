@@ -8,24 +8,24 @@ import { z } from 'zod';
 import { PythonEngine } from '@quantbot/infra/utils';
 
 export const ParetoSolutionSchema = z.object({
-  params: z.record(z.unknown()),
-  objectives: z.record(z.number()),
+  params: z.record(z.string(), z.unknown()),
+  objectives: z.record(z.string(), z.number()),
 });
 
 export type ParetoSolution = z.infer<typeof ParetoSolutionSchema>;
 
 export const ParetoConfigSchema = z.object({
   solutions: z.array(ParetoSolutionSchema),
-  maximize: z.record(z.boolean()).optional(),
-  referencePoint: z.record(z.number()).optional(),
-  weights: z.record(z.number()).optional(),
+  maximize: z.record(z.string(), z.boolean()).optional(),
+  referencePoint: z.record(z.string(), z.number()).optional(),
+  weights: z.record(z.string(), z.number()).optional(),
 });
 
 export type ParetoConfig = z.infer<typeof ParetoConfigSchema>;
 
 export const RankedSolutionSchema = z.object({
-  params: z.record(z.unknown()),
-  objectives: z.record(z.number()),
+  params: z.record(z.string(), z.unknown()),
+  objectives: z.record(z.string(), z.number()),
   score: z.number(),
 });
 
@@ -113,6 +113,7 @@ export class ParetoFrontier {
     const sorted = [...result.paretoFront].sort((a, b) => {
       const aVal = a.objectives[objective1];
       const bVal = b.objectives[objective1];
+      if (aVal === undefined || bVal === undefined) return 0;
       return maximize[objective1] ? bVal - aVal : aVal - bVal;
     });
 
@@ -139,7 +140,7 @@ export class ParetoFrontier {
       return null;
     }
 
-    return result.ranked[0]; // Highest ranked
+    return result.ranked[0] ?? null; // Highest ranked
   }
 
   /**
@@ -171,10 +172,18 @@ export class ParetoFrontier {
       throw new Error('No solutions provided');
     }
 
-    const firstObjectives = Object.keys(solutions[0].objectives).sort();
+    const firstSolution = solutions[0];
+    if (!firstSolution) {
+      throw new Error('First solution is undefined');
+    }
+
+    const firstObjectives = Object.keys(firstSolution.objectives).sort();
 
     for (let i = 1; i < solutions.length; i++) {
-      const objectives = Object.keys(solutions[i].objectives).sort();
+      const solution = solutions[i];
+      if (!solution) continue;
+
+      const objectives = Object.keys(solution.objectives).sort();
       if (JSON.stringify(objectives) !== JSON.stringify(firstObjectives)) {
         throw new Error(
           `Solution ${i} has different objectives: ${objectives.join(', ')} vs ${firstObjectives.join(', ')}`

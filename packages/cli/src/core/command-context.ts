@@ -16,10 +16,10 @@ import {
   OhlcvDedupService,
   // PostgreSQL repositories removed - use DuckDB equivalents
   // CallsRepository, TokensRepository, AlertsRepository, SimulationRunsRepository
-} from '@quantbot/infra/storage';
+} from '@quantbot/storage';
 import type { ExperimentRepository } from '@quantbot/core';
-import { OhlcvIngestionService } from '@quantbot/data/ingestion';
-import { MarketDataIngestionService } from '@quantbot/data/jobs';
+import { OhlcvIngestionService } from '@quantbot/ingestion';
+import { MarketDataIngestionService } from '@quantbot/jobs';
 // TelegramAlertIngestionService temporarily commented out - needs repository refactoring
 // import { TelegramAlertIngestionService } from '@quantbot/data/ingestion';
 // import { OhlcvFetchJob } from '@quantbot/data/jobs';
@@ -33,7 +33,7 @@ import { ClickHouseService } from '../../../backtest/src/sim/clickhouse-service.
 import { SimulationService } from '../../../backtest/src/sim/simulation-service.js';
 import { BacktestBaselineService } from '../../../backtest/src/sim/backtest-baseline-service.js';
 import { V1BaselinePythonService } from '../../../backtest/src/services/v1-baseline-python-service.js';
-import { TelegramPipelineService } from '@quantbot/data/ingestion';
+import { TelegramPipelineService } from '@quantbot/ingestion';
 import { AnalyticsService } from '@quantbot/analytics';
 import { getClickHouseClient } from '@quantbot/infra/storage';
 import type { ClickHouseClient } from '@clickhouse/client';

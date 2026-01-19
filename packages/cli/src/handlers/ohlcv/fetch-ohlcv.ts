@@ -8,7 +8,7 @@
 import { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
 import { fetchBirdeyeCandles } from '@quantbot/infra/api-clients';
-import { storeCandles } from '@quantbot/data/ohlcv';
+import { storeCandles } from '@quantbot/ohlcv';
 import { DateTime } from 'luxon';
 import { logger } from '@quantbot/infra/utils';
 

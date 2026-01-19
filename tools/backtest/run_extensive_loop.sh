@@ -11,9 +11,13 @@ DURATION_HOURS=6
 START_TIME=$(date +%s)
 END_TIME=$((START_TIME + DURATION_HOURS * 3600))
 
-# Date range (last 30 days)
+# Date range - use actual data range from database
+# If you have 8 months of data (4000 alerts), update these dates:
+# FROM_DATE="2025-05-19"  # 8 months ago
+# TO_DATE=$(date +%Y-%m-%d)  # Today
+# For now using last 30 days (will be limited by actual data in DB)
 TO_DATE=$(date +%Y-%m-%d)
-FROM_DATE=$(date -d "30 days ago" +%Y-%m-%d 2>/dev/null || date -v-30d +%Y-%m-%d 2>/dev/null || echo "2024-12-19")
+FROM_DATE=$(date -d "30 days ago" +%Y-%m-%d 2>/dev/null || date -v-30d +%Y-%m-%d 2>/dev/null || echo "2025-12-19")
 
 # Output directory
 OUTPUT_DIR="results/extensive_loop_$(date +%Y%m%d_%H%M%S)"

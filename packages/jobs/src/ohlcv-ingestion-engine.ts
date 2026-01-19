@@ -19,8 +19,8 @@
  */
 
 import { DateTime } from 'luxon';
-import { getBirdeyeClient, fetchMultiChainMetadata } from '@quantbot/infra/api-clients';
-import { fetchBirdeyeCandles } from '@quantbot/infra/api-clients';
+import { getBirdeyeClient, fetchMultiChainMetadata } from '@quantbot/api-clients';
+import { fetchBirdeyeCandles } from '@quantbot/api-clients';
 import {
   getStorageEngine,
   initClickHouse,
@@ -28,12 +28,12 @@ import {
   OhlcvRepository,
   LENIENT_VALIDATION,
   type IngestionRunManifest,
-} from '@quantbot/infra/storage';
+} from '@quantbot/storage';
 // TokensRepository removed (PostgreSQL) - metadata storage not critical for OHLCV ingestion
 import type { Candle, Chain } from '@quantbot/core';
-import { logger, ValidationError } from '@quantbot/infra/utils';
+import { logger, ValidationError } from '@quantbot/utils';
 import { LRUCache } from 'lru-cache';
-import { isEvmAddress } from '@quantbot/infra/utils';
+import { isEvmAddress } from '@quantbot/utils';
 // storeCandles removed - using OhlcvRepository.upsertCandles() with run manifest instead
 
 // Lazy initialization to avoid requiring API keys at module load time

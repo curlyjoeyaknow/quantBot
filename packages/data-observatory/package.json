@@ -17,6 +17,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@quantbot/core": "workspace:*",
+    "@quantbot/utils": "workspace:*",
+    "@quantbot/storage": "workspace:*",
     "@quantbot/lab": "workspace:*"
   },
   "devDependencies": {

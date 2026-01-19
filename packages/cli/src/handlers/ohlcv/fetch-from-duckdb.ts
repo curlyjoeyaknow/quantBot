@@ -10,7 +10,7 @@ import type { CommandContext } from '../../core/command-context.js';
 import { logger } from '@quantbot/infra/utils';
 import { getDuckDBWorklistService } from '@quantbot/infra/storage';
 import { fetchBirdeyeCandles } from '@quantbot/infra/api-clients';
-import { storeCandles, getCoverage } from '@quantbot/data/ohlcv';
+import { storeCandles, getCoverage } from '@quantbot/ohlcv';
 import type { Chain } from '@quantbot/core';
 
 // Console colors for filtered output

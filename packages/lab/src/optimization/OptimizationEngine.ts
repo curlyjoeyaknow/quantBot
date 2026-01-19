@@ -16,10 +16,9 @@ import type {
   OptimizationConfig,
   OptimizationStrategy,
 } from './types.js';
-import { GridSearch } from './GridSearch.js';
+import { GridSearch, type GridSearchResult } from './GridSearch.js';
 import { RandomSearch } from './RandomSearch.js';
 import { logger } from '@quantbot/infra/utils';
-import type { OptimizationResult } from './GridSearch.js';
 
 /**
  * OptimizationEngine
@@ -32,7 +31,7 @@ export class OptimizationEngine {
     space: ParameterSpaceDef,
     evaluateFn: (config: ParameterConfig) => Promise<unknown>,
     config: OptimizationConfig
-  ): Promise<OptimizationResult[]> {
+  ): Promise<GridSearchResult[]> {
     const strategy = config.strategy;
 
     logger.info('Starting optimization', {
@@ -68,7 +67,7 @@ export class OptimizationEngine {
   /**
    * Get best config from results
    */
-  getBestConfig(results: OptimizationResult[]): ParameterConfig | undefined {
+  getBestConfig(results: GridSearchResult[]): ParameterConfig | undefined {
     if (results.length === 0) {
       return undefined;
     }
@@ -80,7 +79,7 @@ export class OptimizationEngine {
   /**
    * Get top N configs
    */
-  getTopConfigs(results: OptimizationResult[], n: number): ParameterConfig[] {
+  getTopConfigs(results: GridSearchResult[], n: number): ParameterConfig[] {
     return results.slice(0, n).map((r) => r.config);
   }
 }

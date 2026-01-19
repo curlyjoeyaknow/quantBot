@@ -123,15 +123,22 @@ export class CoverageCalculator {
     );
 
     // Check gap at start
-    const firstEventTime = DateTime.fromISO(sortedEvents[0].timestamp);
-    if (firstEventTime.diff(from, 'minutes').minutes > expectedIntervalMinutes * 2) {
-      gaps.push({ from, to: firstEventTime });
+    const firstEvent = sortedEvents[0];
+    if (firstEvent) {
+      const firstEventTime = DateTime.fromISO(firstEvent.timestamp);
+      if (firstEventTime.diff(from, 'minutes').minutes > expectedIntervalMinutes * 2) {
+        gaps.push({ from, to: firstEventTime });
+      }
     }
 
     // Check gaps between events
     for (let i = 0; i < sortedEvents.length - 1; i++) {
-      const currentTime = DateTime.fromISO(sortedEvents[i].timestamp);
-      const nextTime = DateTime.fromISO(sortedEvents[i + 1].timestamp);
+      const currentEvent = sortedEvents[i];
+      const nextEvent = sortedEvents[i + 1];
+      if (!currentEvent || !nextEvent) continue;
+
+      const currentTime = DateTime.fromISO(currentEvent.timestamp);
+      const nextTime = DateTime.fromISO(nextEvent.timestamp);
       const gapMinutes = nextTime.diff(currentTime, 'minutes').minutes;
 
       if (gapMinutes > expectedIntervalMinutes * 2) {
@@ -143,9 +150,12 @@ export class CoverageCalculator {
     }
 
     // Check gap at end
-    const lastEventTime = DateTime.fromISO(sortedEvents[sortedEvents.length - 1].timestamp);
-    if (to.diff(lastEventTime, 'minutes').minutes > expectedIntervalMinutes * 2) {
-      gaps.push({ from: lastEventTime, to });
+    const lastEvent = sortedEvents[sortedEvents.length - 1];
+    if (lastEvent) {
+      const lastEventTime = DateTime.fromISO(lastEvent.timestamp);
+      if (to.diff(lastEventTime, 'minutes').minutes > expectedIntervalMinutes * 2) {
+        gaps.push({ from: lastEventTime, to });
+      }
     }
 
     return gaps;

@@ -9,7 +9,7 @@ import type { ParameterSpaceDef, ParameterConfig, OptimizationConfig } from './t
 import { ParameterSpace } from './ParameterSpace.js';
 import { logger } from '@quantbot/infra/utils';
 
-export interface OptimizationResult {
+export interface GridSearchResult {
   config: ParameterConfig;
   metrics: unknown; // Simulation metrics
   score: number; // Combined score for ranking
@@ -32,7 +32,7 @@ export class GridSearch {
     space: ParameterSpaceDef,
     evaluateFn: (config: ParameterConfig) => Promise<unknown>,
     config: OptimizationConfig = { strategy: 'grid_search' }
-  ): Promise<OptimizationResult[]> {
+  ): Promise<GridSearchResult[]> {
     // Validate space
     const validation = this.paramSpace.validate(space);
     if (!validation.valid) {
@@ -47,7 +47,7 @@ export class GridSearch {
     });
 
     // Evaluate each config
-    const results: OptimizationResult[] = [];
+    const results: GridSearchResult[] = [];
     for (let i = 0; i < configs.length; i++) {
       const paramConfig = configs[i]!;
 
@@ -119,7 +119,7 @@ export class GridSearch {
    * Check if early stopping should trigger
    */
   private shouldStopEarly(
-    results: OptimizationResult[],
+    results: GridSearchResult[],
     earlyStopping: { minConfigs?: number; patience?: number }
   ): boolean {
     if (results.length < (earlyStopping.minConfigs ?? 10)) {

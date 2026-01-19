@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon';
 import type { Candle } from '@quantbot/core';
-import { logger } from '@quantbot/infra/utils';
-import { getStorageEngine } from '@quantbot/infra/storage';
+import { logger } from '@quantbot/utils';
+import { getStorageEngine } from '@quantbot/storage';
 
 /**
  * Fetch a monitoring-friendly slice of historical candles from ClickHouse (offline-only).

@@ -51,7 +51,7 @@ export const RunManifestSchema = z.object({
     .optional(),
 
   // Optional tags for filtering
-  tags: z.record(z.string()).optional(),
+  tags: z.record(z.string(), z.string()).optional(),
 });
 
 export type RunManifest = z.infer<typeof RunManifestSchema>;

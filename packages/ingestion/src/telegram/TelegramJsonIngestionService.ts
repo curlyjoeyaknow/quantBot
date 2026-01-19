@@ -9,7 +9,7 @@
  */
 
 import * as path from 'path';
-import { logger } from '@quantbot/infra/utils';
+import { logger } from '@quantbot/utils';
 import { parseJsonExport } from './TelegramJsonExportParser.js';
 import {
   TelegramMessageStreamProcessor,

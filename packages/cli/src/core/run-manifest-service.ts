@@ -6,7 +6,16 @@
  */
 
 import { getCurrentGitCommitHash, ValidationError } from '@quantbot/infra/utils';
-import { createRunManifest, hashObject, type RunManifest } from '@quantbot/core';
+import { createRunManifest, type RunManifest, RunManifestSchema } from '@quantbot/labcatalog';
+import { createHash } from 'crypto';
+
+/**
+ * Hash an object to a deterministic string
+ */
+function hashObject(obj: unknown): string {
+  const json = JSON.stringify(obj, Object.keys(obj as object).sort());
+  return createHash('sha256').update(json).digest('hex');
+}
 import type { ArtifactPaths } from './artifact-manager.js';
 import { writeArtifact } from './artifact-manager.js';
 import type { DataSnapshotRef } from '@quantbot/data-observatory';
@@ -18,7 +27,7 @@ export interface RunManifestComponents {
   /** Run ID */
   runId: string;
   /** Random seed */
-  seed: number;
+  seed: string;
   /** Strategy configuration (full config object) */
   strategyConfig: unknown;
   /**
@@ -117,22 +126,25 @@ export async function createAndWriteRunManifest(
   const riskModelHash = components.riskModel ? hashObject(components.riskModel) : undefined;
 
   // Create manifest
-  const manifest = createRunManifest({
-    runId: components.runId,
-    seed: components.seed,
-    gitSha,
-    snapshotId,
-    snapshotContentHash,
-    dataSnapshotHash, // backward compatibility
-    strategyHash,
-    executionModelHash,
-    costModelHash,
-    riskModelHash,
-    engineVersion: components.engineVersion,
-    command: components.command,
-    packageName: components.packageName,
-    metadata: components.metadata,
-  });
+  const manifest = createRunManifest(
+    components.runId,
+    {
+      seed: components.seed,
+      gitSha,
+      snapshotId,
+      snapshotContentHash,
+      dataSnapshotHash, // backward compatibility
+      strategyHash,
+      executionModelHash,
+      costModelHash,
+      riskModelHash,
+      engineVersion: components.engineVersion,
+      command: components.command,
+      packageName: components.packageName,
+      metadata: components.metadata,
+    },
+    './catalog'
+  );
 
   // Write manifest to disk
   await writeArtifact(paths, 'manifestJson', manifest);
@@ -149,7 +161,7 @@ export async function createAndWriteRunManifest(
 export async function readRunManifest(paths: ArtifactPaths): Promise<RunManifest | null> {
   try {
     const { readFile } = await import('fs/promises');
-    const { RunManifestSchema } = await import('@quantbot/core');
+    // RunManifestSchema already imported at top
     const content = await readFile(paths.manifestJson, 'utf8');
     const manifest = JSON.parse(content);
     return RunManifestSchema.parse(manifest);

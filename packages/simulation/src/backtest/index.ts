@@ -17,6 +17,7 @@ export * from './slice.js';
 export * from './engine/index.js';
 export * from './report.js';
 export * from './runBacktest.js';
+export * from './artifacts/index.js';
 
 // Path-only mode (Guardrail 2)
 export { runPathOnly } from './runPathOnly.js';
@@ -191,9 +192,7 @@ export {
   createMinimalExecutionModel,
   calculateSlippage,
   sampleLatency,
-  type FeeConfig,
-  type ExecutionConfig,
-} from './execution/index.js';
+} from '../execution-models/index.js';
 
 // Execution config factory (for CLI integration)
 export {

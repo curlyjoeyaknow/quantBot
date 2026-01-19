@@ -11,6 +11,7 @@
   "exclude": ["node_modules", "dist", "**/*.test.ts"],
   "references": [
     { "path": "../core" },
+    { "path": "../infra" },
     { "path": "../utils" },
     { "path": "../storage" },
     { "path": "../simulation" }
