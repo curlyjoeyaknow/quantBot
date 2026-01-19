@@ -28,7 +28,8 @@ import {
   OhlcvRepository,
   LENIENT_VALIDATION,
   type IngestionRunManifest,
-} from '@quantbot/infra/storage';
+  type UpsertResult,
+} from '@quantbot/storage';
 // TokensRepository removed (PostgreSQL) - metadata storage not critical for OHLCV ingestion
 import type { Candle, Chain } from '@quantbot/core';
 import { logger, ValidationError } from '@quantbot/infra/utils';
@@ -1378,11 +1379,16 @@ export class OhlcvIngestionEngine {
 
         if (runManifest) {
           // Use new upsertCandles with run manifest and validation
-          const result = await this.ohlcvRepository.upsertCandles(mint, chain, interval, candles, {
-            runManifest,
-            sourceTier: runManifest.sourceTier,
-            validation: LENIENT_VALIDATION, // Allow zero-volume but log warnings
-          });
+          const result: UpsertResult = await this.ohlcvRepository.upsertCandles(
+            mint,
+            chain,
+            interval,
+            candles,
+            {
+              runManifest,
+              validation: LENIENT_VALIDATION, // Allow zero-volume but log warnings
+            }
+          );
 
           // Accumulate stats for run completion
           this.runStats.candlesInserted += result.inserted;
