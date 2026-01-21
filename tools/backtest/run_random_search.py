@@ -56,7 +56,6 @@ from lib.trial_ledger import (
     store_optimizer_run,
     write_trials_to_parquet,
     write_trades_to_parquet,
-    export_trials_to_parquet,
     load_trades_from_parquet,
     get_completed_trial_ids_from_parquet,
     replay_run_from_parquet,
