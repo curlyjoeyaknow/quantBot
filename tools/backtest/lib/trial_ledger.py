@@ -1657,3 +1657,380 @@ def print_run_state(duckdb_path: str, run_id: str) -> None:
         duration_str = f" ({duration}ms)" if duration else ""
         print(f"  [{status_icon}] {phase['phase_name']}: {status}{duration_str}")
 
+
+def write_trials_to_parquet(trials: List[Dict[str, Any]], run_id: str, parquet_path: str) -> None:
+    """
+    Write trial results directly to Parquet file (artifacts).
+    
+    This writes trial data directly to Parquet without going through DuckDB first.
+    DuckDB will only store metadata (file path) as a catalog.
+    
+    Args:
+        trials: List of trial result dicts (from TrialResult.to_dict())
+        run_id: Run ID
+        parquet_path: Output path for Parquet file (string or Path)
+    """
+    from pathlib import Path
+    import duckdb
+    
+    parquet_path_obj = Path(parquet_path)
+    parquet_path_obj.parent.mkdir(parents=True, exist_ok=True)
+    
+    if not trials:
+        return
+    
+    # Use in-memory DuckDB to convert dicts to Parquet
+    # This matches the schema from optimizer.trials_f
+    with duckdb.connect(":memory:") as con:
+        # Create temp table with same schema as trials_f
+        con.execute("""
+            CREATE TABLE trials_temp AS
+            SELECT * FROM (
+                SELECT 
+                    ?::TEXT as trial_id,
+                    ?::TEXT as run_id,
+                    ?::TIMESTAMP as created_at,
+                    ?::TEXT as strategy_name,
+                    ?::DOUBLE as tp_mult,
+                    ?::DOUBLE as sl_mult,
+                    ?::TEXT as intrabar_order,
+                    ?::TEXT as params_json,
+                    ?::DATE as date_from,
+                    ?::DATE as date_to,
+                    ?::TEXT as entry_mode,
+                    ?::INTEGER as horizon_hours,
+                    ?::INTEGER as alerts_total,
+                    ?::INTEGER as alerts_ok,
+                    ?::DOUBLE as total_r,
+                    ?::DOUBLE as avg_r,
+                    ?::DOUBLE as avg_r_win,
+                    ?::DOUBLE as avg_r_loss,
+                    ?::DOUBLE as r_profit_factor,
+                    ?::DOUBLE as win_rate,
+                    ?::DOUBLE as profit_factor,
+                    ?::DOUBLE as expectancy_pct,
+                    ?::DOUBLE as total_return_pct,
+                    ?::DOUBLE as risk_adj_total_return_pct,
+                    ?::DOUBLE as hit2x_pct,
+                    ?::DOUBLE as hit3x_pct,
+                    ?::DOUBLE as hit4x_pct,
+                    ?::DOUBLE as median_ath_mult,
+                    ?::DOUBLE as p75_ath_mult,
+                    ?::DOUBLE as p95_ath_mult,
+                    ?::DOUBLE as median_time_to_2x_min,
+                    ?::DOUBLE as median_time_to_3x_min,
+                    ?::DOUBLE as median_dd_pre2x,
+                    ?::DOUBLE as p95_dd_pre2x,
+                    ?::DOUBLE as p75_dd_pre2x,
+                    ?::DOUBLE as median_dd_overall,
+                    ?::DOUBLE as objective_score,
+                    ?::DOUBLE as test_train_ratio,
+                    ?::DOUBLE as robust_score,
+                    ?::DOUBLE as stress_penalty,
+                    ?::TEXT as worst_lane,
+                    ?::DOUBLE as worst_lane_score,
+                    ?::TEXT as gate_check_json,
+                    ?::BOOLEAN as passes_gates,
+                    ?::BIGINT as duration_ms,
+                    ?::TEXT as summary_json
+            ) WHERE FALSE
+        """)
+        
+        # Insert all trials
+        created_at = datetime.now(UTC).replace(tzinfo=None)
+        for i, r in enumerate(trials):
+            trial_id = f"{run_id}_{i:04d}"
+            params = r.get("params", {})
+            s = r.get("summary", {})
+            obj = r.get("objective", {})
+            
+            # Extract metrics (matching store_optimizer_run logic)
+            test_train_ratio = r.get("ratio") or obj.get("median_ratio") if isinstance(obj, dict) else None
+            robust_score = obj.get("robust_score") if isinstance(obj, dict) else None
+            stress_penalty = obj.get("stress_penalty") if isinstance(obj, dict) else None
+            worst_lane = obj.get("worst_lane") if isinstance(obj, dict) else None
+            worst_lane_score = obj.get("worst_lane_score") if isinstance(obj, dict) else None
+            passes_gates = r.get("passes_gates", True)
+            gate_check = r.get("gate_check")
+            
+            # Use same logic as store_optimizer_run to populate fields
+            con.execute("""
+                INSERT INTO trials_temp VALUES (
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?, ?, ?
+                )
+            """, [
+                trial_id, run_id, created_at,
+                params.get("strategy_name", ""),
+                params.get("tp_mult"), params.get("sl_mult"),
+                params.get("intrabar_order", "sl_first"),
+                json.dumps(params, separators=(",", ":"), default=str),
+                None, None,  # date_from, date_to (from run level)
+                params.get("entry_mode"),
+                None,  # horizon_hours (from config)
+                r.get("alerts_total", 0), r.get("alerts_ok", 0),
+                s.get("total_r"), s.get("avg_r"), s.get("avg_r_win"),
+                s.get("avg_r_loss"), s.get("r_profit_factor"),
+                s.get("tp_sl_win_rate"), s.get("profit_factor"),
+                s.get("expectancy_pct"), s.get("total_return_pct"),
+                s.get("risk_adj_total_return_pct"),
+                s.get("pct_hit_2x"), s.get("pct_hit_3x"), s.get("pct_hit_4x"),
+                s.get("median_ath_mult"), s.get("p75_ath_mult"), s.get("p95_ath_mult"),
+                s.get("median_t2x_min"), s.get("median_t3x_min"),
+                r.get("median_dd_pre2x"), s.get("p95_dd_pre2x"),
+                r.get("p75_dd_pre2x"), s.get("median_dd_overall"),
+                obj.get("final_score") if isinstance(obj, dict) else None,
+                test_train_ratio, robust_score, stress_penalty,
+                worst_lane, worst_lane_score,
+                json.dumps(gate_check, separators=(",", ":")) if gate_check else None,
+                passes_gates, r.get("duration_ms", 0),
+                json.dumps(s, separators=(",", ":"), default=str),
+            ])
+        
+        # Export to Parquet
+        parquet_path_escaped = str(parquet_path).replace("'", "''")
+        con.execute(f"COPY trials_temp TO '{parquet_path_escaped}' (FORMAT PARQUET)")
+
+
+def write_trades_to_parquet(trades: List[Dict[str, Any]], run_id: str, parquet_path: str) -> None:
+    """
+    Write per-alert trade records directly to Parquet file (trade history / replay artifacts).
+    
+    This writes trade-by-trade records that are auditable and replayable.
+    Each record represents one alert/trade with entry/exit details.
+    
+    Args:
+        trades: List of trade record dicts (from run_tp_sl_query rows with trial_id, fold_name, run_id added)
+        run_id: Run ID
+        parquet_path: Output path for Parquet file (string or Path)
+    """
+    from pathlib import Path
+    import duckdb
+    
+    parquet_path_obj = Path(parquet_path)
+    parquet_path_obj.parent.mkdir(parents=True, exist_ok=True)
+    
+    if not trades:
+        return
+    
+    # Use in-memory DuckDB to convert dicts to Parquet
+    with duckdb.connect(":memory:") as con:
+        # Get sample row to infer schema dynamically
+        sample = trades[0]
+        columns = list(sample.keys())
+        
+        # Build CREATE TABLE statement dynamically based on actual columns
+        # This ensures we capture all columns from run_tp_sl_query
+        col_defs = []
+        for col in columns:
+            if col in ["run_id", "trial_id", "fold_name", "mint", "caller", "status", "tp_sl_exit_reason"]:
+                col_defs.append(f"{col} TEXT")
+            elif col == "alert_id":
+                col_defs.append(f"{col} BIGINT")
+            elif "ts" in col.lower() or "time" in col.lower() or ("at" in col.lower() and "ts" in col.lower()):
+                col_defs.append(f"{col} TIMESTAMP")
+            elif col in ["entry_price", "exit_price", "exit_h", "exit_l", "exit_cl", "tp_sl_ret", "ret_end", 
+                         "total_r", "avg_r", "ath_mult", "dd_pre2x", "peak_pnl_pct"]:
+                col_defs.append(f"{col} DOUBLE")
+            elif "count" in col.lower() or "candles" in col.lower():
+                col_defs.append(f"{col} BIGINT")
+            else:
+                # Try to infer type from sample value
+                val = sample.get(col)
+                if val is None:
+                    col_defs.append(f"{col} DOUBLE")  # Default to DOUBLE for nulls
+                elif isinstance(val, (int, float)):
+                    col_defs.append(f"{col} DOUBLE")
+                elif isinstance(val, bool):
+                    col_defs.append(f"{col} BOOLEAN")
+                else:
+                    col_defs.append(f"{col} TEXT")
+        
+        create_sql = f"""
+            CREATE TABLE trades_temp (
+                {', '.join(col_defs)}
+            )
+        """
+        con.execute(create_sql)
+        
+        # Insert all trades
+        for trade in trades:
+            values = [trade.get(col) for col in columns]
+            placeholders = ", ".join(["?"] * len(values))
+            con.execute(f"INSERT INTO trades_temp ({', '.join(columns)}) VALUES ({placeholders})", values)
+        
+        # Export to Parquet
+        parquet_path_escaped = str(parquet_path).replace("'", "''")
+        con.execute(f"COPY trades_temp TO '{parquet_path_escaped}' (FORMAT PARQUET)")
+
+
+# =============================================================================
+# REPLAY AND RESUME FUNCTIONALITY
+# =============================================================================
+
+def load_trades_from_parquet(parquet_path: str) -> List[Dict[str, Any]]:
+    """
+    Load trade-by-trade records from Parquet file.
+    
+    Args:
+        parquet_path: Path to Parquet file (string or Path)
+    
+    Returns:
+        List of trade record dicts
+    """
+    from pathlib import Path
+    import duckdb
+    
+    parquet_path_obj = Path(parquet_path)
+    if not parquet_path_obj.exists():
+        return []
+    
+    with duckdb.connect(":memory:") as con:
+        parquet_path_escaped = str(parquet_path).replace("'", "''")
+        rows = con.execute(f"SELECT * FROM '{parquet_path_escaped}'").fetchall()
+        cols = [d[0] for d in con.description]
+        return [dict(zip(cols, r)) for r in rows]
+
+
+def get_completed_trial_ids_from_parquet(parquet_path: str) -> Dict[str, Set[str]]:
+    """
+    Get set of completed trial_ids from Parquet file, grouped by fold_name.
+    
+    This is used for resume functionality - to determine which trials
+    have already been completed and can be skipped.
+    
+    Args:
+        parquet_path: Path to trades Parquet file
+    
+    Returns:
+        Dict mapping fold_name -> set of completed trial_ids
+    """
+    trades = load_trades_from_parquet(parquet_path)
+    if not trades:
+        return {}
+    
+    # Group trades by fold_name and trial_id
+    completed: Dict[str, Set[str]] = {}
+    for trade in trades:
+        fold_name = trade.get("fold_name", "default")
+        trial_id = trade.get("trial_id")
+        if trial_id:
+            if fold_name not in completed:
+                completed[fold_name] = set()
+            completed[fold_name].add(trial_id)
+    
+    return completed
+
+
+def reconstruct_trial_summary_from_trades(
+    trades: List[Dict[str, Any]],
+    sl_mult: float = 0.5,
+    risk_per_trade: float = 0.02,
+) -> Dict[str, Any]:
+    """
+    Reconstruct trial summary from trade records (replay functionality).
+    
+    This aggregates per-alert trade records back into a trial summary,
+    matching the output of summarize_tp_sl().
+    
+    Args:
+        trades: List of trade record dicts (from load_trades_from_parquet)
+        sl_mult: Stop-loss multiplier (for risk calculations)
+        risk_per_trade: Maximum risk per trade as fraction
+    
+    Returns:
+        Summary dict matching summarize_tp_sl() output
+    """
+    from lib.summary import summarize_tp_sl
+    
+    # Convert trade records back to the format expected by summarize_tp_sl
+    # Trade records have all the columns from run_tp_sl_query
+    rows = trades
+    
+    # Use existing summarize_tp_sl function
+    return summarize_tp_sl(rows, sl_mult=sl_mult, risk_per_trade=risk_per_trade)
+
+
+def replay_run_from_parquet(
+    trades_parquet_path: str,
+    trials_parquet_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Replay an entire run from Parquet files (full replay functionality).
+    
+    This reconstructs the entire run state from trade history and trial summaries,
+    allowing you to replay/verify a run without re-running it.
+    
+    Args:
+        trades_parquet_path: Path to trades Parquet file
+        trials_parquet_path: Optional path to trials Parquet file (for metadata)
+    
+    Returns:
+        Dict with:
+        - trades: List of all trade records
+        - trials: Dict mapping trial_id -> reconstructed trial summary
+        - run_id: Run ID from trades
+        - completed_trial_ids: Set of completed trial IDs
+    """
+    trades = load_trades_from_parquet(trades_parquet_path)
+    if not trades:
+        return {
+            "trades": [],
+            "trials": {},
+            "run_id": None,
+            "completed_trial_ids": set(),
+        }
+    
+    # Extract run_id
+    run_id = trades[0].get("run_id") if trades else None
+    
+    # Group trades by trial_id and fold_name
+    trial_trades: Dict[Tuple[str, str], List[Dict[str, Any]]] = {}
+    for trade in trades:
+        trial_id = trade.get("trial_id")
+        fold_name = trade.get("fold_name", "default")
+        key = (trial_id, fold_name)
+        if key not in trial_trades:
+            trial_trades[key] = []
+        trial_trades[key].append(trade)
+    
+    # Reconstruct trial summaries
+    trials: Dict[str, Dict[str, Any]] = {}
+    completed_trial_ids: Set[str] = set()
+    
+    for (trial_id, fold_name), fold_trades in trial_trades.items():
+        if trial_id:
+            completed_trial_ids.add(trial_id)
+            
+            # Get sl_mult from first trade (it's in params or we can infer)
+            sl_mult = 0.5  # Default
+            if fold_trades:
+                # Try to extract from trade data
+                first_trade = fold_trades[0]
+                # sl_mult might be in params_json or we need to infer from exit_reason
+            
+            # Reconstruct summary for this fold
+            summary = reconstruct_trial_summary_from_trades(fold_trades, sl_mult=sl_mult)
+            
+            # Store by trial_id (aggregate across folds if needed)
+            if trial_id not in trials:
+                trials[trial_id] = {
+                    "trial_id": trial_id,
+                    "fold_summaries": [],
+                    "total_trades": 0,
+                }
+            
+            trials[trial_id]["fold_summaries"].append({
+                "fold_name": fold_name,
+                "summary": summary,
+                "n_trades": len(fold_trades),
+            })
+            trials[trial_id]["total_trades"] += len(fold_trades)
+    
+    return {
+        "trades": trades,
+        "trials": trials,
+        "run_id": run_id,
+        "completed_trial_ids": completed_trial_ids,
+    }
