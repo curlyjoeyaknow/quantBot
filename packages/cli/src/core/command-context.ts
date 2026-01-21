@@ -37,6 +37,10 @@ import { TelegramPipelineService } from '@quantbot/ingestion';
 import { AnalyticsService } from '@quantbot/analytics';
 import { getClickHouseClient } from '@quantbot/infra/storage';
 import type { ClickHouseClient } from '@clickhouse/client';
+import {
+  DuckDBDataHelperService,
+  DEFAULT_DB_PATH as DUCKDB_DATA_HELPER_DEFAULT_PATH,
+} from '@quantbot/storage/src/duckdb/duckdb-data-helper-service.js';
 import { ensureInitialized } from './initialization-manager.js';
 
 /**
@@ -66,6 +70,7 @@ export interface CommandServices {
   strategiesRepository(): StrategiesRepository; // DuckDB version
   experimentRepository(): ExperimentRepository; // Experiment tracking
   runRepository(): RunRepository; // ClickHouse run ledger
+  duckdbDataHelper(): DuckDBDataHelperService; // DuckDB data helper (safe queries)
   // Add more services as needed
 }
 
@@ -216,6 +221,11 @@ export class CommandContext {
       runRepository: () => {
         // ClickHouse RunRepository (singleton pattern via getClickHouseClient)
         return new RunRepository();
+      },
+      duckdbDataHelper: () => {
+        // DuckDB Data Helper Service - safe queries with validation
+        const dbPath = process.env.DUCKDB_PATH || DUCKDB_DATA_HELPER_DEFAULT_PATH;
+        return new DuckDBDataHelperService(dbPath, pythonEngine);
       },
     };
   }

@@ -17,7 +17,6 @@ export * from './slice.js';
 export * from './engine/index.js';
 export * from './report.js';
 export * from './runBacktest.js';
-export * from './artifacts/index.js';
 
 // Path-only mode (Guardrail 2)
 export { runPathOnly } from './runPathOnly.js';
@@ -187,12 +186,17 @@ export {
   type SlippageModel,
   type CostModel,
   type FailureModel,
+} from '../execution-models/types.js';
+
+export {
   createPumpfunExecutionModel,
   createPumpswapExecutionModel,
   createMinimalExecutionModel,
   calculateSlippage,
   sampleLatency,
 } from '../execution-models/index.js';
+
+export { type FeeConfig, type ExecutionConfig } from './policies/policy-executor.js';
 
 // Execution config factory (for CLI integration)
 export {

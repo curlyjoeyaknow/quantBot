@@ -1,0 +1,61 @@
+# Package Versioning Requirement
+
+## ⚠️ CRITICAL: All Packages Must Be Versioned
+
+**Every package in the monorepo MUST have a valid semantic version number.**
+
+This is a **non-negotiable requirement** enforced by CI/CD and pre-commit hooks.
+
+## Requirements
+
+1. **All packages must have a `version` field** in `package.json`
+   - ✅ Public packages
+   - ✅ Private packages (`"private": true`)
+   - ✅ Internal-only packages
+   - ✅ Experimental packages
+   - ❌ **No exceptions**
+
+2. **Version format**: Must follow Semantic Versioning (Semver)
+   - Format: `MAJOR.MINOR.PATCH` (e.g., `1.0.0`, `2.1.3`)
+   - ❌ No `0.0.0` - This indicates an unversioned package
+   - ❌ No pre-release versions in committed code
+
+3. **Version bump requirements**:
+   - **Every code change** that affects a package MUST bump that package's version
+   - **PATCH** (`x.y.Z`): Bug fixes, typo corrections, internal refactoring
+   - **MINOR** (`x.Y.z`): New features, new exports, backward-compatible additions
+   - **MAJOR** (`X.y.z`): Breaking changes, removed APIs, incompatible changes
+
+4. **Exceptions** (no version bump needed):
+   - Only documentation files changed (`*.md`, `docs/**`)
+   - Only test files changed (`*.test.ts`, `tests/**`)
+   - Only configuration files changed (`*.config.ts`, `tsconfig.json`)
+
+## Enforcement
+
+- **Pre-commit hook**: Runs `pnpm verify:package-versions` and blocks commits if requirements not met
+- **CI pipeline**: Fails build if any package is missing a version or has `0.0.0`
+- **PR checks**: Blocks merge if changed packages don't have version bumps
+
+## Verification
+
+```bash
+# Check all packages have versions
+pnpm verify:package-versions
+```
+
+## Related Documentation
+
+- `docs/architecture/PACKAGE_VERSIONING_REQUIREMENT.md` - Full documentation
+- `CONTRIBUTING.md` - Versioning policy details
+
+## Summary
+
+**Remember:**
+- ✅ Every package MUST have a version
+- ✅ Every code change MUST bump the version
+- ✅ Versions MUST follow semver format
+- ✅ CI/CD enforces these requirements
+- ❌ No exceptions, no `0.0.0`, no missing versions
+
+**This is a matter of importance for code quality and maintainability.**

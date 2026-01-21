@@ -200,37 +200,20 @@ export * from './sinks.js';
 // =============================================================================
 // Analytics - Historical analytics and performance metrics
 // =============================================================================
-// Export analytics but avoid re-exporting duplicates from math
+// Export analytics module but avoid duplicate exports
 export {
   AnalyticsEngine,
-  getAnalyticsEngine,
-  CallDataLoader,
+  type AnalyticsOptions,
+  type AnalyticsResult,
   MetricsAggregator,
+  CallDataLoader,
+  type LoadCallsOptions,
   AnalyticsService,
-  CallerAnalysisResultSchema,
-  MintAnalysisResultSchema,
-  CorrelationAnalysisResultSchema,
-  AnalyticsResultSchema,
-  enrichCallWithPeriodMetrics,
-  enrichCallsWithPeriodMetrics,
-  analyzeReEntryOpportunities,
-  calculateAthFromCandles,
-  calculateAthFromCandleObjects,
-  calculatePeriodAthAtl,
+  type CallerAnalysisResult,
+  type MintAnalysisResult,
+  type CorrelationAnalysisResult,
+  type AnalyticsConfig,
 } from './analytics/index.js';
-export type {
-  AnalyticsOptions,
-  AnalyticsResult,
-  LoadCallsOptions,
-  AthResult,
-  EnrichPeriodMetricsOptions,
-  ReEntryAnalysis,
-  CallerAnalysisResult,
-  MintAnalysisResult,
-  CorrelationAnalysisResult,
-  AnalyticsConfig,
-} from './analytics/index.js';
-// Note: PeriodAthAtlResult, ReEntryOpportunity, calculatePeriodAthAtlFromCandles already exported from math
 
 // =============================================================================
 // Backwards Compatibility Exports

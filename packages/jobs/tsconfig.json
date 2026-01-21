@@ -10,18 +10,40 @@
     "skipLibCheck": true,
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "target": "ES2022"
+    "target": "ES2022",
+    "paths": {
+      "@quantbot/core": ["../core/src"],
+      "@quantbot/core/*": ["../core/src/*"],
+      "@quantbot/infra": ["../infra/src"],
+      "@quantbot/infra/*": ["../infra/src/*"],
+      "@quantbot/infra/utils": ["../infra/src/utils/index.ts", "../infra/dist/utils/index.d.ts"],
+      "@quantbot/infra/storage": ["../infra/src/storage/index.ts", "../infra/dist/storage/index.d.ts"],
+      "@quantbot/infra/api-clients": ["../infra/src/api-clients/index.ts", "../infra/dist/api-clients/index.d.ts"],
+      "@quantbot/utils": ["../utils/src"],
+      "@quantbot/utils/*": ["../utils/src/*"],
+      "@quantbot/storage": ["../storage/src"],
+      "@quantbot/storage/*": ["../storage/src/*"],
+      "@quantbot/api-clients": ["../api-clients/src"],
+      "@quantbot/api-clients/*": ["../api-clients/src/*"],
+      "@quantbot/workflows": ["../workflows/src"],
+      "@quantbot/workflows/*": ["../workflows/src/*"],
+      "@quantbot/data": ["../data/src"],
+      "@quantbot/data/*": ["../data/src/*"],
+      "@quantbot/data/ohlcv": ["../data/src/ohlcv/index.ts", "../data/dist/ohlcv/index.d.ts"]
+    }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "**/dist/**", "**/*.test.ts", "dist"],
   "references": [
     { "path": "../core" },
+    { "path": "../infra" },
     { "path": "../utils" },
     { "path": "../storage" },
     { "path": "../api-clients" },
     { "path": "../ohlcv" },
     { "path": "../observability" },
-    { "path": "../ingestion" }
+    { "path": "../ingestion" },
+    { "path": "../data" }
     // Removed ../workflows to break circular dependency
     // workflows depends on jobs, so jobs cannot depend on workflows
   ]

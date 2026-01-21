@@ -79,7 +79,11 @@
   "dependencies": {
     "@quantbot/core": "workspace:*",
     "@quantbot/infra": "workspace:*",
+    "@quantbot/labcatalog": "workspace:*",
+    "@quantbot/storage": "workspace:*",
+    "@quantbot/utils": "workspace:*",
     "@quantbot/workflows": "workspace:*",
+    "duckdb": "^1.0.0",
     "fast-check": "^4.4.0",
     "luxon": "^3.7.2",
     "uuid": "^11.1.0",
