@@ -179,7 +179,7 @@ def _load_from_caller_links(
     params: List[Any] = [from_ms, to_ms_excl]
 
     if has_chain:
-        sql += " AND lower(c.chain) = lower(?)" if has_canon_alerts_final else " AND lower(chain) = lower(?)"
+        sql += " AND lower(c.chain) = lower(?)" if has_mcap else " AND lower(chain) = lower(?)"
         params.append(chain)
 
     alerts = []
@@ -249,7 +249,7 @@ def _load_from_user_calls(
     params: List[Any] = [from_ms, to_ms_excl]
 
     if has_chain:
-        sql += " AND lower(u.chain) = lower(?)" if has_canon_alerts_final else " AND lower(chain) = lower(?)"
+        sql += " AND lower(u.chain) = lower(?)" if has_mcap else " AND lower(chain) = lower(?)"
         params.append(chain)
 
     alerts = []
