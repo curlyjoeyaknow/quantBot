@@ -1,0 +1,15 @@
+[
+  { "date": "2024-02-09", "token": "SOL", "buy": 98.5, "sell": null, "pnl": null, "multiplier": null, "status": "open" },
+  { "date": "2024-02-08", "token": "ETH", "buy": 2450, "sell": null, "pnl": null, "multiplier": null, "status": "open" },
+  { "date": "2024-02-07", "token": "BTC", "buy": 43200, "sell": null, "pnl": null, "multiplier": null, "status": "open" },
+  { "date": "2024-02-06", "token": "AVAX", "buy": 35.2, "sell": null, "pnl": null, "multiplier": null, "status": "open" },
+  { "date": "2024-02-05", "token": "ETH", "buy": 2380, "sell": 2520, "pnl": 2940, "multiplier": "1.06x", "status": "closed" },
+  { "date": "2024-02-02", "token": "SOL", "buy": 92.4, "sell": 105.8, "pnl": 4350, "multiplier": "1.14x", "status": "closed" },
+  { "date": "2024-01-30", "token": "BTC", "buy": 41500, "sell": 43800, "pnl": 5520, "multiplier": "1.06x", "status": "closed" },
+  { "date": "2024-01-26", "token": "LINK", "buy": 14.2, "sell": 12.8, "pnl": -1820, "multiplier": "0.90x", "status": "closed" },
+  { "date": "2024-01-23", "token": "ETH", "buy": 2280, "sell": 2450, "pnl": 3740, "multiplier": "1.07x", "status": "closed" },
+  { "date": "2024-01-19", "token": "DOGE", "buy": 0.082, "sell": 0.095, "pnl": 2600, "multiplier": "1.16x", "status": "closed" },
+  { "date": "2024-01-15", "token": "SOL", "buy": 85.6, "sell": 94.2, "pnl": 4010, "multiplier": "1.10x", "status": "closed" },
+  { "date": "2024-01-10", "token": "BTC", "buy": 42100, "sell": 44200, "pnl": 4990, "multiplier": "1.05x", "status": "closed" },
+  { "date": "2024-01-05", "token": "ETH", "buy": 2220, "sell": 2100, "pnl": -2400, "multiplier": "0.95x", "status": "closed" }
+]

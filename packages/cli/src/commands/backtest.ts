@@ -39,7 +39,7 @@ import {
   catalogQuerySchema,
   type CatalogQueryArgs,
 } from '../command-defs/backtest.js';
-import { join } from 'path';
+import { join, resolve as pathResolve } from 'path';
 import { existsSync } from 'fs';
 
 /**
@@ -548,7 +548,7 @@ const backtestModule: PackageCommandModule = {
 
           // Import exit-stack functions
           const { runExitStack } = await import('@quantbot/backtest');
-          const { openDuckDbFromEnv } = await import('@quantbot/backtest');
+          const { openDuckDb } = await import('@quantbot/backtest');
           const { planBacktest } = await import('@quantbot/backtest');
           const { checkCoverage } = await import('@quantbot/backtest');
           const { materialiseSlice } = await import('@quantbot/backtest');
@@ -653,8 +653,12 @@ const backtestModule: PackageCommandModule = {
             callTsMs: call.createdAt.toMillis(),
           }));
 
+          // Resolve DuckDB path from args or env (composition root - allowed here)
+          const duckdbPathRaw = process.env.DUCKDB_PATH || 'data/quantbot.duckdb';
+          const duckdbPath = pathResolve(duckdbPathRaw);
+
           // Open main DuckDB (not artifacts directory)
-          const db = await openDuckDbFromEnv();
+          const db = await openDuckDb(duckdbPath);
 
           try {
             // Run exit-stack

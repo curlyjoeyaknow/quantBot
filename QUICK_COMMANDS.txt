@@ -1,0 +1,15 @@
+# Quick Commands to Create Windows Recovery USB
+# USB Device: /dev/sda (28.7GB)
+
+# Step 1: Unmount USB (replace with your sudo password when prompted)
+sudo umount /dev/sda1
+
+# Step 2: Create bootable USB (replace PATH_TO_ISO with your Windows ISO path)
+# Example: sudo woeusb --device ~/Downloads/Windows11.iso /dev/sda
+sudo woeusb --device PATH_TO_ISO /dev/sda
+
+# Alternative if woeusb doesn't work:
+# sudo dd if=PATH_TO_ISO of=/dev/sda bs=4M status=progress oflag=sync
+
+# WARNING: This will erase all data on /dev/sda
+# The process takes 10-30 minutes

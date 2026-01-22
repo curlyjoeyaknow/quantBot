@@ -25,7 +25,13 @@ export class PerformanceMonitor {
   private metrics: PerformanceMetrics[] = [];
   private readonly enabled: boolean;
 
-  constructor(enabled: boolean = process.env.SIMULATION_PERF_MONITOR === 'true') {
+  /**
+   * Create performance monitor
+   *
+   * Pure constructor: accepts enabled flag as parameter instead of reading from env.
+   * Config resolution happens in composition roots (CLI handlers).
+   */
+  constructor(enabled: boolean = false) {
     this.enabled = enabled;
   }
 

@@ -3,13 +3,13 @@
 -- Description: Tracks and aggregates application errors for observability
 
 CREATE TABLE IF NOT EXISTS error_events (
-  id SERIAL PRIMARY KEY,
-  timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+  id INTEGER PRIMARY KEY,
+  timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   error_name VARCHAR(255) NOT NULL,
   error_message TEXT NOT NULL,
   error_stack TEXT,
   severity VARCHAR(20) NOT NULL,
-  context_json JSONB,
+  context_json VARCHAR,
   service VARCHAR(100),
   resolved BOOLEAN DEFAULT FALSE
 );

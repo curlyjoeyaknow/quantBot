@@ -1018,6 +1018,8 @@ def main() -> None:
 
     ap.add_argument("--store-duckdb", action="store_true")
     ap.add_argument("--run-name", default=None)
+    ap.add_argument("--export-baseline-parquet", default=None,
+                    help="Export baseline results to parquet file for reuse in optimization runs")
 
     ap.add_argument("--ch-batch", type=int, default=1000, help="Max mints per ClickHouse IN() chunk")
 
@@ -1154,6 +1156,27 @@ def main() -> None:
         "median_peak_pnl_pct", "median_ret_end_pct"
     ]
     write_csv(args.out_callers, caller_fields, caller_agg)
+
+    # Export baseline results to parquet for reuse in optimization runs
+    if args.export_baseline_parquet:
+        try:
+            import pandas as pd
+            
+            parquet_path = Path(args.export_baseline_parquet)
+            parquet_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Convert to DataFrame and export
+            df = pd.DataFrame(out_rows)
+            df.to_parquet(parquet_path, index=False, compression='snappy')
+            
+            if verbose:
+                file_size_mb = parquet_path.stat().st_size / 1024 / 1024
+                print(f"Exported baseline results to {parquet_path} ({len(df)} rows, {file_size_mb:.2f} MB)", file=sys.stderr)
+                print(f"  Use this file with optimization runs to skip recomputing path metrics", file=sys.stderr)
+        except ImportError:
+            print("Warning: pandas not installed, skipping parquet export", file=sys.stderr)
+        except Exception as e:
+            print(f"Warning: Failed to export parquet: {e}", file=sys.stderr)
 
     run_id = uuid.uuid4().hex
     stored = False

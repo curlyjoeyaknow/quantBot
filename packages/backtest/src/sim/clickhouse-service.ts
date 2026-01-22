@@ -81,18 +81,46 @@ export const MetricsResultSchema = z.object({
 export type MetricsResult = z.infer<typeof MetricsResultSchema>;
 
 /**
+ * ClickHouse configuration
+ */
+export interface ClickHouseConfig {
+  host: string;
+  port: number;
+  database: string;
+  username?: string;
+  password?: string;
+}
+
+/**
+ * Get ClickHouse config from environment variables
+ *
+ * This function should ONLY be called in composition roots (CLI handlers, context factories).
+ * Handlers should receive config as data, not read from env.
+ */
+export function getClickHouseConfigFromEnv(): ClickHouseConfig {
+  return {
+    host: process.env.CLICKHOUSE_HOST || 'localhost',
+    port: process.env.CLICKHOUSE_HTTP_PORT
+      ? parseInt(process.env.CLICKHOUSE_HTTP_PORT)
+      : process.env.CLICKHOUSE_PORT
+        ? parseInt(process.env.CLICKHOUSE_PORT)
+        : 8123,
+    database: process.env.CLICKHOUSE_DATABASE || 'quantbot',
+    username: process.env.CLICKHOUSE_USER || 'default',
+    password: process.env.CLICKHOUSE_PASSWORD || '',
+  };
+}
+
+/**
  * ClickHouse Service
+ *
+ * Pure service: accepts full config instead of reading from env.
+ * Config resolution happens in composition roots (CLI handlers).
  */
 export class ClickHouseService {
   constructor(
     private readonly pythonEngine: PythonEngine,
-    private readonly options?: {
-      host?: string;
-      port?: number;
-      database?: string;
-      username?: string;
-      password?: string;
-    }
+    private readonly config: ClickHouseConfig
   ) {}
 
   /**
@@ -116,21 +144,19 @@ export class ClickHouseService {
             end_time: endTime,
             interval,
           },
-          host: this.options?.host,
-          port: this.options?.port,
-          database: this.options?.database,
-          username: this.options?.username,
-          password: this.options?.password,
+          host: this.config.host,
+          port: this.config.port,
+          database: this.config.database,
+          username: this.config.username,
+          password: this.config.password,
         },
         {
           env: {
-            CLICKHOUSE_HOST: this.options?.host || process.env.CLICKHOUSE_HOST || 'localhost',
-            CLICKHOUSE_PORT:
-              this.options?.port?.toString() || process.env.CLICKHOUSE_PORT || '8123',
-            CLICKHOUSE_DATABASE:
-              this.options?.database || process.env.CLICKHOUSE_DATABASE || 'quantbot',
-            CLICKHOUSE_USERNAME: this.options?.username || process.env.CLICKHOUSE_USERNAME || '',
-            CLICKHOUSE_PASSWORD: this.options?.password || process.env.CLICKHOUSE_PASSWORD || '',
+            CLICKHOUSE_HOST: this.config.host,
+            CLICKHOUSE_PORT: this.config.port.toString(),
+            CLICKHOUSE_DATABASE: this.config.database,
+            CLICKHOUSE_USERNAME: this.config.username || '',
+            CLICKHOUSE_PASSWORD: this.config.password || '',
           },
         }
       );
@@ -157,21 +183,19 @@ export class ClickHouseService {
             run_id: runId,
             events,
           },
-          host: this.options?.host,
-          port: this.options?.port,
-          database: this.options?.database,
-          username: this.options?.username,
-          password: this.options?.password,
+          host: this.config.host,
+          port: this.config.port,
+          database: this.config.database,
+          username: this.config.username,
+          password: this.config.password,
         },
         {
           env: {
-            CLICKHOUSE_HOST: this.options?.host || process.env.CLICKHOUSE_HOST || 'localhost',
-            CLICKHOUSE_PORT:
-              this.options?.port?.toString() || process.env.CLICKHOUSE_PORT || '8123',
-            CLICKHOUSE_DATABASE:
-              this.options?.database || process.env.CLICKHOUSE_DATABASE || 'quantbot',
-            CLICKHOUSE_USERNAME: this.options?.username || process.env.CLICKHOUSE_USERNAME || '',
-            CLICKHOUSE_PASSWORD: this.options?.password || process.env.CLICKHOUSE_PASSWORD || '',
+            CLICKHOUSE_HOST: this.config.host,
+            CLICKHOUSE_PORT: this.config.port.toString(),
+            CLICKHOUSE_DATABASE: this.config.database,
+            CLICKHOUSE_USERNAME: this.config.username || '',
+            CLICKHOUSE_PASSWORD: this.config.password || '',
           },
         }
       );
@@ -197,21 +221,19 @@ export class ClickHouseService {
           data: {
             run_id: runId,
           },
-          host: this.options?.host,
-          port: this.options?.port,
-          database: this.options?.database,
-          username: this.options?.username,
-          password: this.options?.password,
+          host: this.config.host,
+          port: this.config.port,
+          database: this.config.database,
+          username: this.config.username,
+          password: this.config.password,
         },
         {
           env: {
-            CLICKHOUSE_HOST: this.options?.host || process.env.CLICKHOUSE_HOST || 'localhost',
-            CLICKHOUSE_PORT:
-              this.options?.port?.toString() || process.env.CLICKHOUSE_PORT || '8123',
-            CLICKHOUSE_DATABASE:
-              this.options?.database || process.env.CLICKHOUSE_DATABASE || 'quantbot',
-            CLICKHOUSE_USERNAME: this.options?.username || process.env.CLICKHOUSE_USERNAME || '',
-            CLICKHOUSE_PASSWORD: this.options?.password || process.env.CLICKHOUSE_PASSWORD || '',
+            CLICKHOUSE_HOST: this.config.host,
+            CLICKHOUSE_PORT: this.config.port.toString(),
+            CLICKHOUSE_DATABASE: this.config.database,
+            CLICKHOUSE_USERNAME: this.config.username || '',
+            CLICKHOUSE_PASSWORD: this.config.password || '',
           },
         }
       );

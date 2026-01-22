@@ -17,7 +17,7 @@ import { getCoverage } from '@quantbot/data/ohlcv';
 import type { CommandContext } from '../../core/command-context.js';
 import { ensureOhlcvCoverageSchema } from '../../commands/ingestion.js';
 import type { z } from 'zod';
-import type { DuckDBStorageService } from '@quantbot/backtest';
+import type { DuckDBStorageService } from '@quantbot/simulation';
 import {
   fetchMultiChainMetadata,
   getBirdeyeClient,
@@ -55,11 +55,13 @@ async function queryRecentTokens(
     throw new Error(`Failed to query recent tokens: ${result.error || 'Unknown error'}`);
   }
 
-  return result.tokens.map((token) => ({
-    mint: token.mint,
-    chain: token.chain,
-    earliestCall: DateTime.fromISO(token.earliest_call_timestamp),
-  }));
+  return result.tokens.map(
+    (token: { mint: string; chain: string; earliest_call_timestamp: string }) => ({
+      mint: token.mint,
+      chain: token.chain,
+      earliestCall: DateTime.fromISO(token.earliest_call_timestamp),
+    })
+  );
 }
 
 /**

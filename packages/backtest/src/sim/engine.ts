@@ -100,8 +100,14 @@ export interface SimulationLogger {
 }
 
 class ConsoleLogger implements SimulationLogger {
+  private readonly debugEnabled: boolean;
+
+  constructor(debugEnabled: boolean = false) {
+    this.debugEnabled = debugEnabled;
+  }
+
   debug(message: string, meta?: Record<string, unknown>) {
-    if (process.env.SIMULATION_DEBUG === 'true') {
+    if (this.debugEnabled) {
       console.debug(`[simulation:debug] ${message}`, meta ?? {});
     }
   }

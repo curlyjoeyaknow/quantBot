@@ -1,0 +1,143 @@
+{
+  "weeks": [
+    {
+      "id": "week-6",
+      "label": "Week 6",
+      "dateRange": "Feb 5 - Feb 9",
+      "stats": {
+        "totalPNL": 8400,
+        "equity": 142300,
+        "activeTrades": 4,
+        "winRate": 78,
+        "weeklyPNL": 8400
+      },
+      "trades": [
+        { "date": "2024-02-09", "token": "SOL", "buy": 98.5, "sell": null, "pnl": null, "multiplier": null, "status": "open" },
+        { "date": "2024-02-08", "token": "ETH", "buy": 2450, "sell": null, "pnl": null, "multiplier": null, "status": "open" },
+        { "date": "2024-02-07", "token": "BTC", "buy": 43200, "sell": 44850, "pnl": 3300, "multiplier": "1.8x", "status": "closed" },
+        { "date": "2024-02-06", "token": "AVAX", "buy": 35.2, "sell": 38.9, "pnl": 740, "multiplier": "1.4x", "status": "closed" },
+        { "date": "2024-02-05", "token": "LINK", "buy": 18.5, "sell": 21.2, "pnl": 540, "multiplier": "1.3x", "status": "closed" }
+      ],
+      "activeTrades": [
+        { "date": "2024-02-09", "token": "SOL", "buy": 98.5, "currentPrice": 105.2, "unrealizedPnl": 1340, "change": 6.8 },
+        { "date": "2024-02-08", "token": "ETH", "buy": 2450, "currentPrice": 2580, "unrealizedPnl": 2600, "change": 5.3 }
+      ],
+      "returnPct": 6.3
+    },
+    {
+      "id": "week-5",
+      "label": "Week 5",
+      "dateRange": "Jan 29 - Feb 2",
+      "stats": {
+        "totalPNL": 6200,
+        "equity": 133900,
+        "activeTrades": 2,
+        "winRate": 75,
+        "weeklyPNL": 6200
+      },
+      "trades": [
+        { "date": "2024-02-02", "token": "BTC", "buy": 42100, "sell": 43800, "pnl": 3400, "multiplier": "2.0x", "status": "closed" },
+        { "date": "2024-02-01", "token": "SOL", "buy": 95.2, "sell": 99.8, "pnl": 920, "multiplier": "1.5x", "status": "closed" },
+        { "date": "2024-01-31", "token": "MATIC", "buy": 0.82, "sell": 0.78, "pnl": -160, "multiplier": "0.8x", "status": "closed" },
+        { "date": "2024-01-30", "token": "ETH", "buy": 2380, "sell": 2450, "pnl": 1400, "multiplier": "1.6x", "status": "closed" }
+      ],
+      "activeTrades": [
+        { "date": "2024-02-02", "token": "DOGE", "buy": 0.082, "currentPrice": 0.088, "unrealizedPnl": 240, "change": 7.3 },
+        { "date": "2024-01-30", "token": "XRP", "buy": 0.52, "currentPrice": 0.55, "unrealizedPnl": 300, "change": 5.8 }
+      ],
+      "returnPct": 4.8
+    },
+    {
+      "id": "week-4",
+      "label": "Week 4",
+      "dateRange": "Jan 22 - Jan 26",
+      "stats": {
+        "totalPNL": 4800,
+        "equity": 127700,
+        "activeTrades": 3,
+        "winRate": 70,
+        "weeklyPNL": 4800
+      },
+      "trades": [
+        { "date": "2024-01-26", "token": "SOL", "buy": 88.5, "sell": 95.2, "pnl": 1340, "multiplier": "1.7x", "status": "closed" },
+        { "date": "2024-01-25", "token": "ETH", "buy": 2320, "sell": 2380, "pnl": 1200, "multiplier": "1.5x", "status": "closed" },
+        { "date": "2024-01-24", "token": "BTC", "buy": 41500, "sell": 42100, "pnl": 1200, "multiplier": "1.4x", "status": "closed" },
+        { "date": "2024-01-23", "token": "AVAX", "buy": 33.8, "sell": 32.1, "pnl": -340, "multiplier": "0.7x", "status": "closed" },
+        { "date": "2024-01-22", "token": "LINK", "buy": 15.2, "sell": 17.8, "pnl": 520, "multiplier": "1.4x", "status": "closed" }
+      ],
+      "activeTrades": [
+        { "date": "2024-01-26", "token": "BNB", "buy": 305, "currentPrice": 318, "unrealizedPnl": 260, "change": 4.3 },
+        { "date": "2024-01-25", "token": "ADA", "buy": 0.52, "currentPrice": 0.55, "unrealizedPnl": 180, "change": 5.8 },
+        { "date": "2024-01-24", "token": "DOT", "buy": 7.2, "currentPrice": 7.5, "unrealizedPnl": 120, "change": 4.2 }
+      ],
+      "returnPct": 3.9
+    },
+    {
+      "id": "week-3",
+      "label": "Week 3",
+      "dateRange": "Jan 15 - Jan 19",
+      "stats": {
+        "totalPNL": 5100,
+        "equity": 122900,
+        "activeTrades": 1,
+        "winRate": 80,
+        "weeklyPNL": 5100
+      },
+      "trades": [
+        { "date": "2024-01-19", "token": "BTC", "buy": 40200, "sell": 41500, "pnl": 2600, "multiplier": "2.2x", "status": "closed" },
+        { "date": "2024-01-18", "token": "ETH", "buy": 2280, "sell": 2320, "pnl": 800, "multiplier": "1.3x", "status": "closed" },
+        { "date": "2024-01-17", "token": "SOL", "buy": 85.2, "sell": 88.5, "pnl": 660, "multiplier": "1.4x", "status": "closed" },
+        { "date": "2024-01-16", "token": "MATIC", "buy": 0.78, "sell": 0.82, "pnl": 320, "multiplier": "1.2x", "status": "closed" },
+        { "date": "2024-01-15", "token": "AVAX", "buy": 35.5, "sell": 33.8, "pnl": -340, "multiplier": "0.7x", "status": "closed" }
+      ],
+      "activeTrades": [
+        { "date": "2024-01-19", "token": "UNI", "buy": 6.2, "currentPrice": 6.5, "unrealizedPnl": 150, "change": 4.8 }
+      ],
+      "returnPct": 4.3
+    },
+    {
+      "id": "week-2",
+      "label": "Week 2",
+      "dateRange": "Jan 8 - Jan 12",
+      "stats": {
+        "totalPNL": 3900,
+        "equity": 117800,
+        "activeTrades": 2,
+        "winRate": 67,
+        "weeklyPNL": 3900
+      },
+      "trades": [
+        { "date": "2024-01-12", "token": "ETH", "buy": 2220, "sell": 2280, "pnl": 1200, "multiplier": "1.6x", "status": "closed" },
+        { "date": "2024-01-11", "token": "BTC", "buy": 39500, "sell": 40200, "pnl": 1400, "multiplier": "1.5x", "status": "closed" },
+        { "date": "2024-01-10", "token": "SOL", "buy": 82.5, "sell": 85.2, "pnl": 540, "multiplier": "1.3x", "status": "closed" },
+        { "date": "2024-01-09", "token": "LINK", "buy": 14.8, "sell": 13.9, "pnl": -360, "multiplier": "0.6x", "status": "closed" },
+        { "date": "2024-01-08", "token": "AVAX", "buy": 32.5, "sell": 35.5, "pnl": 600, "multiplier": "1.4x", "status": "closed" }
+      ],
+      "activeTrades": [
+        { "date": "2024-01-12", "token": "ATOM", "buy": 9.8, "currentPrice": 10.2, "unrealizedPnl": 160, "change": 4.1 },
+        { "date": "2024-01-11", "token": "NEAR", "buy": 2.8, "currentPrice": 2.95, "unrealizedPnl": 120, "change": 5.4 }
+      ],
+      "returnPct": 3.4
+    },
+    {
+      "id": "week-1",
+      "label": "Week 1",
+      "dateRange": "Jan 1 - Jan 5",
+      "stats": {
+        "totalPNL": 3100,
+        "equity": 113900,
+        "activeTrades": 0,
+        "winRate": 75,
+        "weeklyPNL": 3100
+      },
+      "trades": [
+        { "date": "2024-01-05", "token": "BTC", "buy": 38500, "sell": 39500, "pnl": 2000, "multiplier": "2.5x", "status": "closed" },
+        { "date": "2024-01-04", "token": "ETH", "buy": 2180, "sell": 2220, "pnl": 800, "multiplier": "1.4x", "status": "closed" },
+        { "date": "2024-01-03", "token": "SOL", "buy": 80.2, "sell": 82.5, "pnl": 460, "multiplier": "1.3x", "status": "closed" },
+        { "date": "2024-01-02", "token": "MATIC", "buy": 0.85, "sell": 0.78, "pnl": -280, "multiplier": "0.7x", "status": "closed" }
+      ],
+      "activeTrades": [],
+      "returnPct": 2.8
+    }
+  ]
+}

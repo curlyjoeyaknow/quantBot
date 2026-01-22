@@ -115,6 +115,26 @@ export interface CoverageResult {
     chain: Chain;
     reason: 'too_new' | 'missing_range' | 'missing_interval';
   }>;
+  /** Integrity check results (if integrity checks enabled) */
+  integrity?: {
+    /** Overall integrity status */
+    passed: boolean;
+    /** Total integrity issues found */
+    totalIssues: number;
+    /** Critical issues count */
+    criticalIssues: number;
+    /** Warning issues count */
+    warningIssues: number;
+    /** Integrity issues by call ID */
+    issuesByCallId: Map<
+      string,
+      Array<{
+        type: string;
+        severity: string;
+        description: string;
+      }>
+    >;
+  };
 }
 
 /**

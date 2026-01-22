@@ -170,7 +170,7 @@ fastify.post('/backtest', async (request: FastifyRequest, reply: FastifyReply) =
 
         // Import workflows (dynamic import to avoid circular dependency)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const workflows = await import('@quantbot/workflows' as any) as {
+        const workflows = (await import('@quantbot/workflows' as any)) as {
           runSimulation: (spec: unknown, ctx: unknown) => Promise<unknown>;
           createProductionContext: (opts: unknown) => unknown;
         };
@@ -208,7 +208,7 @@ fastify.post('/backtest', async (request: FastifyRequest, reply: FastifyReply) =
         await logForRun(runId, 'info', 'Running simulation workflow', { spec });
 
         // Run the simulation
-        const result = await workflows.runSimulation(spec, ctx) as {
+        const result = (await workflows.runSimulation(spec, ctx)) as {
           runId: string;
           totals: {
             callsFound: number;
@@ -271,7 +271,8 @@ fastify.post('/backtest/dry-run', async (request: FastifyRequest, reply: Fastify
     const strategiesRepo = new StrategiesRepository(duckdbPath);
     const strategies = await strategiesRepo.list();
     const strategy = strategies.find(
-      (s: { name: string; version?: string }) => s.name === body.strategyId && s.version === body.strategyVersion
+      (s: { name: string; version?: string }) =>
+        s.name === body.strategyId && s.version === body.strategyVersion
     );
 
     if (!strategy) {
@@ -335,23 +336,25 @@ fastify.get('/runs', async (request: FastifyRequest, reply: FastifyReply) => {
     });
 
     // Map to API response format
-    const runs = statusResult.runs.map((status: {
-      runId: string;
-      strategyId?: string;
-      status: string;
-      summary?: unknown;
-      createdAt: string;
-      startedAt?: string;
-      completedAt?: string;
-    }) => ({
-      runId: status.runId,
-      strategyId: status.strategyId,
-      status: status.status,
-      summary: status.summary,
-      createdAt: status.createdAt,
-      startedAt: status.startedAt,
-      completedAt: status.completedAt,
-    }));
+    const runs = statusResult.runs.map(
+      (status: {
+        runId: string;
+        strategyId?: string;
+        status: string;
+        summary?: unknown;
+        createdAt: string;
+        startedAt?: string;
+        completedAt?: string;
+      }) => ({
+        runId: status.runId,
+        strategyId: status.strategyId,
+        status: status.status,
+        summary: status.summary,
+        createdAt: status.createdAt,
+        startedAt: status.startedAt,
+        completedAt: status.completedAt,
+      })
+    );
 
     // If we need more results or no results from run_status, also query simulation_runs
     if (runs.length < limit) {
@@ -793,7 +796,9 @@ fastify.get(
       const repo = new StrategiesRepository(duckdbPath);
 
       const strategies = await repo.list();
-      const strategy = strategies.find((s: { name: string; version?: string }) => s.name === id && s.version === version);
+      const strategy = strategies.find(
+        (s: { name: string; version?: string }) => s.name === id && s.version === version
+      );
 
       if (!strategy) {
         reply.code(404);

@@ -90,7 +90,9 @@ export async function replayManifestHandler(args: ReplayManifestArgs, ctx: Comma
 
   try {
     const snapshotManager = createSnapshotManager(snapshotDbPath);
-    const snapshotRef = await snapshotManager.getSnapshot((manifestData as any).snapshot_id || (manifestData as any).snapshotId);
+    const snapshotRef = await snapshotManager.getSnapshot(
+      (manifestData as any).snapshot_id || (manifestData as any).snapshotId
+    );
 
     if (!snapshotRef) {
       throw new ValidationError(
@@ -105,7 +107,8 @@ export async function replayManifestHandler(args: ReplayManifestArgs, ctx: Comma
     }
 
     // Verify snapshot content hash matches manifest (integrity check)
-    const expectedHash = (manifestData as any).snapshot_content_hash || (manifestData as any).snapshotContentHash;
+    const expectedHash =
+      (manifestData as any).snapshot_content_hash || (manifestData as any).snapshotContentHash;
     if (expectedHash && snapshotRef.contentHash !== expectedHash) {
       throw new ValidationError(
         `Snapshot content hash mismatch. ` +
@@ -114,7 +117,9 @@ export async function replayManifestHandler(args: ReplayManifestArgs, ctx: Comma
           `The snapshot may have been modified or corrupted.`,
         {
           snapshotId: (manifestData as any).snapshot_id || (manifestData as any).snapshotId,
-          expectedHash: (manifestData as any).snapshot_content_hash || (manifestData as any).snapshotContentHash,
+          expectedHash:
+            (manifestData as any).snapshot_content_hash ||
+            (manifestData as any).snapshotContentHash,
           actualHash: snapshotRef.contentHash,
           runId,
         }

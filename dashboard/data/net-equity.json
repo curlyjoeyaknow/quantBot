@@ -1,0 +1,15 @@
+[
+  { "date": "2024-01-01", "grossEquity": 100000, "expenses": 0, "netEquity": 100000 },
+  { "date": "2024-01-05", "grossEquity": 103100, "expenses": 103.95, "netEquity": 102996.05 },
+  { "date": "2024-01-08", "grossEquity": 106200, "expenses": 883.95, "netEquity": 105316.05 },
+  { "date": "2024-01-12", "grossEquity": 109200, "expenses": 1013.95, "netEquity": 108186.05 },
+  { "date": "2024-01-15", "grossEquity": 111500, "expenses": 2213.95, "netEquity": 109286.05 },
+  { "date": "2024-01-19", "grossEquity": 115600, "expenses": 2363.95, "netEquity": 113236.05 },
+  { "date": "2024-01-22", "grossEquity": 117300, "expenses": 2363.95, "netEquity": 114936.05 },
+  { "date": "2024-01-26", "grossEquity": 123100, "expenses": 2813.95, "netEquity": 120286.05 },
+  { "date": "2024-01-31", "grossEquity": 127500, "expenses": 2873.90, "netEquity": 124626.10 },
+  { "date": "2024-02-01", "grossEquity": 130200, "expenses": 2933.85, "netEquity": 127266.15 },
+  { "date": "2024-02-05", "grossEquity": 135400, "expenses": 3232.85, "netEquity": 132167.15 },
+  { "date": "2024-02-08", "grossEquity": 140500, "expenses": 4082.85, "netEquity": 136417.15 },
+  { "date": "2024-02-09", "grossEquity": 142300, "expenses": 4082.85, "netEquity": 138217.15 }
+]

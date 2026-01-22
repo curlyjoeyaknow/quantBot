@@ -40,7 +40,7 @@ import type { ClickHouseClient } from '@clickhouse/client';
 import {
   DuckDBDataHelperService,
   DEFAULT_DB_PATH as DUCKDB_DATA_HELPER_DEFAULT_PATH,
-} from '@quantbot/storage/src/duckdb/duckdb-data-helper-service.js';
+} from '@quantbot/storage';
 import { ensureInitialized } from './initialization-manager.js';
 
 /**

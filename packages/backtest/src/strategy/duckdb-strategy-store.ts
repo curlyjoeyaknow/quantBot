@@ -32,6 +32,24 @@ function all<T>(db: DuckDb, sql: string, params: any[] = []) {
   });
 }
 
+/**
+ * Open DuckDB database from path
+ *
+ * Pure function: accepts path as parameter instead of reading from env.
+ * Config resolution happens in composition roots (CLI handlers).
+ */
+export async function openDuckDb(path: string): Promise<DuckDb> {
+  if (!path) {
+    throw new Error('DuckDB path is required');
+  }
+  const duckdb = await getDuckdbModule();
+  return new duckdb.Database(path) as DuckDb;
+}
+
+/**
+ * @deprecated Use openDuckDb(path) instead. This function reads from env and violates handler purity.
+ * Kept for backward compatibility during migration.
+ */
 export async function openDuckDbFromEnv(): Promise<DuckDb> {
   const path = process.env.DUCKDB_PATH;
   if (!path) throw new Error('DUCKDB_PATH env var is required (same file used by calls + UI).');

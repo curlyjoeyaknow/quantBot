@@ -39,7 +39,9 @@ export function fromCLIManifest(cliManifest: RunManifest): CanonicalRunManifest 
  * @deprecated Use createRunManifest from @quantbot/labcatalog instead - signature has changed
  */
 export async function fromRunArtifact(_artifact: RunArtifact): Promise<CanonicalRunManifest> {
-  throw new Error('fromRunArtifact is deprecated - use createRunManifest from @quantbot/labcatalog with correct signature');
+  throw new Error(
+    'fromRunArtifact is deprecated - use createRunManifest from @quantbot/labcatalog with correct signature'
+  );
   // const metadata = artifact.metadata;
   // return createRunManifest(metadata.runId, { ... }, './catalog');
 }
@@ -75,6 +77,8 @@ export async function createCanonicalManifest(_components: {
   simulationTimeMs?: number;
   metadata?: Record<string, unknown>;
 }): Promise<CanonicalRunManifest> {
-  throw new Error('createCanonicalManifest is deprecated - use createRunManifest from @quantbot/labcatalog with correct signature');
+  throw new Error(
+    'createCanonicalManifest is deprecated - use createRunManifest from @quantbot/labcatalog with correct signature'
+  );
   // return createRunManifest(components.runId, { ... }, './catalog');
 }

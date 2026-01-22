@@ -33,7 +33,9 @@
       "@quantbot/observability": ["../observability/src"],
       "@quantbot/observability/*": ["../observability/src/*"],
       "@quantbot/ohlcv": ["../ohlcv/src"],
-      "@quantbot/ohlcv/*": ["../ohlcv/src/*"]
+      "@quantbot/ohlcv/*": ["../ohlcv/src/*"],
+      "@quantbot/data": ["../data/src"],
+      "@quantbot/data/*": ["../data/src/*"]
     }
   },
   "include": ["src/**/*"],
@@ -49,7 +51,8 @@
     { "path": "../ingestion" },
     { "path": "../simulation" },
     { "path": "../workflows" },
-    { "path": "../jobs" }
+    { "path": "../jobs" },
+    { "path": "../data" }
   ]
 }
 

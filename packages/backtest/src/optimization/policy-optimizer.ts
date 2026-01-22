@@ -19,6 +19,17 @@ import {
 import type { PolicyResultRow, CallRecord } from '../types.js';
 import { POLICY_GRID } from '../policies/risk-policy.js';
 import { logger } from '@quantbot/infra/utils';
+import {
+  splitCalls,
+  type ValidationSplitConfig,
+  type ValidationSplitResult,
+} from './validation-split.js';
+import {
+  detectOverfitting,
+  formatOverfittingMetrics,
+  type OverfittingMetrics,
+  type OverfittingDetectionConfig,
+} from './overfitting-detection.js';
 
 // =============================================================================
 // Types
@@ -39,13 +50,21 @@ export interface OptimizeRequest {
   callerGroups?: string[];
   /** Optional: path metrics for caller profile analysis */
   pathMetricsByCallId?: Map<string, { peak_multiple?: number | null }>;
+  /** Optional: validation split configuration */
+  validationSplit?: ValidationSplitConfig;
+  /** Optional: overfitting detection configuration */
+  overfittingConfig?: OverfittingDetectionConfig;
 }
 
 export interface OptimalPolicy {
   /** The optimal policy configuration */
   policy: RiskPolicy;
-  /** Policy score */
+  /** Policy score (train set) */
   score: PolicyScore;
+  /** Validation score (if validation split used) */
+  validationScore?: PolicyScore;
+  /** Overfitting metrics (if validation split used) */
+  overfittingMetrics?: OverfittingMetrics;
   /** Policy ID for storage */
   policyId: string;
 }
@@ -54,11 +73,18 @@ export interface OptimizationResult {
   /** Best policy found */
   bestPolicy: OptimalPolicy | null;
   /** All policies evaluated (sorted by score descending) */
-  allPolicies: Array<{ policy: RiskPolicy; score: PolicyScore }>;
+  allPolicies: Array<{
+    policy: RiskPolicy;
+    score: PolicyScore;
+    validationScore?: PolicyScore;
+    overfittingMetrics?: OverfittingMetrics;
+  }>;
   /** Number of policies evaluated */
   policiesEvaluated: number;
   /** Number of policies that satisfied constraints */
   feasiblePolicies: number;
+  /** Validation split metadata (if validation split used) */
+  validationSplit?: ValidationSplitResult['metadata'];
 }
 
 // =============================================================================
@@ -94,12 +120,32 @@ export function optimizePolicy(req: OptimizeRequest): OptimizationResult {
     });
   }
 
+  // Split calls into train/validation sets if validation split configured
+  let trainCalls = callsToOptimize;
+  let validationCalls: CallRecord[] = [];
+  let validationSplitMetadata: ValidationSplitResult['metadata'] | undefined;
+
+  if (req.validationSplit) {
+    const splitResult = splitCalls(callsToOptimize, req.validationSplit);
+    trainCalls = splitResult.trainCalls;
+    validationCalls = splitResult.validationCalls;
+    validationSplitMetadata = splitResult.metadata;
+
+    logger.info('Validation split applied', {
+      strategy: req.validationSplit.strategy,
+      trainCount: trainCalls.length,
+      validationCount: validationCalls.length,
+      trainFraction: req.validationSplit.trainFraction,
+    });
+  }
+
   // Analyze caller profile to determine if they're high-multiple
   // This affects which policies we generate
+  // Use train calls only for profile analysis (to avoid data leakage)
   let isHighMultipleCaller = false;
-  if (req.pathMetricsByCallId && callsToOptimize.length > 0) {
+  if (req.pathMetricsByCallId && trainCalls.length > 0) {
     const pathMetrics: Array<{ peak_multiple?: number | null }> = [];
-    for (const call of callsToOptimize) {
+    for (const call of trainCalls) {
       const pm = req.pathMetricsByCallId.get(call.id);
       if (pm) pathMetrics.push(pm);
     }
@@ -110,6 +156,7 @@ export function optimizePolicy(req: OptimizeRequest): OptimizationResult {
       isHighMultipleCaller,
       p95PeakMultiple: profile.p95PeakMultiple,
       p75PeakMultiple: profile.p75PeakMultiple,
+      trainCallsUsed: trainCalls.length,
     });
   }
 
@@ -145,21 +192,28 @@ export function optimizePolicy(req: OptimizeRequest): OptimizationResult {
   }
 
   logger.info('Starting policy optimization', {
-    calls: callsToOptimize.length,
+    trainCalls: trainCalls.length,
+    validationCalls: validationCalls.length,
     policies: policies.length,
     policyTypes,
     callerGroups: req.callerGroups,
+    validationSplit: req.validationSplit ? req.validationSplit.strategy : 'none',
   });
 
   // Evaluate each policy
-  const evaluatedPolicies: Array<{ policy: RiskPolicy; score: PolicyScore }> = [];
+  const evaluatedPolicies: Array<{
+    policy: RiskPolicy;
+    score: PolicyScore;
+    validationScore?: PolicyScore;
+    overfittingMetrics?: OverfittingMetrics;
+  }> = [];
 
   for (const policy of policies) {
-    // Execute policy on all calls
-    const results: PolicyResultRow[] = [];
-    const pathMetrics: Array<{ peak_multiple?: number | null }> = [];
+    // Execute policy on train calls
+    const trainResults: PolicyResultRow[] = [];
+    const trainPathMetrics: Array<{ peak_multiple?: number | null }> = [];
 
-    for (const call of callsToOptimize) {
+    for (const call of trainCalls) {
       const candles = req.candlesByCallId.get(call.id);
       if (!candles || candles.length === 0) continue;
 
@@ -167,7 +221,7 @@ export function optimizePolicy(req: OptimizeRequest): OptimizationResult {
       const result = executePolicy(candles, alertTsMs, policy, fees);
 
       if (result.exitReason !== 'no_entry') {
-        results.push({
+        trainResults.push({
           run_id: 'optimizer',
           policy_id: policyToId(policy),
           call_id: call.id,
@@ -188,27 +242,124 @@ export function optimizePolicy(req: OptimizeRequest): OptimizationResult {
       if (req.pathMetricsByCallId) {
         const pathMetric = req.pathMetricsByCallId.get(call.id);
         if (pathMetric) {
-          pathMetrics.push(pathMetric);
+          trainPathMetrics.push(pathMetric);
         }
       }
     }
 
-    // Score the policy (with path metrics for caller profile analysis)
-    const score = scorePolicy(results, constraints, undefined, pathMetrics);
-    evaluatedPolicies.push({ policy, score });
+    // Score the policy on train set
+    const trainScore = scorePolicy(trainResults, constraints, undefined, trainPathMetrics);
+
+    // Evaluate on validation set if validation split used
+    let validationScore: PolicyScore | undefined;
+    let overfittingMetrics: OverfittingMetrics | undefined;
+
+    if (validationCalls.length > 0) {
+      const validationResults: PolicyResultRow[] = [];
+      const validationPathMetrics: Array<{ peak_multiple?: number | null }> = [];
+
+      for (const call of validationCalls) {
+        const candles = req.candlesByCallId.get(call.id);
+        if (!candles || candles.length === 0) continue;
+
+        const alertTsMs = call.createdAt.toMillis();
+        const result = executePolicy(candles, alertTsMs, policy, fees);
+
+        if (result.exitReason !== 'no_entry') {
+          validationResults.push({
+            run_id: 'optimizer',
+            policy_id: policyToId(policy),
+            call_id: call.id,
+            realized_return_bps: result.realizedReturnBps,
+            stop_out: result.stopOut,
+            max_adverse_excursion_bps: result.maxAdverseExcursionBps,
+            time_exposed_ms: result.timeExposedMs,
+            tail_capture: result.tailCapture,
+            entry_ts_ms: result.entryTsMs,
+            exit_ts_ms: result.exitTsMs,
+            entry_px: result.entryPx,
+            exit_px: result.exitPx,
+            exit_reason: result.exitReason,
+          });
+        }
+
+        // Collect path metrics for validation set
+        if (req.pathMetricsByCallId) {
+          const pathMetric = req.pathMetricsByCallId.get(call.id);
+          if (pathMetric) {
+            validationPathMetrics.push(pathMetric);
+          }
+        }
+      }
+
+      // Score the policy on validation set
+      validationScore = scorePolicy(
+        validationResults,
+        constraints,
+        undefined,
+        validationPathMetrics
+      );
+
+      // Detect overfitting
+      overfittingMetrics = detectOverfitting(trainScore, validationScore, req.overfittingConfig);
+
+      // Log overfitting if detected
+      if (overfittingMetrics.overfittingDetected) {
+        logger.warn('Overfitting detected', {
+          policyId: policyToId(policy),
+          severity: overfittingMetrics.severity,
+          scoreGap: overfittingMetrics.scoreGap,
+          relativeGapPercent: overfittingMetrics.relativeGapPercent,
+        });
+        logger.debug(formatOverfittingMetrics(overfittingMetrics));
+      }
+    }
+
+    evaluatedPolicies.push({
+      policy,
+      score: trainScore,
+      validationScore,
+      overfittingMetrics,
+    });
   }
 
-  // Sort by score descending
-  evaluatedPolicies.sort((a, b) => comparePolicyScores(b.score, a.score));
+  // Sort by score descending (use validation score if available, otherwise train score)
+  evaluatedPolicies.sort((a, b) => {
+    const scoreA = a.validationScore?.score ?? a.score.score;
+    const scoreB = b.validationScore?.score ?? b.score.score;
+    return scoreB - scoreA;
+  });
 
   const feasiblePolicies = evaluatedPolicies.filter((p) => p.score.constraintsSatisfied).length;
 
-  // Get best policy
-  const bestPolicyEntry = evaluatedPolicies.find((p) => p.score.constraintsSatisfied);
+  // Get best policy (prefer policies without overfitting if validation split used)
+  let bestPolicyEntry = evaluatedPolicies.find((p) => p.score.constraintsSatisfied);
+
+  // If validation split used, prefer policies without overfitting
+  if (validationCalls.length > 0 && bestPolicyEntry) {
+    const nonOverfittingPolicies = evaluatedPolicies.filter(
+      (p) =>
+        p.score.constraintsSatisfied &&
+        (!p.overfittingMetrics || !p.overfittingMetrics.overfittingDetected)
+    );
+
+    if (nonOverfittingPolicies.length > 0) {
+      // Prefer non-overfitting policies, sorted by validation score
+      nonOverfittingPolicies.sort((a, b) => {
+        const scoreA = a.validationScore?.score ?? a.score.score;
+        const scoreB = b.validationScore?.score ?? b.score.score;
+        return scoreB - scoreA;
+      });
+      bestPolicyEntry = nonOverfittingPolicies[0];
+    }
+  }
+
   const bestPolicy: OptimalPolicy | null = bestPolicyEntry
     ? {
         policy: bestPolicyEntry.policy,
         score: bestPolicyEntry.score,
+        validationScore: bestPolicyEntry.validationScore,
+        overfittingMetrics: bestPolicyEntry.overfittingMetrics,
         policyId: policyToId(bestPolicyEntry.policy),
       }
     : null;
@@ -217,7 +368,10 @@ export function optimizePolicy(req: OptimizeRequest): OptimizationResult {
     policiesEvaluated: evaluatedPolicies.length,
     feasiblePolicies,
     bestPolicyId: bestPolicy?.policyId,
-    bestScore: bestPolicy?.score.score,
+    bestTrainScore: bestPolicy?.score.score,
+    bestValidationScore: bestPolicy?.validationScore?.score,
+    overfittingDetected: bestPolicy?.overfittingMetrics?.overfittingDetected,
+    overfittingSeverity: bestPolicy?.overfittingMetrics?.severity,
   });
 
   return {
@@ -225,6 +379,7 @@ export function optimizePolicy(req: OptimizeRequest): OptimizationResult {
     allPolicies: evaluatedPolicies,
     policiesEvaluated: evaluatedPolicies.length,
     feasiblePolicies,
+    validationSplit: validationSplitMetadata,
   };
 }
 

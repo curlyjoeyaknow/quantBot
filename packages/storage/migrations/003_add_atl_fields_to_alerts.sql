@@ -2,9 +2,9 @@
 -- Created: 2024-01-01
 -- Description: Adds atl_price and atl_timestamp columns to track all-time low from alert until ATH
 
-ALTER TABLE alerts
-ADD COLUMN IF NOT EXISTS atl_price NUMERIC(38, 18),
-ADD COLUMN IF NOT EXISTS atl_timestamp TIMESTAMPTZ;
+-- DuckDB requires separate ALTER statements
+ALTER TABLE alerts ADD COLUMN IF NOT EXISTS atl_price NUMERIC(38, 18);
+ALTER TABLE alerts ADD COLUMN IF NOT EXISTS atl_timestamp TIMESTAMP;
 
 CREATE INDEX IF NOT EXISTS idx_alerts_atl_timestamp ON alerts(atl_timestamp);
 

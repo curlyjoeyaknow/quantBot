@@ -237,3 +237,15 @@ export {
   writeV1BaselineFrontier,
   writeV1BaselinePerCallerFrontiers,
 } from './optimization/frontier-writer.js';
+
+// Artifacts module (run directory management and git provenance)
+export {
+  createRunDirectory,
+  getGitProvenance,
+  type RunDirectory,
+  type GitProvenance,
+  type AlertArtifact,
+  type PathArtifact,
+  type TradeArtifact,
+  type SummaryArtifact,
+} from './artifacts/index.js';

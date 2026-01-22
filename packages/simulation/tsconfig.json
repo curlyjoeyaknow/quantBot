@@ -10,13 +10,18 @@
     "skipLibCheck": true,
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "target": "ES2022"
+    "target": "ES2022",
+    "paths": {
+      "@quantbot/lab": ["../lab/src"],
+      "@quantbot/lab/*": ["../lab/src/*"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"],
   "references": [
     { "path": "../core" },
-    { "path": "../utils" }
+    { "path": "../utils" },
+    { "path": "../lab" }
   ]
 }
 

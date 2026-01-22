@@ -4,7 +4,7 @@
 --              Separate from tokens table which stores fixed metadata
 
 CREATE TABLE IF NOT EXISTS token_data (
-  id BIGSERIAL PRIMARY KEY,
+  id BIGINTEGER PRIMARY KEY,
   token_id BIGINT NOT NULL REFERENCES tokens (id) ON DELETE CASCADE,
   price NUMERIC(38, 18),
   market_cap NUMERIC(38, 18), -- FDV/Market Cap
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS token_data (
   telegram_link TEXT,
   website_link TEXT,
   recorded_at TIMESTAMPTZ NOT NULL, -- When this data snapshot was recorded
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE (token_id, recorded_at)
 );
 

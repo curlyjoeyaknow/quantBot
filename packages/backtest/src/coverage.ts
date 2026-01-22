@@ -8,6 +8,7 @@ import type { DateTime } from 'luxon';
 import type { BacktestPlan, CoverageResult, TokenAddress, Chain } from './types.js';
 import { OhlcvRepository } from '@quantbot/infra/storage';
 import { logger } from '@quantbot/infra/utils';
+import { checkCandleIntegrity, type IntegrityCheckConfig } from './integrity/candle-integrity.js';
 
 /**
  * Check coverage for a single call
@@ -59,11 +60,21 @@ async function checkCallCoverage(
  * Check coverage - verify all required candles exist for calls
  *
  * ClickHouse read-only. Returns eligible/excluded calls.
+ *
+ * @param plan - Backtest plan with call windows
+ * @param integrityConfig - Optional integrity check configuration
  */
-export async function checkCoverage(plan: BacktestPlan): Promise<CoverageResult> {
+export async function checkCoverage(
+  plan: BacktestPlan,
+  integrityConfig?: IntegrityCheckConfig
+): Promise<CoverageResult> {
   const ohlcvRepo = new OhlcvRepository();
   const eligible: CoverageResult['eligible'] = [];
   const excluded: CoverageResult['excluded'] = [];
+  const issuesByCallId = new Map<
+    string,
+    Array<{ type: string; severity: string; description: string }>
+  >();
 
   // Determine interval string from plan
   const intervalMap: Record<number, string> = {
@@ -78,6 +89,9 @@ export async function checkCoverage(plan: BacktestPlan): Promise<CoverageResult>
   };
   const interval = intervalMap[plan.intervalSeconds] || '1m';
 
+  // Determine interval in milliseconds for integrity checks
+  const intervalMs = plan.intervalSeconds * 1000;
+
   for (const window of plan.perCallWindow) {
     const result = await checkCallCoverage(
       window.callId,
@@ -91,6 +105,37 @@ export async function checkCoverage(plan: BacktestPlan): Promise<CoverageResult>
     );
 
     if (result.eligible) {
+      // If integrity checks enabled, check candle integrity
+      if (integrityConfig) {
+        try {
+          const candles = await ohlcvRepo.getCandles(window.tokenAddress, window.chain, interval, {
+            from: window.from,
+            to: window.to,
+          } as { from: DateTime; to: DateTime });
+
+          const integrityResult = checkCandleIntegrity(candles, {
+            ...integrityConfig,
+            expectedIntervalMs: intervalMs,
+          });
+
+          if (integrityResult.issues.length > 0) {
+            issuesByCallId.set(
+              window.callId,
+              integrityResult.issues.map((issue) => ({
+                type: issue.type,
+                severity: issue.severity,
+                description: issue.description,
+              }))
+            );
+          }
+        } catch (error) {
+          logger.warn('Failed to check integrity for call', {
+            callId: window.callId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+
       eligible.push({
         callId: window.callId,
         tokenAddress: window.tokenAddress,
@@ -106,13 +151,38 @@ export async function checkCoverage(plan: BacktestPlan): Promise<CoverageResult>
     }
   }
 
+  // Calculate integrity summary
+  let integrity: CoverageResult['integrity'] | undefined;
+  if (integrityConfig && issuesByCallId.size > 0) {
+    let totalIssues = 0;
+    let criticalIssues = 0;
+    let warningIssues = 0;
+
+    for (const issues of issuesByCallId.values()) {
+      totalIssues += issues.length;
+      criticalIssues += issues.filter((i) => i.severity === 'critical').length;
+      warningIssues += issues.filter((i) => i.severity === 'warning').length;
+    }
+
+    integrity = {
+      passed: criticalIssues === 0,
+      totalIssues,
+      criticalIssues,
+      warningIssues,
+      issuesByCallId,
+    };
+  }
+
   logger.info('Coverage check complete', {
     eligible: eligible.length,
     excluded: excluded.length,
+    integrityIssues: integrity?.totalIssues ?? 0,
+    integrityPassed: integrity?.passed ?? true,
   });
 
   return {
     eligible,
     excluded,
+    integrity,
   };
 }

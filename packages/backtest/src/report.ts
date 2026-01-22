@@ -111,6 +111,20 @@ export async function emitReport(
   console.log(`Eligible: ${coverage.eligible.length}`);
   console.log(`Excluded: ${coverage.excluded.length}`);
 
+  // Integrity metrics
+  if (coverage.integrity) {
+    console.log('\n=== Data Integrity ===');
+    console.log(`Status: ${coverage.integrity.passed ? '✅ PASSED' : '❌ FAILED'}`);
+    console.log(`Total Issues: ${coverage.integrity.totalIssues}`);
+    console.log(`Critical: ${coverage.integrity.criticalIssues}`);
+    console.log(`Warnings: ${coverage.integrity.warningIssues}`);
+
+    if (coverage.integrity.criticalIssues > 0) {
+      console.log('\n⚠️  Critical integrity issues detected!');
+      console.log('Review integrity issues before using results.');
+    }
+  }
+
   console.log('\n=== Run Summary ===');
   console.log(`Total Trades: ${summary.totalTrades}`);
   console.log(`PnL: ${summary.pnlPct.toFixed(2)}%`);
