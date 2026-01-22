@@ -24,6 +24,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import random
@@ -50,6 +51,11 @@ from lib.summary import summarize_tp_sl
 from lib.timing import TimingContext, format_ms
 from lib.tp_sl_query import run_tp_sl_query
 from lib.extended_exits import run_extended_exit_query, ExitConfig
+from lib.overfitting_guard import (
+    enforce_walk_forward_validation,
+    OverfittingError,
+    OptimizerResult as OverfittingOptimizerResult,
+)
 from lib.trial_ledger import (
     ensure_trial_schema,
     init_optimizer_run,
@@ -853,7 +859,6 @@ def run_single_backtest(
             horizon_hours=config.horizon_hours,
             threads=config.threads,
             verbose=False,
-            baseline_cache=baseline_cache,
         )
     else:
         # Use basic TP/SL query
@@ -882,6 +887,7 @@ def run_random_search(
     config: RandomSearchConfig,
     run_id: Optional[str] = None,
     verbose: bool = True,
+    output_dir: Optional[Path] = None,
 ) -> List[TrialResult]:
     """
     Run random search optimization with audit trail through DuckDB.
@@ -1093,8 +1099,13 @@ def run_random_search(
                 fold_train_end = fold_start + timedelta(days=config.train_days)
                 fold_test_end = fold_train_end + timedelta(days=config.test_days)
                 
-                train_alerts = [a for a in all_alerts if fold_start <= a.ts < fold_train_end]
-                test_alerts = [a for a in all_alerts if fold_train_end <= a.ts < fold_test_end]
+                # Convert dates to datetime at midnight UTC for comparison with Alert.ts (timezone-aware datetime)
+                fold_start_dt = datetime.combine(fold_start, datetime.min.time()).replace(tzinfo=UTC)
+                fold_train_end_dt = datetime.combine(fold_train_end, datetime.min.time()).replace(tzinfo=UTC)
+                fold_test_end_dt = datetime.combine(fold_test_end, datetime.min.time()).replace(tzinfo=UTC)
+                
+                train_alerts = [a for a in all_alerts if fold_start_dt <= a.ts < fold_train_end_dt]
+                test_alerts = [a for a in all_alerts if fold_train_end_dt <= a.ts < fold_test_end_dt]
                 
                 if len(train_alerts) >= 10 and len(test_alerts) >= 5:
                     fold_name = f"fold_{fold_idx+1}_{fold_start.strftime('%m%d')}_{fold_test_end.strftime('%m%d')}"
@@ -1113,8 +1124,10 @@ def run_random_search(
         else:
             # Single train/test split (original behavior)
             train_end = date_to - timedelta(days=config.test_days)
-            train_alerts = [a for a in all_alerts if a.ts < train_end]
-            test_alerts = [a for a in all_alerts if a.ts >= train_end]
+            # Convert date to datetime at midnight UTC for comparison with Alert.ts (timezone-aware datetime)
+            train_end_dt = datetime.combine(train_end, datetime.min.time()).replace(tzinfo=UTC)
+            train_alerts = [a for a in all_alerts if a.ts < train_end_dt]
+            test_alerts = [a for a in all_alerts if a.ts >= train_end_dt]
             
             if verbose:
                 print(f"Walk-forward split: {len(train_alerts)} train, {len(test_alerts)} test", file=sys.stderr)
@@ -1196,7 +1209,7 @@ def run_random_search(
     if not skip_discovery:
         # Check if trades Parquet file exists for this run_id
         # If it exists, we can resume by skipping completed trials
-        output_dir = Path(config.output_dir) if config.output_dir else Path("output")
+        output_dir = output_dir or Path("output")
         trades_parquet_path = output_dir / f"{run_id}_trades.parquet"
         
         if trades_parquet_path.exists():
@@ -1433,6 +1446,65 @@ def run_random_search(
                         )
     
     timing.end()
+    
+    # ========================================================================
+    # OVERFITTING GUARD: Validate best results
+    # ========================================================================
+    if config.use_walk_forward and results:
+        # Find best result with walk-forward validation
+        best_results = [r for r in results if r.test_r is not None and r.train_r is not None]
+        if best_results:
+            # Sort by test_r (out-of-sample performance)
+            best_results_sorted = sorted(best_results, key=lambda r: r.test_r or -9999, reverse=True)
+            best_result = best_results_sorted[0]
+            
+            # Validate with overfitting guard
+            try:
+                optimizer_result = OverfittingOptimizerResult(
+                    train_metrics={
+                        'expected_value': best_result.train_r or 0.0,
+                        'avg_r': best_result.summary.get('avg_r', 0.0),
+                        'win_rate': best_result.summary.get('tp_sl_win_rate', 0.0),
+                        'profit_factor': best_result.summary.get('profit_factor', 0.0),
+                        'total_trades': best_result.alerts_ok,
+                        'max_drawdown_pct': abs(best_result.median_dd_pre2x or 0.0),
+                        'sharpe_ratio': best_result.summary.get('sharpe_ratio', 0.0),
+                        'total_return_pct': best_result.train_r or 0.0,
+                    },
+                    test_metrics={
+                        'expected_value': best_result.test_r or 0.0,
+                        'avg_r': best_result.summary.get('avg_r', 0.0),
+                        'win_rate': best_result.summary.get('tp_sl_win_rate', 0.0),
+                        'profit_factor': best_result.summary.get('profit_factor', 0.0),
+                        'total_trades': best_result.alerts_ok,
+                        'max_drawdown_pct': abs(best_result.median_dd_pre2x or 0.0),
+                        'sharpe_ratio': best_result.summary.get('sharpe_ratio', 0.0),
+                        'total_return_pct': best_result.test_r or 0.0,
+                    },
+                    config=best_result.params,
+                )
+                
+                validation = enforce_walk_forward_validation(
+                    optimizer_result,
+                    validation_split=config.test_days / (config.train_days + config.test_days) if config.use_walk_forward else 0.3,
+                    max_degradation=0.10,
+                    min_robustness=0.7,
+                    enforce=False,  # Don't fail, just warn
+                )
+                
+                if verbose:
+                    print(f"\n{'='*80}", file=sys.stderr)
+                    print("OVERFITTING GUARD VALIDATION", file=sys.stderr)
+                    print(f"{'='*80}", file=sys.stderr)
+                    print(validation.message, file=sys.stderr)
+                    if not validation.passed:
+                        print(f"⚠️  Best result failed overfitting guard checks!", file=sys.stderr)
+                        print(f"   Degradation: {validation.degradation_pct:.1%} (max 10%)", file=sys.stderr)
+                        print(f"   Robustness: {validation.robustness_score:.3f} (min 0.7)", file=sys.stderr)
+                    print(f"{'='*80}\n", file=sys.stderr)
+            except Exception as e:
+                if verbose:
+                    print(f"⚠️  Overfitting guard validation failed: {e}", file=sys.stderr)
     
     # Record discovery phase completion (deferred to avoid lock conflicts)
     # Phase will be recorded in store_optimizer_run at the end
@@ -1870,11 +1942,11 @@ def main() -> None:
     # Ensure schema
     ensure_trial_schema(config.duckdb_path)
     
-    # Run
-    results = run_random_search(config, run_id=run_id, verbose=not args.quiet)
-    
     # Save results
     output_dir = Path(args.output_dir)
+    
+    # Run
+    results = run_random_search(config, run_id=run_id, verbose=not args.quiet, output_dir=output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / f"{run_id}_random_search.json"
     
@@ -1964,12 +2036,37 @@ def main() -> None:
             # Setup walk-forward test set (use same split as discovery)
             if config.use_walk_forward:
                 train_end = date_to - timedelta(days=config.test_days)
-                test_alerts = [a for a in all_alerts if a.ts >= train_end]
+                # Convert date to datetime at midnight UTC for comparison with Alert.ts (timezone-aware datetime)
+                train_end_dt = datetime.combine(train_end, datetime.min.time()).replace(tzinfo=UTC)
+                test_alerts = [a for a in all_alerts if a.ts >= train_end_dt]
             else:
                 test_alerts = all_alerts
             
             slice_path = Path(config.slice_path)
             is_partitioned = is_hive_partitioned(slice_path) or (slice_path.is_dir() and not slice_path.suffix)
+            
+            # Load baseline cache for stress validation (same logic as in run_random_search)
+            baseline_cache = None
+            baseline_cache_path = None
+            
+            if config.baseline_parquet:
+                baseline_cache_path = Path(config.baseline_parquet)
+            else:
+                # Auto-detect baseline cache
+                try:
+                    from lib.cache_utils import find_baseline_cache
+                    auto_cache = find_baseline_cache(date_from, date_to)
+                    if auto_cache:
+                        baseline_cache_path = auto_cache
+                except ImportError:
+                    pass
+            
+            if baseline_cache_path and baseline_cache_path.exists():
+                try:
+                    import pandas as pd
+                    baseline_cache = pd.read_parquet(baseline_cache_path)
+                except Exception:
+                    baseline_cache = None
             
             # ================================================================
             # PHASE 4: STRESS VALIDATION
@@ -2013,7 +2110,7 @@ def main() -> None:
                         continue
                     print(f"  Running lane '{lane.name}'...", file=sys.stderr, end=" ")
                     
-                    # Run backtest with lane parameters (using baseline cache for speed)
+                    # Run backtest with lane parameters
                     rows = run_tp_sl_query(
                         alerts=test_alerts,
                         slice_path=slice_path,
@@ -2028,7 +2125,6 @@ def main() -> None:
                         entry_delay_candles=lane.latency_candles,
                         threads=config.threads,
                         verbose=False,
-                        baseline_cache=baseline_cache,
                     )
                     
                     summary = summarize_tp_sl(

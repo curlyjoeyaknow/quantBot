@@ -31,6 +31,30 @@ jobs:
         run: pnpm verify:architecture-boundaries
         continue-on-error: false
 
+  schema-migrations:
+    name: Check Schema Migrations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Check schema migrations
+        run: pnpm verify:schema-migrations
+        continue-on-error: false
+
   lint:
     name: Lint
     runs-on: ubuntu-latest

@@ -34,6 +34,11 @@ from lib.summary import summarize_tp_sl
 from lib.timing import TimingContext, format_ms
 from lib.tp_sl_query import run_tp_sl_query
 from lib.trial_ledger import store_walk_forward_run
+from lib.overfitting_guard import (
+    enforce_walk_forward_validation,
+    OverfittingError,
+    OptimizerResult as OverfittingOptimizerResult,
+)
 
 UTC = timezone.utc
 
@@ -523,6 +528,69 @@ def main() -> None:
     print(f"  % Folds Profitable: {wf_run.pct_folds_profitable:.0f}%", file=sys.stderr)
     print(f"  Worst Fold R: {wf_run.worst_fold_r:+.1f}", file=sys.stderr)
     print(f"  Avg ΔR (test-train): {avg_delta:+.1f}", file=sys.stderr)
+    
+    # ========================================================================
+    # OVERFITTING GUARD: Validate walk-forward results
+    # ========================================================================
+    if wf_run.folds:
+        # Aggregate train/test metrics across all folds
+        train_ev = avg_train
+        test_ev = avg_test
+        
+        train_win_rate = sum(f.train_win_rate for f in wf_run.folds) / len(wf_run.folds)
+        test_win_rate = sum(f.test_win_rate for f in wf_run.folds) / len(wf_run.folds)
+        
+        train_profit_factor = sum(f.train_total_r for f in wf_run.folds) / len(wf_run.folds) if wf_run.folds else 0.0
+        test_profit_factor = sum(f.test_total_r for f in wf_run.folds) / len(wf_run.folds) if wf_run.folds else 0.0
+        
+        # Use best fold's params
+        best_fold = max(wf_run.folds, key=lambda f: f.test_total_r) if wf_run.folds else None
+        
+        if best_fold:
+            try:
+                optimizer_result = OverfittingOptimizerResult(
+                    train_metrics={
+                        'expected_value': train_ev,
+                        'avg_r': train_ev,
+                        'win_rate': train_win_rate,
+                        'profit_factor': train_profit_factor,
+                        'total_trades': best_fold.train_alerts,
+                        'max_drawdown_pct': 0.0,  # Not available in walk-forward
+                        'sharpe_ratio': 0.0,
+                        'total_return_pct': train_ev,
+                    },
+                    test_metrics={
+                        'expected_value': test_ev,
+                        'avg_r': test_ev,
+                        'win_rate': test_win_rate,
+                        'profit_factor': test_profit_factor,
+                        'total_trades': best_fold.test_alerts,
+                        'max_drawdown_pct': 0.0,
+                        'sharpe_ratio': 0.0,
+                        'total_return_pct': test_ev,
+                    },
+                    config=best_fold.best_params,
+                )
+                
+                validation = enforce_walk_forward_validation(
+                    optimizer_result,
+                    validation_split=0.3,  # Default
+                    max_degradation=0.10,
+                    min_robustness=0.7,
+                    enforce=False,  # Don't fail, just warn
+                )
+                
+                print(f"\n{'='*70}", file=sys.stderr)
+                print("OVERFITTING GUARD VALIDATION", file=sys.stderr)
+                print(f"{'='*70}", file=sys.stderr)
+                print(validation.message, file=sys.stderr)
+                if not validation.passed:
+                    print(f"⚠️  Walk-forward validation failed overfitting guard checks!", file=sys.stderr)
+                    print(f"   Degradation: {validation.degradation_pct:.1%} (max 10%)", file=sys.stderr)
+                    print(f"   Robustness: {validation.robustness_score:.3f} (min 0.7)", file=sys.stderr)
+                print(f"{'='*70}\n", file=sys.stderr)
+            except Exception as e:
+                print(f"⚠️  Overfitting guard validation failed: {e}", file=sys.stderr)
     
     # Save results (JSON file)
     output_path = wf_run.save(args.output_dir)

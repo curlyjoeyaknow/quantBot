@@ -120,6 +120,26 @@ export async function runPolicyBacktest(
     calls: req.calls.length,
   });
 
+  // Mandatory deduplication: dedup by call id, keep earliest instance
+  const callsById = new Map<string, (typeof req.calls)[number]>();
+  for (const call of req.calls) {
+    if (!callsById.has(call.id)) {
+      callsById.set(call.id, call);
+    }
+  }
+  const uniqueCalls = [...callsById.values()].sort(
+    (a, b) => a.createdAt.toMillis() - b.createdAt.toMillis()
+  );
+
+  if (uniqueCalls.length < req.calls.length) {
+    const duplicatesRemoved = req.calls.length - uniqueCalls.length;
+    logger.warn('Deduplicated calls', {
+      originalCount: req.calls.length,
+      uniqueCount: uniqueCalls.length,
+      duplicatesRemoved,
+    });
+  }
+
   // Initialize structured artifact directory
   const runDir = await createRunDirectory(runId, 'policy');
 
@@ -133,7 +153,7 @@ export async function runPolicyBacktest(
       from: req.from?.toISO() || undefined,
       to: req.to?.toISO() || undefined,
       interval: req.interval,
-      calls_count: req.calls.length,
+      calls_count: uniqueCalls.length,
     },
     parameters: {
       policy_id: req.policyId,
@@ -155,14 +175,14 @@ export async function runPolicyBacktest(
         entryDelay: 0,
         maxHold: 1440, // 24h window
       },
-      calls: req.calls,
+      calls: uniqueCalls,
       interval: req.interval,
       from: req.from,
       to: req.to,
     };
     return planBacktest(planReq);
   });
-  logger.info('Planning complete', { calls: req.calls.length });
+  logger.info('Planning complete', { calls: uniqueCalls.length });
 
   // Step 2: Coverage gate
   const coverage = await timing.phase('coverage', async () => {
@@ -211,7 +231,7 @@ export async function runPolicyBacktest(
   });
 
   // Create call lookup map
-  const callsById = new Map(req.calls.map((call) => [call.id, call]));
+  const callsById = new Map(uniqueCalls.map((call) => [call.id, call]));
 
   // Step 5: Execute policy for each eligible call
   const executionResult = timing.phaseSync('execute', () => {
@@ -294,7 +314,7 @@ export async function runPolicyBacktest(
   await timing.phase('store', async () => {
     try {
       // Write alerts (inputs)
-      const alertArtifacts: AlertArtifact[] = req.calls.map((call) => ({
+      const alertArtifacts: AlertArtifact[] = uniqueCalls.map((call) => ({
         call_id: call.id,
         mint: call.mint as string,
         caller_name: call.caller,

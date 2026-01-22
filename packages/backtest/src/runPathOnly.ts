@@ -62,6 +62,26 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
     interval: req.interval,
   });
 
+  // Mandatory deduplication: dedup by call id, keep earliest instance
+  const callsById = new Map<string, (typeof req.calls)[number]>();
+  for (const call of req.calls) {
+    if (!callsById.has(call.id)) {
+      callsById.set(call.id, call);
+    }
+  }
+  const uniqueCalls = [...callsById.values()].sort(
+    (a, b) => a.createdAt.toMillis() - b.createdAt.toMillis()
+  );
+
+  if (uniqueCalls.length < req.calls.length) {
+    const duplicatesRemoved = req.calls.length - uniqueCalls.length;
+    logger.warn('Deduplicated calls', {
+      originalCount: req.calls.length,
+      uniqueCount: uniqueCalls.length,
+      duplicatesRemoved,
+    });
+  }
+
   // Initialize structured artifact directory
   const runDir = await createRunDirectory(runId, 'path-only');
 
@@ -75,7 +95,7 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
       from: req.from?.toISO() || undefined,
       to: req.to?.toISO() || undefined,
       interval: req.interval,
-      calls_count: req.calls.length,
+      calls_count: uniqueCalls.length,
     },
   });
 
@@ -94,7 +114,7 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
         entryDelay: 0,
         maxHold: 1440, // 24h default for path metrics window
       },
-      calls: req.calls,
+      calls: uniqueCalls,
       interval: req.interval,
       from: req.from,
       to: req.to,
@@ -105,7 +125,7 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
 
   logger.info('Planning complete', {
     totalRequiredCandles: plan!.totalRequiredCandles,
-    calls: req.calls.length,
+    calls: uniqueCalls.length,
   });
 
   // Step 2: Coverage gate (reuse existing)
@@ -150,7 +170,7 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
   });
 
   // Create call lookup map
-  const callsById = new Map(req.calls.map((call) => [call.id, call]));
+  const callsById = new Map(uniqueCalls.map((call) => [call.id, call]));
 
   // Step 5: Compute path metrics for EVERY eligible call
   const pathMetricsRows: PathMetricsRow[] = timing.phaseSync('compute', () => {
@@ -225,7 +245,7 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
   await timing.phase('store', async () => {
     try {
       // Write alerts (inputs)
-      const alertArtifacts: AlertArtifact[] = req.calls.map((call) => ({
+      const alertArtifacts: AlertArtifact[] = uniqueCalls.map((call) => ({
         call_id: call.id,
         mint: call.mint as string,
         caller_name: call.caller,

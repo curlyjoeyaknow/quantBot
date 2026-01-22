@@ -1,188 +1,224 @@
 """
-Overfitting Protection Guard
+Overfitting Guard for Optimization Results.
 
-Addresses: Risk #3 from ARCHITECTURE_REVIEW_2026-01-21.md
-          "Optimizer overfitting protections are weak"
-
-This module enforces mandatory walk-forward validation and degradation analysis.
-No optimizer can return results without passing overfitting checks.
-
-Usage:
-    from lib.overfitting_guard import enforce_walk_forward_validation
-    
-    # After optimization
-    validation_result = enforce_walk_forward_validation(
-        optimizer_result,
-        validation_split=0.3,  # 30% OOS
-        max_degradation=0.10   # Max 10% EV drop
-    )
+Enforces walk-forward validation and prevents selection of overfitted strategies.
+Based on Phase A requirements: mandatory walk-forward validation with degradation checks.
 """
 
 from dataclasses import dataclass
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
+import json
+
+
+class OverfittingError(Exception):
+    """Raised when overfitting is detected."""
+    pass
 
 
 @dataclass
 class ValidationResult:
-    """Result of walk-forward validation"""
+    """Result of walk-forward validation."""
     passed: bool
-    in_sample_ev: float
-    out_of_sample_ev: float
-    degradation_pct: float  # (OOS - IS) / IS
-    robustness_score: float  # 0.0 to 1.0
     message: str
+    robustness_score: float
+    degradation_pct: float
     metrics: Dict[str, Any]
 
 
-class OverfittingError(Exception):
-    """Raised when optimizer results fail overfitting checks"""
-    
-    def __init__(self, message: str, validation_result: ValidationResult):
-        super().__init__(message)
-        self.validation_result = validation_result
+@dataclass
+class OptimizerResult:
+    """Simplified optimizer result for validation."""
+    train_metrics: Dict[str, float]
+    test_metrics: Dict[str, float]
+    config: Dict[str, Any]
 
 
 def enforce_walk_forward_validation(
-    optimizer_result: Dict[str, Any],
+    optimizer_result: OptimizerResult,
     validation_split: float = 0.3,
     max_degradation: float = 0.10,
     min_robustness: float = 0.7,
-    enforce: bool = True
+    enforce: bool = True,
 ) -> ValidationResult:
     """
     Enforce walk-forward validation on optimizer results.
     
     Args:
-        optimizer_result: Result from optimizer (must include train/test splits)
-        validation_split: Fraction of data for OOS testing (default 0.3 = 30%)
-        max_degradation: Maximum allowed EV degradation OOS (default 0.10 = 10%)
+        optimizer_result: Result from optimizer with train/test metrics
+        validation_split: Fraction of data used for validation (default 0.3)
+        max_degradation: Maximum allowed degradation (default 0.10 = 10%)
         min_robustness: Minimum robustness score (default 0.7)
         enforce: If True, raise OverfittingError on failure
     
     Returns:
-        ValidationResult with pass/fail and metrics
+        ValidationResult with pass/fail status and metrics
     
     Raises:
-        OverfittingError if validation fails and enforce=True
+        OverfittingError: If enforce=True and validation fails
     """
+    train_metrics = optimizer_result.train_metrics
+    test_metrics = optimizer_result.test_metrics
     
-    # Extract metrics from optimizer result
-    in_sample_ev = optimizer_result.get('train_ev', 0.0)
-    out_of_sample_ev = optimizer_result.get('test_ev', 0.0)
-    robustness_score = optimizer_result.get('robustness_score', 0.0)
+    # Extract key metrics (handle different metric names)
+    train_ev = train_metrics.get('expected_value', train_metrics.get('avg_r', train_metrics.get('total_return', 0.0)))
+    test_ev = test_metrics.get('expected_value', test_metrics.get('avg_r', test_metrics.get('total_return', 0.0)))
+    
+    train_win_rate = train_metrics.get('win_rate', 0.0)
+    test_win_rate = test_metrics.get('win_rate', 0.0)
+    
+    train_profit_factor = train_metrics.get('profit_factor', 0.0)
+    test_profit_factor = test_metrics.get('profit_factor', 0.0)
     
     # Calculate degradation
-    if in_sample_ev == 0:
-        degradation_pct = 0.0
+    if train_ev != 0:
+        ev_degradation = abs((train_ev - test_ev) / train_ev)
     else:
-        degradation_pct = (out_of_sample_ev - in_sample_ev) / abs(in_sample_ev)
+        ev_degradation = 1.0 if test_ev < 0 else 0.0
     
-    # Check thresholds
-    passed = True
-    reasons = []
+    win_rate_degradation = max(0, train_win_rate - test_win_rate)
+    pf_degradation = max(0, train_profit_factor - test_profit_factor) if train_profit_factor > 0 else 0
     
-    if degradation_pct < -max_degradation:
-        passed = False
-        reasons.append(
-            f"Degradation too high: {degradation_pct:.1%} < -{max_degradation:.0%}"
+    # Overall degradation (weighted)
+    degradation_pct = (
+        ev_degradation * 0.5 +
+        (win_rate_degradation / train_win_rate if train_win_rate > 0 else 0) * 0.3 +
+        (pf_degradation / train_profit_factor if train_profit_factor > 0 else 0) * 0.2
+    )
+    
+    # Compute robustness score (using robustness_scorer logic)
+    from lib.robustness_scorer import StrategyPerformance, compute_robustness_score
+    
+    train_perf = StrategyPerformance(
+        period_id='train',
+        start_date='',
+        end_date='',
+        total_trades=train_metrics.get('total_trades', 0),
+        win_rate=train_win_rate,
+        avg_r=train_ev,
+        profit_factor=train_profit_factor,
+        max_drawdown_pct=train_metrics.get('max_drawdown_pct', 0.0),
+        sharpe_ratio=train_metrics.get('sharpe_ratio', 0.0),
+        total_return_pct=train_metrics.get('total_return_pct', 0.0),
+    )
+    
+    test_perf = StrategyPerformance(
+        period_id='test',
+        start_date='',
+        end_date='',
+        total_trades=test_metrics.get('total_trades', 0),
+        win_rate=test_win_rate,
+        avg_r=test_ev,
+        profit_factor=test_profit_factor,
+        max_drawdown_pct=test_metrics.get('max_drawdown_pct', 0.0),
+        sharpe_ratio=test_metrics.get('sharpe_ratio', 0.0),
+        total_return_pct=test_metrics.get('total_return_pct', 0.0),
+    )
+    
+    robustness_result = compute_robustness_score(
+        train_perf,
+        [test_perf],
+    )
+    
+    robustness_score = robustness_result['robustness_score']
+    
+    # Check degradation
+    degradation_check = degradation_pct <= max_degradation
+    
+    # Check robustness
+    robustness_check = robustness_score >= min_robustness
+    
+    # Overall pass/fail
+    passed = degradation_check and robustness_check
+    
+    # Build message
+    if passed:
+        message = (
+            f"✅ Validation passed: "
+            f"degradation={degradation_pct:.1%} (max {max_degradation:.1%}), "
+            f"robustness={robustness_score:.3f} (min {min_robustness:.3f})"
         )
-    
-    if robustness_score < min_robustness:
-        passed = False
-        reasons.append(
-            f"Robustness too low: {robustness_score:.2f} < {min_robustness:.2f}"
-        )
-    
-    message = "Validation passed" if passed else f"Validation failed: {'; '.join(reasons)}"
+    else:
+        failures = []
+        if not degradation_check:
+            failures.append(f"degradation {degradation_pct:.1%} > {max_degradation:.1%}")
+        if not robustness_check:
+            failures.append(f"robustness {robustness_score:.3f} < {min_robustness:.3f}")
+        message = f"❌ Validation failed: {', '.join(failures)}"
     
     result = ValidationResult(
         passed=passed,
-        in_sample_ev=in_sample_ev,
-        out_of_sample_ev=out_of_sample_ev,
-        degradation_pct=degradation_pct,
-        robustness_score=robustness_score,
         message=message,
+        robustness_score=robustness_score,
+        degradation_pct=degradation_pct,
         metrics={
-            'validation_split': validation_split,
-            'max_degradation': max_degradation,
-            'min_robustness': min_robustness,
-            'actual_degradation': degradation_pct,
-            'actual_robustness': robustness_score
-        }
+            'train_ev': train_ev,
+            'test_ev': test_ev,
+            'train_win_rate': train_win_rate,
+            'test_win_rate': test_win_rate,
+            'train_profit_factor': train_profit_factor,
+            'test_profit_factor': test_profit_factor,
+            'robustness_details': robustness_result,
+        },
     )
     
-    if not passed and enforce:
-        raise OverfittingError(message, result)
+    if enforce and not passed:
+        raise OverfittingError(message)
     
     return result
 
 
-def require_validation_split(
-    date_from: str,
-    date_to: str,
-    validation_split: float = 0.3
-) -> tuple[str, str, str, str]:
+def validate_optimizer_results(
+    results: List[Dict[str, Any]],
+    validation_split: float = 0.3,
+    max_degradation: float = 0.10,
+    min_robustness: float = 0.7,
+    enforce: bool = True,
+) -> List[ValidationResult]:
     """
-    Split date range into train/test periods.
+    Validate multiple optimizer results.
     
     Args:
-        date_from: Start date (YYYY-MM-DD)
-        date_to: End date (YYYY-MM-DD)
-        validation_split: Fraction for testing (default 0.3)
+        results: List of optimizer result dicts with train/test metrics
+        validation_split: Fraction of data used for validation
+        max_degradation: Maximum allowed degradation
+        min_robustness: Minimum robustness score
+        enforce: If True, raise OverfittingError if any fail
     
     Returns:
-        (train_from, train_to, test_from, test_to)
+        List of ValidationResult objects
+    
+    Raises:
+        OverfittingError: If enforce=True and any validation fails
     """
-    from datetime import datetime, timedelta
+    validation_results = []
     
-    start = datetime.fromisoformat(date_from)
-    end = datetime.fromisoformat(date_to)
+    for i, result_dict in enumerate(results):
+        try:
+            optimizer_result = OptimizerResult(
+                train_metrics=result_dict.get('train_metrics', {}),
+                test_metrics=result_dict.get('test_metrics', {}),
+                config=result_dict.get('config', {}),
+            )
+            
+            validation = enforce_walk_forward_validation(
+                optimizer_result,
+                validation_split=validation_split,
+                max_degradation=max_degradation,
+                min_robustness=min_robustness,
+                enforce=enforce,
+            )
+            
+            validation_results.append(validation)
+        except Exception as e:
+            if enforce:
+                raise OverfittingError(f"Validation failed for result {i}: {e}")
+            validation_results.append(ValidationResult(
+                passed=False,
+                message=f"Validation error: {e}",
+                robustness_score=0.0,
+                degradation_pct=1.0,
+                metrics={},
+            ))
     
-    total_days = (end - start).days
-    test_days = int(total_days * validation_split)
-    train_days = total_days - test_days
-    
-    train_from = start.strftime('%Y-%m-%d')
-    train_to = (start + timedelta(days=train_days)).strftime('%Y-%m-%d')
-    test_from = train_to
-    test_to = end.strftime('%Y-%m-%d')
-    
-    return train_from, train_to, test_from, test_to
-
-
-def calculate_robustness_score(
-    train_metrics: Dict[str, float],
-    test_metrics: Dict[str, float]
-) -> float:
-    """
-    Calculate robustness score (0.0 to 1.0).
-    
-    Higher score = more consistent performance across train/test.
-    
-    Formula:
-        score = 1.0 - |degradation| - consistency_penalty
-    
-    Where:
-        degradation = (test_ev - train_ev) / train_ev
-        consistency_penalty = variance in win_rate, avg_r, etc.
-    """
-    train_ev = train_metrics.get('avg_r', 0.0)
-    test_ev = test_metrics.get('avg_r', 0.0)
-    
-    if train_ev == 0:
-        return 0.0
-    
-    # Degradation component (0.0 to 1.0, lower is worse)
-    degradation = abs((test_ev - train_ev) / train_ev)
-    degradation_score = max(0.0, 1.0 - degradation)
-    
-    # Consistency component (win rate, avg R should be similar)
-    train_wr = train_metrics.get('win_rate', 0.0)
-    test_wr = test_metrics.get('win_rate', 0.0)
-    wr_consistency = 1.0 - abs(train_wr - test_wr)
-    
-    # Combined score (weighted average)
-    robustness = 0.7 * degradation_score + 0.3 * wr_consistency
-    
-    return max(0.0, min(1.0, robustness))
+    return validation_results
 
