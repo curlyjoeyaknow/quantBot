@@ -7,7 +7,8 @@ import type {
   SliceAnalyzer,
   SliceExporter,
 } from '@quantbot/core';
-import { ValidationError, AppError } from '@quantbot/infra/utils';
+import { ValidationError, AppError, logger } from '@quantbot/infra/utils';
+import { validateParquetLayout } from '@quantbot/core';
 
 /**
  * Pure workflow handler:
@@ -55,6 +56,24 @@ export async function exportAndAnalyzeSlice(args: {
       field: 'layout',
       baseUri: layout?.baseUri,
       subdirTemplate: layout?.subdirTemplate,
+    });
+  }
+
+  // Validate layout against canonical artifact spec
+  const layoutValidation = validateParquetLayout(layout);
+  if (!layoutValidation.valid) {
+    throw new ValidationError('ParquetLayoutSpec does not conform to canonical artifact spec', {
+      field: 'layout',
+      errors: layoutValidation.errors,
+      warnings: layoutValidation.warnings,
+      layout,
+    });
+  }
+  // Log warnings (non-fatal)
+  if (layoutValidation.warnings.length > 0) {
+    logger.warn('ParquetLayoutSpec warnings (non-fatal)', {
+      warnings: layoutValidation.warnings,
+      layout,
     });
   }
 

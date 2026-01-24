@@ -17,7 +17,7 @@ import {
   // PostgreSQL repositories removed - use DuckDB equivalents
   // CallsRepository, TokensRepository, AlertsRepository, SimulationRunsRepository
 } from '@quantbot/storage';
-import type { ExperimentRepository } from '@quantbot/core';
+import type { ExperimentRepository, RawDataRepository, CanonicalRepository, FeatureStore } from '@quantbot/core';
 import { OhlcvIngestionService } from '@quantbot/ingestion';
 import { MarketDataIngestionService } from '@quantbot/jobs';
 // TelegramAlertIngestionService temporarily commented out - needs repository refactoring
@@ -40,7 +40,14 @@ import type { ClickHouseClient } from '@clickhouse/client';
 import {
   DuckDBDataHelperService,
   DEFAULT_DB_PATH as DUCKDB_DATA_HELPER_DEFAULT_PATH,
+  ArtifactDuckDBAdapter,
+  RawDataDuckDBAdapter,
+  CanonicalDuckDBAdapter,
 } from '@quantbot/storage';
+import {
+  LakeExporterService,
+} from '@quantbot/infra/storage';
+import type { ArtifactRepository } from '@quantbot/core';
 import { ensureInitialized } from './initialization-manager.js';
 
 /**
@@ -71,6 +78,11 @@ export interface CommandServices {
   experimentRepository(): ExperimentRepository; // Experiment tracking
   runRepository(): RunRepository; // ClickHouse run ledger
   duckdbDataHelper(): DuckDBDataHelperService; // DuckDB data helper (safe queries)
+  lakeExporter(): LakeExporterService; // Lake exporter service
+  artifactRepository(): ArtifactRepository; // Versioned artifacts (strategies, sim runs, configs)
+  rawDataRepository(): RawDataRepository; // Raw immutable data (Telegram exports, API responses)
+  canonicalRepository(): CanonicalRepository; // Canonical events (unified market data)
+  featureStore(): FeatureStore; // Feature store (computation and caching)
   // Add more services as needed
 }
 
@@ -226,6 +238,34 @@ export class CommandContext {
         // DuckDB Data Helper Service - safe queries with validation
         const dbPath = process.env.DUCKDB_PATH || DUCKDB_DATA_HELPER_DEFAULT_PATH;
         return new DuckDBDataHelperService(dbPath, pythonEngine);
+      },
+      lakeExporter: () => {
+        // Lake Exporter Service - Parquet Lake v1 exports
+        return new LakeExporterService(pythonEngine);
+      },
+      artifactRepository: () => {
+        // DuckDB ArtifactRepository for versioned artifacts
+        const dbPath = process.env.DUCKDB_PATH || 'data/quantbot.duckdb';
+        return new ArtifactDuckDBAdapter(dbPath);
+      },
+      rawDataRepository: () => {
+        // DuckDB RawDataRepository for immutable raw data
+        const dbPath = process.env.DUCKDB_PATH || 'data/quantbot.duckdb';
+        return new RawDataDuckDBAdapter(dbPath);
+      },
+      canonicalRepository: () => {
+        // DuckDB CanonicalRepository for unified market data events
+        const dbPath = process.env.DUCKDB_PATH || 'data/quantbot.duckdb';
+        return new CanonicalDuckDBAdapter(dbPath);
+      },
+      featureStore: () => {
+        // In-memory feature store with LRU cache and TTL
+        // Lazy import to avoid circular dependencies
+        const { InMemoryFeatureStore } = require('@quantbot/analytics');
+        return new InMemoryFeatureStore({
+          defaultTTL: 10 * 60 * 1000, // 10 minutes
+          maxSize: 1000,
+        });
       },
     };
   }

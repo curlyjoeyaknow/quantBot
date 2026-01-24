@@ -76,6 +76,7 @@ export const sweepCallsSchema = z
     notionalUsd: z.coerce.number().positive().default(1000),
     format: z.enum(['json', 'table', 'csv']).default('table'),
     resume: z.boolean().default(false), // Resume from previous run
+    benchmark: z.boolean().default(false), // Enable benchmarking
   })
   .refine(
     (data) => {

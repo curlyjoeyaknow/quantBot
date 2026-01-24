@@ -13,10 +13,9 @@ import {
   artifactsGetSchema,
   artifactsTagSchema,
 } from '../command-defs/artifacts.js';
-// TODO: Create artifact handlers
-// import { listArtifactsHandler } from '../handlers/artifacts/list-artifacts.js';
-// import { getArtifactHandler } from '../handlers/artifacts/get-artifact.js';
-// import { tagArtifactHandler } from '../handlers/artifacts/tag-artifact.js';
+import { listArtifactsHandler } from '../handlers/artifacts/list-artifacts.js';
+import { getArtifactHandler } from '../handlers/artifacts/get-artifact.js';
+import { tagArtifactHandler } from '../handlers/artifacts/tag-artifact.js';
 import type { PackageCommandModule } from '../types/index.js';
 
 /**
@@ -90,9 +89,9 @@ const artifactsModule: PackageCommandModule = {
       name: 'list',
       description: 'List all artifacts',
       schema: artifactsListSchema,
-      handler: async (_args: unknown, _ctx: unknown) => {
-        // TODO: Implement listArtifactsHandler
-        throw new Error('Artifact handlers not yet implemented');
+      handler: async (args: unknown, ctx: CommandContext) => {
+        const typedArgs = args as z.infer<typeof artifactsListSchema>;
+        return await listArtifactsHandler(typedArgs, ctx);
       },
       examples: [
         'quantbot artifacts list',
@@ -104,9 +103,9 @@ const artifactsModule: PackageCommandModule = {
       name: 'get',
       description: 'Get artifact by ID and version',
       schema: artifactsGetSchema,
-      handler: async (_args: unknown, _ctx: unknown) => {
-        // TODO: Implement getArtifactHandler
-        throw new Error('Artifact handlers not yet implemented');
+      handler: async (args: unknown, ctx: CommandContext) => {
+        const typedArgs = args as z.infer<typeof artifactsGetSchema>;
+        return await getArtifactHandler(typedArgs, ctx);
       },
       examples: [
         'quantbot artifacts get strategy-123',
@@ -117,9 +116,9 @@ const artifactsModule: PackageCommandModule = {
       name: 'tag',
       description: 'Tag an artifact',
       schema: artifactsTagSchema,
-      handler: async (_args: unknown, _ctx: unknown) => {
-        // TODO: Implement tagArtifactHandler
-        throw new Error('Artifact handlers not yet implemented');
+      handler: async (args: unknown, ctx: CommandContext) => {
+        const typedArgs = args as z.infer<typeof artifactsTagSchema>;
+        return await tagArtifactHandler(typedArgs, ctx);
       },
       examples: ['quantbot artifacts tag strategy-123 2.0.0 production tested'],
     },

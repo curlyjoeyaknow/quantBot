@@ -36,6 +36,9 @@ import '../commands/validation.js';
 import '../commands/architecture.js';
 import '../commands/server.js';
 import '../commands/lab-ui.js';
+import '../commands/lake.js';
+import '../commands/data/raw.js';
+import '../commands/data/canonical.js';
 
 // Import register functions to add Commander options
 import { registerObservabilityCommands } from '../commands/observability.js';
@@ -59,6 +62,10 @@ import { registerValidationCommands } from '../commands/validation.js';
 import { registerArchitectureCommands } from '../commands/architecture.js';
 import { registerServerCommands } from '../commands/server.js';
 import { registerLabUiCommands } from '../commands/lab-ui.js';
+import { registerLakeCommands } from '../commands/lake.js';
+import { registerRawDataCommands } from '../commands/data/raw.js';
+import { registerCanonicalCommands } from '../commands/data/canonical.js';
+import { registerFeaturesCommands } from '../commands/features.js';
 
 // Set up program
 program
@@ -90,6 +97,10 @@ registerValidationCommands(program);
 registerArchitectureCommands(program);
 registerServerCommands(program);
 registerLabUiCommands(program);
+registerLakeCommands(program);
+registerRawDataCommands(program);
+registerCanonicalCommands(program);
+registerFeaturesCommands(program);
 
 // Global error handler
 program.configureOutput({

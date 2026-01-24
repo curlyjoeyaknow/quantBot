@@ -4,6 +4,115 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added - Parquet Lake v1 Slice Exporter
+
+- **Parquet Lake v1 Implementation**: Complete implementation of Parquet Lake v1 spec for deterministic, scalable data exports
+  - **Python Core Functions** (`tools/backtest/lib/slice_exporter.py`):
+    - `compute_mint_bucket()` - SHA-1 bucket partitioning (00..ff) to prevent directory explosion
+    - `floor_to_interval()` - Timestamp flooring to interval boundaries
+    - `compute_window_slice()` - Window slice calculation around alerts
+    - `parse_window_spec()` - Window spec parser (e.g., "pre52_post4948")
+    - `interval_to_seconds()` - Interval string converter
+  - **ClickHouse Query + Parquet Write**:
+    - `_build_lake_query()` - ClickHouse query builder for OHLCV data
+    - `_write_partitioned_parquet()` - Bucket-partitioned Parquet writer with deterministic naming
+    - Supports compression (zstd, snappy, none)
+    - Deterministic file naming (part-0000, part-0001, ...)
+  - **Coverage Tracking + Manifest Sealing**:
+    - `compute_coverage()` - Per-alert coverage metrics (available_pre, available_post, available_total)
+    - `_write_coverage_parquet()` - Coverage metrics export
+    - `write_manifest_json()` - Atomic manifest write (temp file + rename)
+    - `export_lake_run_slices()` - Main entry point for run-scoped exports
+  - **TypeScript Service** (`packages/infra/src/storage/services/lake-exporter-service.ts`):
+    - `LakeExporterService` - Thin wrapper around PythonEngine
+    - Zod schemas for config and result validation
+    - Error handling and logging
+  - **CLI Integration**:
+    - `quantbot lake export-run-slices` command
+    - Handler: `exportRunSlicesLakeHandler`
+    - Auto-generates run_id if not provided
+    - Reads ClickHouse config from environment variables
+  - **Python Entry Point** (`tools/lake/export_lake_run_slices.py`):
+    - Reads config from stdin (JSON)
+    - Calls `export_lake_run_slices()` function
+    - Returns result as JSON
+  - **Testing**: Comprehensive test suite
+    - 26 Python unit tests (bucket, window, coverage, manifest)
+    - 3 TypeScript service tests
+    - 3 CLI handler tests
+    - All tests passing
+
+- **Slice Export & Analyze Workflow - Phase 4: Dataset Expansion** ✅ Complete
+  - **Dataset Registry** (`packages/storage/src/adapters/dataset-registry.ts`):
+    - Centralized registry for all supported datasets in slice export system
+    - Supports both candle datasets (OHLCV) and indicator datasets
+    - Conditional dataset support (checks ClickHouse table existence)
+    - `DatasetRegistry` class with `get()`, `getAll()`, `getByType()`, `isAvailable()`, `getAvailable()` methods
+  - **Dataset Support**:
+    - `candles_5m` dataset registered with correct metadata (interval: '5m', tableName: 'ohlcv_candles')
+    - `indicators_1m` conditional dataset registered (checks for `indicator_values` table existence)
+    - All datasets: `candles_1s`, `candles_15s`, `candles_1m`, `candles_5m`, `indicators_1m`
+  - **Adapter Integration**:
+    - `ClickHouseSliceExporterAdapterImpl` uses `datasetRegistry.get()` for dataset lookup
+    - Conditional dataset checking via `datasetRegistry.isAvailable()` before querying
+    - Error messages list available datasets when unsupported dataset requested
+  - **Testing**: Comprehensive test coverage
+    - 15 unit tests for dataset registry (registration, lookup, conditional availability)
+    - 6 property tests for registry invariants (determinism, consistency, availability checks)
+    - All tests passing
+
+### Added - Event Log + Derived Index Architecture
+
+- **Event Log Infrastructure**: Implemented append-only event log pattern to eliminate DuckDB locking conflicts
+  - `tools/ledger/event_writer.py` - Atomic append event writer with day partitioning
+  - `tools/ledger/schema_registry.py` - Event schema validation and versioning
+  - `tools/ledger/emit_event.py` - CLI script for event emission
+  - Event types: `run.created`, `run.started`, `run.completed`, `phase.started`, `phase.completed`, `trial.recorded`, `baseline.completed`, `artifact.created`
+
+- **TypeScript Event Emission**: Event emitter integrated into backtest handlers
+  - `packages/backtest/src/events/event-emitter.ts` - TypeScript event emitter using PythonEngine pattern
+  - Integrated event emission into `runPathOnly` (run lifecycle + phase events)
+  - Integrated event emission into `runPolicyBacktest` (trials + phase events)
+
+- **DuckDB Indexer**: Rebuildable index from event log
+  - `tools/ledger/indexer.py` - Rebuilds DuckDB tables from event log
+  - `tools/ledger/rebuild_index.py` - CLI for on-demand indexing
+  - `tools/ledger/index_daemon.py` - Periodic sync daemon (30s interval)
+  - Materialized views: `latest_runs`, `run_phase_summary`
+
+- **Dual Mode Migration**: Legacy compatibility adapter
+  - `packages/backtest/src/adapters/legacy-duckdb-adapter.ts` - Dual mode adapter for legacy DuckDB + event log union queries
+  - Migration cutover date: 2026-01-23
+
+- **Artifact Management**: Structured artifact directory management
+  - `packages/backtest/src/artifacts/index.ts` - Run directory creation and artifact writing
+
+- **Testing**: Unit and integration tests
+  - `tools/ledger/tests/test_event_writer.py` - Event writer tests
+  - `tools/ledger/tests/test_indexer.py` - Indexer tests
+  - `packages/backtest/src/events/event-emitter.test.ts` - Event emitter tests
+  - `packages/backtest/src/events/__tests__/event-log.integration.test.ts` - Integration tests
+
+- **Documentation**: Migration guide and architecture documentation
+  - `docs/architecture/EVENT_LOG_MIGRATION.md` - Complete migration guide
+  - `docs/architecture/EVENT_LOG_IMPLEMENTATION_SUMMARY.md` - Implementation summary
+
+### Changed
+
+- `packages/backtest/src/runPathOnly.ts` - Added event emission for run lifecycle and phases
+- `packages/backtest/src/runPolicyBacktest.ts` - Added event emission for run lifecycle, phases, and trials
+
+### Benefits
+
+- **No locking conflicts**: Events are append-only JSONL (concurrent-safe)
+- **Rebuildable**: DuckDB corruption? Rebuild from log
+- **Auditable**: Full event history for debugging
+- **Scalable**: Parquet artifacts for heavy data
+- **Simple**: One writer (indexer), many readers
+- **Deterministic**: Replay events → same index
+
+## [Unreleased]
+
 ### Added
 
 - **Web Lab UI - Complete Implementation** - Full-featured web interface for backtesting, optimization, and strategy management

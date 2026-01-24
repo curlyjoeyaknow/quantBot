@@ -548,7 +548,7 @@ const backtestModule: PackageCommandModule = {
 
           // Import exit-stack functions
           const { runExitStack } = await import('@quantbot/backtest');
-          const { openDuckDb } = await import('@quantbot/backtest');
+          const { openDuckDb } = await import('@quantbot/infra/storage');
           const { planBacktest } = await import('@quantbot/backtest');
           const { checkCoverage } = await import('@quantbot/backtest');
           const { materialiseSlice } = await import('@quantbot/backtest');
@@ -660,28 +660,24 @@ const backtestModule: PackageCommandModule = {
           // Open main DuckDB (not artifacts directory)
           const db = await openDuckDb(duckdbPath);
 
-          try {
-            // Run exit-stack
-            await runExitStack(db as any, {
-              runId: opts.runId!,
-              strategyId: opts.strategyId,
-              interval: opts.interval,
-              entryDelayMs: plan.entryDelayCandles * plan.intervalSeconds * 1000,
-              positionUsd: opts.positionUsd || 1000,
-              takerFeeBps: opts.takerFeeBps || 30,
-              slippageBps: opts.slippageBps || 10,
-              calls: callRecords,
-              candlesByCallId,
-            });
+          // Run exit-stack
+          await runExitStack(db as any, {
+            runId: opts.runId!,
+            strategyId: opts.strategyId,
+            interval: opts.interval,
+            entryDelayMs: plan.entryDelayCandles * plan.intervalSeconds * 1000,
+            positionUsd: opts.positionUsd || 1000,
+            takerFeeBps: opts.takerFeeBps || 30,
+            slippageBps: opts.slippageBps || 10,
+            calls: callRecords,
+            candlesByCallId,
+          });
 
-            return {
-              runId: opts.runId,
-              message: 'Exit-stack backtest completed',
-              callsProcessed: eligibleCalls.length,
-            };
-          } finally {
-            db.close();
-          }
+          return {
+            runId: opts.runId,
+            message: 'Exit-stack backtest completed',
+            callsProcessed: eligibleCalls.length,
+          };
         } else {
           // Original exit-optimizer mode (existing behavior)
           const strategy: import('@quantbot/backtest').StrategyV1 = {

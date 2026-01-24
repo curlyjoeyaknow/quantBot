@@ -32,8 +32,9 @@ import { materialiseSlice } from './slice.js';
 import { loadCandlesFromSlice } from './runBacktest.js';
 import { logger, TimingContext, type LogContext } from '@quantbot/infra/utils';
 import { DateTime } from 'luxon';
-import { createRunDirectory, getGitProvenance } from '@quantbot/simulation/backtest';
-import type { AlertArtifact, TradeArtifact, SummaryArtifact } from '@quantbot/simulation/backtest';
+import { createRunDirectory, getGitProvenance } from './artifacts/index.js';
+import type { AlertArtifact, TradeArtifact, SummaryArtifact } from './artifacts/index.js';
+import { getEventEmitter } from './events/event-emitter.js';
 
 // =============================================================================
 // Types
@@ -102,6 +103,7 @@ export async function runPolicyBacktest(
 ): Promise<PolicyBacktestSummary> {
   const runId = req.runId || randomUUID();
   const simpleFees: FeeConfig = req.fees || { takerFeeBps: 30, slippageBps: 10 };
+  const eventEmitter = getEventEmitter();
 
   // Create execution config from venue or simple fees
   const executionConfig: ExecutionConfig = createExecutionConfig(
@@ -119,6 +121,23 @@ export async function runPolicyBacktest(
     policyKind: req.policy.kind,
     calls: req.calls.length,
   });
+
+  // Emit run.created event
+  const config = {
+    policyId: req.policyId,
+    policyKind: req.policy.kind,
+    executionModel: req.executionModel || 'simple',
+    interval: req.interval,
+    from: req.from?.toISO() || undefined,
+    to: req.to?.toISO() || undefined,
+    callsCount: req.calls.length,
+    fees: simpleFees,
+  };
+  const dataFingerprint = `${req.policyId}_${req.interval}_${req.from?.toISO() || 'none'}_${req.to?.toISO() || 'none'}_${req.calls.length}`;
+  await eventEmitter.emitRunCreated(runId, 'policy', config, dataFingerprint);
+
+  // Emit run.started event
+  await eventEmitter.emitRunStarted(runId);
 
   // Mandatory deduplication: dedup by call id, keep earliest instance
   const callsById = new Map<string, (typeof req.calls)[number]>();
@@ -163,6 +182,9 @@ export async function runPolicyBacktest(
   });
 
   // Step 1: Plan (reuse existing)
+  let phaseOrder = 0;
+  await eventEmitter.emitPhaseStarted(runId, 'plan', phaseOrder++);
+  const planStartTime = Date.now();
   const plan = timing.phaseSync('plan', () => {
     const planReq = {
       strategy: {
@@ -182,11 +204,22 @@ export async function runPolicyBacktest(
     };
     return planBacktest(planReq);
   });
+  const planDurationMs = Date.now() - planStartTime;
+  await eventEmitter.emitPhaseCompleted(runId, 'plan', planDurationMs, {
+    calls: uniqueCalls.length,
+  });
   logger.info('Planning complete', { calls: uniqueCalls.length });
 
   // Step 2: Coverage gate
+  await eventEmitter.emitPhaseStarted(runId, 'coverage', phaseOrder++);
+  const coverageStartTime = Date.now();
   const coverage = await timing.phase('coverage', async () => {
     return checkCoverage(plan);
+  });
+  const coverageDurationMs = Date.now() - coverageStartTime;
+  await eventEmitter.emitPhaseCompleted(runId, 'coverage', coverageDurationMs, {
+    eligible: coverage.eligible.length,
+    excluded: coverage.excluded.length,
   });
 
   if (coverage.eligible.length === 0) {
@@ -220,20 +253,33 @@ export async function runPolicyBacktest(
   });
 
   // Step 3: Slice materialisation
+  await eventEmitter.emitPhaseStarted(runId, 'slice', phaseOrder++);
+  const sliceStartTime = Date.now();
   const slice = await timing.phase('slice', async () => {
     return materialiseSlice(plan, coverage);
+  });
+  const sliceDurationMs = Date.now() - sliceStartTime;
+  await eventEmitter.emitPhaseCompleted(runId, 'slice', sliceDurationMs, {
+    path: slice.path,
   });
   logger.info('Slice materialised', { path: slice.path });
 
   // Step 4: Load candles
+  await eventEmitter.emitPhaseStarted(runId, 'load', phaseOrder++);
+  const loadStartTime = Date.now();
   const candlesByCall = await timing.phase('load', async () => {
     return loadCandlesFromSlice(slice.path);
   });
+  const loadDurationMs = Date.now() - loadStartTime;
+  await eventEmitter.emitPhaseCompleted(runId, 'load', loadDurationMs, {
+    callsLoaded: candlesByCall.size,
+  });
 
-  // Create call lookup map
-  const callsById = new Map(uniqueCalls.map((call) => [call.id, call]));
+  // Reuse callsById map from deduplication step above
 
   // Step 5: Execute policy for each eligible call
+  await eventEmitter.emitPhaseStarted(runId, 'execute', phaseOrder++);
+  const executeStartTime = Date.now();
   const executionResult = timing.phaseSync('execute', () => {
     const policyResults: PolicyResultRow[] = [];
     const returnsBps: number[] = [];
@@ -295,6 +341,11 @@ export async function runPolicyBacktest(
       totalMaxAdverseExcursionBps,
     };
   });
+  const executeDurationMs = Date.now() - executeStartTime;
+  await eventEmitter.emitPhaseCompleted(runId, 'execute', executeDurationMs, {
+    results: executionResult.policyResults.length,
+    stopOuts: executionResult.stopOutCount,
+  });
 
   const {
     policyResults,
@@ -311,6 +362,9 @@ export async function runPolicyBacktest(
   });
 
   // Step 6: Write structured artifacts
+  await eventEmitter.emitPhaseStarted(runId, 'store', phaseOrder++);
+  const storeStartTime = Date.now();
+  const artifactPaths: Record<string, string> = {};
   await timing.phase('store', async () => {
     try {
       // Write alerts (inputs)
@@ -351,6 +405,13 @@ export async function runPolicyBacktest(
         );
       }
 
+      // Collect artifact paths for event emission
+      artifactPaths['run_dir'] = runDir.getRunDir();
+      artifactPaths['alerts'] = join(runDir.getRunDir(), 'alerts.parquet');
+      if (policyResults.length > 0) {
+        artifactPaths['trades'] = join(runDir.getRunDir(), 'trades.parquet');
+      }
+
       logger.info('Artifacts written', {
         runId,
         runDir: runDir.getRunDir(),
@@ -362,8 +423,14 @@ export async function runPolicyBacktest(
       throw error;
     }
   });
+  const storeDurationMs = Date.now() - storeStartTime;
+  await eventEmitter.emitPhaseCompleted(runId, 'store', storeDurationMs, {
+    artifactPaths,
+  });
 
   // Step 7: Calculate aggregate metrics
+  await eventEmitter.emitPhaseStarted(runId, 'aggregate', phaseOrder++);
+  const aggregateStartTime = Date.now();
   const aggregateMetrics = timing.phaseSync('aggregate', () => {
     const avgReturnBps =
       returnsBps.length > 0 ? returnsBps.reduce((a, b) => a + b, 0) / returnsBps.length : 0;
@@ -394,6 +461,8 @@ export async function runPolicyBacktest(
       avgMaxAdverseExcursionBps,
     };
   });
+  const aggregateDurationMs = Date.now() - aggregateStartTime;
+  await eventEmitter.emitPhaseCompleted(runId, 'aggregate', aggregateDurationMs, aggregateMetrics);
 
   // Step 8: Write summary artifact
   const summaryArtifact: SummaryArtifact = {
@@ -440,6 +509,9 @@ export async function runPolicyBacktest(
     metrics: aggregateMetrics,
     timing: timing.toJSON(),
   };
+
+  // Emit run.completed event
+  await eventEmitter.emitRunCompleted(runId, summary as unknown as Record<string, unknown>, artifactPaths);
 
   // Log the sacred timing line - when regressions happen, this screams
   logger.info(timing.summaryLine());

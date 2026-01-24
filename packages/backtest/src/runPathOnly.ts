@@ -30,8 +30,9 @@ import { materialiseSlice } from './slice.js';
 import { loadCandlesFromSlice } from './runBacktest.js';
 import { computePathMetrics } from './metrics/path-metrics.js';
 import { logger, TimingContext, type LogContext } from '@quantbot/infra/utils';
-import { createRunDirectory, getGitProvenance } from '@quantbot/simulation/backtest';
-import type { AlertArtifact, PathArtifact } from '@quantbot/simulation/backtest';
+import { createRunDirectory, getGitProvenance } from './artifacts/index.js';
+import type { AlertArtifact, PathArtifact } from './artifacts/index.js';
+import { getEventEmitter } from './events/event-emitter.js';
 
 /**
  * Run path-only backtest
@@ -51,6 +52,7 @@ import type { AlertArtifact, PathArtifact } from '@quantbot/simulation/backtest'
 export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary> {
   const runId = randomUUID();
   const activityMovePct = req.activityMovePct ?? 0.1;
+  const eventEmitter = getEventEmitter();
 
   // Wall-clock timing - when something regresses 15s → 40s, this screams
   const timing = new TimingContext();
@@ -61,6 +63,20 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
     calls: req.calls.length,
     interval: req.interval,
   });
+
+  // Emit run.created event
+  const config = {
+    interval: req.interval,
+    from: req.from?.toISO() || undefined,
+    to: req.to?.toISO() || undefined,
+    activityMovePct,
+    callsCount: req.calls.length,
+  };
+  const dataFingerprint = `${req.interval}_${req.from?.toISO() || 'none'}_${req.to?.toISO() || 'none'}_${req.calls.length}`;
+  await eventEmitter.emitRunCreated(runId, 'path-only', config, dataFingerprint);
+
+  // Emit run.started event
+  await eventEmitter.emitRunStarted(runId);
 
   // Mandatory deduplication: dedup by call id, keep earliest instance
   const callsById = new Map<string, (typeof req.calls)[number]>();
@@ -101,6 +117,9 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
 
   // Step 1: Plan (reuse existing)
   let plan: BacktestPlan;
+  let phaseOrder = 0;
+  await eventEmitter.emitPhaseStarted(runId, 'plan', phaseOrder++);
+  const planStartTime = Date.now();
   timing.phaseSync('plan', () => {
     // Create a minimal strategy for planning purposes (no overlays needed for path-only)
     const planReq = {
@@ -122,6 +141,11 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
 
     plan = planBacktest(planReq);
   });
+  const planDurationMs = Date.now() - planStartTime;
+  await eventEmitter.emitPhaseCompleted(runId, 'plan', planDurationMs, {
+    totalRequiredCandles: plan!.totalRequiredCandles,
+    calls: uniqueCalls.length,
+  });
 
   logger.info('Planning complete', {
     totalRequiredCandles: plan!.totalRequiredCandles,
@@ -129,8 +153,15 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
   });
 
   // Step 2: Coverage gate (reuse existing)
+  await eventEmitter.emitPhaseStarted(runId, 'coverage', phaseOrder++);
+  const coverageStartTime = Date.now();
   const coverage = await timing.phase('coverage', async () => {
     return checkCoverage(plan!);
+  });
+  const coverageDurationMs = Date.now() - coverageStartTime;
+  await eventEmitter.emitPhaseCompleted(runId, 'coverage', coverageDurationMs, {
+    eligible: coverage.eligible.length,
+    excluded: coverage.excluded.length,
   });
 
   if (coverage.eligible.length === 0) {
@@ -155,8 +186,15 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
   });
 
   // Step 3: Slice materialisation (reuse existing)
+  await eventEmitter.emitPhaseStarted(runId, 'slice', phaseOrder++);
+  const sliceStartTime = Date.now();
   const slice = await timing.phase('slice', async () => {
     return materialiseSlice(plan!, coverage);
+  });
+  const sliceDurationMs = Date.now() - sliceStartTime;
+  await eventEmitter.emitPhaseCompleted(runId, 'slice', sliceDurationMs, {
+    path: slice.path,
+    calls: slice.callIds.length,
   });
 
   logger.info('Slice materialised', {
@@ -165,14 +203,21 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
   });
 
   // Step 4: Load candles from slice (reuse existing)
+  await eventEmitter.emitPhaseStarted(runId, 'load', phaseOrder++);
+  const loadStartTime = Date.now();
   const candlesByCall = await timing.phase('load', async () => {
     return loadCandlesFromSlice(slice.path);
   });
+  const loadDurationMs = Date.now() - loadStartTime;
+  await eventEmitter.emitPhaseCompleted(runId, 'load', loadDurationMs, {
+    callsLoaded: candlesByCall.size,
+  });
 
-  // Create call lookup map
-  const callsById = new Map(uniqueCalls.map((call) => [call.id, call]));
+  // Reuse callsById map from deduplication step above
 
   // Step 5: Compute path metrics for EVERY eligible call
+  await eventEmitter.emitPhaseStarted(runId, 'compute', phaseOrder++);
+  const computeStartTime = Date.now();
   const pathMetricsRows: PathMetricsRow[] = timing.phaseSync('compute', () => {
     const rows: PathMetricsRow[] = [];
 
@@ -235,6 +280,11 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
 
     return rows;
   });
+  const computeDurationMs = Date.now() - computeStartTime;
+  await eventEmitter.emitPhaseCompleted(runId, 'compute', computeDurationMs, {
+    computed: pathMetricsRows.length,
+    eligible: coverage.eligible.length,
+  });
 
   logger.info('Path metrics computed', {
     computed: pathMetricsRows.length,
@@ -242,6 +292,9 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
   });
 
   // Step 6: Write structured artifacts
+  await eventEmitter.emitPhaseStarted(runId, 'store', phaseOrder++);
+  const storeStartTime = Date.now();
+  const artifactPaths: Record<string, string> = {};
   await timing.phase('store', async () => {
     try {
       // Write alerts (inputs)
@@ -303,6 +356,13 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
       // Mark as successful
       await runDir.markSuccess();
 
+      // Collect artifact paths for event emission
+      artifactPaths['run_dir'] = runDir.getRunDir();
+      if (pathMetricsRows.length > 0) {
+        artifactPaths['paths'] = join(runDir.getRunDir(), 'paths.parquet');
+      }
+      artifactPaths['alerts'] = join(runDir.getRunDir(), 'alerts.parquet');
+
       logger.info('Artifacts written', {
         runId,
         runDir: runDir.getRunDir(),
@@ -313,6 +373,10 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
       await runDir.markFailure(error as Error);
       throw error;
     }
+  });
+  const storeDurationMs = Date.now() - storeStartTime;
+  await eventEmitter.emitPhaseCompleted(runId, 'store', storeDurationMs, {
+    artifactPaths,
   });
 
   // Step 7: Stop (no trades, no policy execution)
@@ -326,6 +390,9 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
     pathMetricsWritten: pathMetricsRows.length,
     timing: timing.toJSON(),
   };
+
+  // Emit run.completed event
+  await eventEmitter.emitRunCompleted(runId, summary as unknown as Record<string, unknown>, artifactPaths);
 
   // Log the sacred timing line - when regressions happen, this screams
   logger.info(timing.summaryLine());

@@ -196,6 +196,7 @@ export function registerCallsCommands(program: Command): void {
     .option('--slippage-bps <bps>', 'Slippage in basis points', '10')
     .option('--notional-usd <amount>', 'Position size in USD', '1000')
     .option('--resume', 'Resume from previous run (skip completed scenarios)', false)
+    .option('--benchmark', 'Enable performance benchmarking', false)
     .option('--format <format>', 'Output format', 'table');
 
   defineCommand(sweepCmd, {
@@ -207,6 +208,7 @@ export function registerCallsCommands(program: Command): void {
       // coerceStringArray and coerceNumberArray handle both string and already-parsed values
       intervals: raw.intervals ? coerceStringArray(raw.intervals, 'intervals') : undefined,
       lagsMs: raw.lagsMs ? coerceNumberArray(raw.lagsMs, 'lags-ms') : undefined,
+      benchmark: raw.benchmark === true || raw.benchmark === 'true',
     }),
     validate: (opts) => sweepCallsSchema.parse(opts),
     onError: die,

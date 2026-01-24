@@ -107,18 +107,22 @@ export async function surgicalOhlcvFetchHandler(args: SurgicalOhlcvFetchArgs, ct
     });
   }
 
-  const ohlcvFetchJob = new OhlcvFetchJob({
-    parallelWorkers,
-    rateLimitMsPerWorker,
-    maxRetries: 3,
-    checkCoverage: true,
-    minCoverageToSkip: args.minCoverage ?? 0.95,
-  });
-
-  // Create OHLCV ingestion context
+  // Create OHLCV ingestion context (provides ports)
   const ohlcvIngestionContext = await createOhlcvIngestionContext({
     duckdbPath: spec.duckdbPath,
   });
+
+  // Create OHLCV fetch job with MarketDataPort from context
+  const ohlcvFetchJob = new OhlcvFetchJob(
+    ohlcvIngestionContext.ports.marketData,
+    {
+      parallelWorkers,
+      rateLimitMsPerWorker,
+      maxRetries: 3,
+      checkCoverage: true,
+      minCoverageToSkip: args.minCoverage ?? 0.95,
+    }
+  );
 
   // Create progress callback if verbose mode is enabled
   const progressCallback: ProgressCallback | undefined = spec.verbose

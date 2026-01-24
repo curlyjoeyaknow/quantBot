@@ -38,6 +38,7 @@ import {
 } from '../../core/scenario-generator.js';
 import { join } from 'path';
 import { ValidationError, ConfigurationError } from '@quantbot/infra/utils';
+import { createBenchmark } from '../../core/benchmark.js';
 
 /**
  * Per-call JSONL row (one per call × overlay × lag × interval)
@@ -231,6 +232,9 @@ function aggregateMatrix(
 }
 
 export async function sweepCallsHandler(args: SweepCallsArgs, _ctx: CommandContext) {
+  // Initialize benchmark
+  const benchmark = createBenchmark(args);
+
   // 1. Load config (if provided) or use CLI args
   let config: SweepCallsArgs;
   if (args.config) {
@@ -277,25 +281,26 @@ export async function sweepCallsHandler(args: SweepCallsArgs, _ctx: CommandConte
   }
 
   // 3. Load calls from file
-  let calls: CallSignal[];
-  try {
-    const fileContent = readFileSync(config.callsFile, 'utf-8');
-    const parsed = JSON.parse(fileContent);
-    if (!Array.isArray(parsed)) {
-      throw new ValidationError('Calls file must contain a JSON array of CallSignal objects', {
+  const calls = await benchmark.measure('load-calls-file', async () => {
+    try {
+      const fileContent = readFileSync(config.callsFile!, 'utf-8');
+      const parsed = JSON.parse(fileContent);
+      if (!Array.isArray(parsed)) {
+        throw new ValidationError('Calls file must contain a JSON array of CallSignal objects', {
+          callsFile: config.callsFile,
+        });
+      }
+      return parsed as CallSignal[];
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        throw error;
+      }
+      throw new ConfigurationError(`Failed to load calls from ${config.callsFile}`, 'callsFile', {
         callsFile: config.callsFile,
+        error: error instanceof Error ? error.message : String(error),
       });
     }
-    calls = parsed as CallSignal[];
-  } catch (error) {
-    if (error instanceof ValidationError) {
-      throw error;
-    }
-    throw new ConfigurationError(`Failed to load calls from ${config.callsFile}`, 'callsFile', {
-      callsFile: config.callsFile,
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
+  }, { callsFile: config.callsFile });
 
   // 4. Load overlay sets
   const overlayFile = config.overlaysFile || config.overlaySetsFile;
@@ -305,26 +310,34 @@ export async function sweepCallsHandler(args: SweepCallsArgs, _ctx: CommandConte
     });
   }
 
-  let overlaySets: OverlaySet[];
-  try {
-    overlaySets = loadOverlaySetsFromFile(overlayFile);
-    if (overlaySets.length === 0) {
-      throw new ValidationError('Overlay sets file must contain at least one overlay set', {
+  const overlaySets = await benchmark.measure('load-overlay-sets', async () => {
+    try {
+      const sets = loadOverlaySetsFromFile(overlayFile!);
+      if (sets.length === 0) {
+        throw new ValidationError('Overlay sets file must contain at least one overlay set', {
+          overlayFile,
+        });
+      }
+      return sets;
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        throw error;
+      }
+      throw new ConfigurationError(`Failed to load overlays from ${overlayFile}`, 'overlayFile', {
         overlayFile,
+        error: error instanceof Error ? error.message : String(error),
       });
     }
-  } catch (error) {
-    if (error instanceof ValidationError) {
-      throw error;
-    }
-    throw new ConfigurationError(`Failed to load overlays from ${overlayFile}`, 'overlayFile', {
-      overlayFile,
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
+  }, { overlayFile });
 
   // 5. Generate scenarios (deterministic)
-  let scenarios = generateScenarios(config.intervals, config.lagsMs, overlaySets);
+  let scenarios = await benchmark.measure('generate-scenarios', async () => {
+    return generateScenarios(config.intervals!, config.lagsMs!, overlaySets);
+  }, {
+    intervals: config.intervals!.length,
+    lagsMs: config.lagsMs!.length,
+    overlaySets: overlaySets.length,
+  });
 
   // 6. Resume support (if requested)
   if (config.resume) {
@@ -395,7 +408,18 @@ export async function sweepCallsHandler(args: SweepCallsArgs, _ctx: CommandConte
       };
 
       // Run evaluation
-      const result = await evaluateCallsWorkflow(request, ctx);
+      const result = await benchmark.measure(
+        'evaluate-scenario',
+        () => evaluateCallsWorkflow(request, ctx),
+        {
+          scenarioId,
+          interval,
+          lagMs,
+          overlaySetId,
+          overlayCount: overlaySet.overlays.length,
+          callCount: calls.length,
+        }
+      );
 
       // Update diagnostics (infer from results)
       for (const r of result.results) {
@@ -488,11 +512,17 @@ export async function sweepCallsHandler(args: SweepCallsArgs, _ctx: CommandConte
   console.log(`Output directory: ${config.out}`);
   console.log(`Diagnostics:`, diagnostics);
 
+  // Output benchmark report if enabled
+  if (args.benchmark) {
+    console.log(benchmark.formatReport());
+  }
+
   return {
     outputDir: config.out,
     totalScenarios: scenarios.length,
     totalResults: result.counts.perCallRows,
     totalCallerSummaries: result.counts.perCallerRows,
     diagnostics,
+    benchmark: args.benchmark ? benchmark.getReport() : undefined,
   };
 }
