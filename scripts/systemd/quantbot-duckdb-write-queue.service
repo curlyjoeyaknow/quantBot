@@ -1,0 +1,32 @@
+[Unit]
+Description=QuantBot DuckDB Write Queue Worker
+Documentation=https://github.com/quantbot/quantbot
+After=network.target
+
+[Service]
+Type=simple
+User=memez
+Group=memez
+WorkingDirectory=/home/memez/backups/quantBot-consolidation-work
+ExecStart=/usr/bin/python3 tools/backtest/lib/write_queue.py work --poll 1.0
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=quantbot-duckdb-write-queue
+
+# Environment
+Environment="PYTHONPATH=/home/memez/backups/quantBot-consolidation-work"
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+# Resource limits
+LimitNOFILE=65536
+MemoryLimit=512M
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+

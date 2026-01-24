@@ -20,9 +20,9 @@ import type { z } from 'zod';
 import type { DuckDBStorageService } from '@quantbot/simulation';
 import {
   fetchMultiChainMetadata,
-  getBirdeyeClient,
   heliusRestClient,
 } from '@quantbot/infra/api-clients';
+import { createTokenAddress } from '@quantbot/core';
 
 export type EnsureOhlcvCoverageArgs = z.infer<typeof ensureOhlcvCoverageSchema>;
 
@@ -154,7 +154,10 @@ function isValidAddress(address: string): boolean {
  * 3. Helius getTransactions call (fallback 2, Solana only)
  * This prevents fetching OHLCV for invalid/truncated addresses
  */
-async function validateAndResolveToken(token: TokenInfo): Promise<ValidatedTokenInfo> {
+async function validateAndResolveToken(
+  token: TokenInfo,
+  ctx: CommandContext
+): Promise<ValidatedTokenInfo> {
   // Step 1: Check for truncated addresses first (these should be moved to invalid_tokens_d)
   const truncationCheck = isTruncatedAddress(token.mint);
   if (truncationCheck.truncated) {
@@ -224,7 +227,7 @@ async function validateAndResolveToken(token: TokenInfo): Promise<ValidatedToken
 
   // Step 3: Fallback 1 - Try historical price lookup at alert time
   try {
-    const birdeyeClient = getBirdeyeClient();
+    const marketDataPort = await ctx.getMarketDataPort();
     const alertUnixTime = Math.floor(token.earliestCall.toSeconds());
     // Use corrected chain, but if it's EVM and we don't know which chain yet, try ethereum first
     const chainForPrice = correctedChain || 'solana';
@@ -235,17 +238,18 @@ async function validateAndResolveToken(token: TokenInfo): Promise<ValidatedToken
       chain: chainForPrice,
     });
 
-    const historicalPrice = await birdeyeClient.fetchHistoricalPriceAtUnixTime(
-      token.mint,
-      alertUnixTime,
-      chainForPrice
-    );
+    const historicalPriceResult = await marketDataPort.fetchHistoricalPriceAtTime({
+      tokenAddress: createTokenAddress(token.mint),
+      unixTime: alertUnixTime,
+      chain: chainForPrice as import('@quantbot/core').Chain,
+    });
+    const historicalPrice = historicalPriceResult?.value ?? null;
 
-    if (historicalPrice && historicalPrice.value > 0) {
+    if (historicalPrice !== null && historicalPrice > 0) {
       logger.debug(`Validated token ${token.mint} via historical price`, {
         chain: chainForPrice,
-        price: historicalPrice.value,
-        unixTime: historicalPrice.unixTime,
+        price: historicalPrice,
+        unixTime: alertUnixTime,
       });
 
       return {
@@ -482,7 +486,7 @@ export async function ensureOhlcvCoverageHandler(
       logger.info(`Validating ${i + 1}/${tokens.length} tokens...`);
     }
 
-    const validated = await validateAndResolveToken(token);
+    const validated = await validateAndResolveToken(token, ctx);
     if (validated.validated) {
       validatedTokens.push(validated);
     } else {

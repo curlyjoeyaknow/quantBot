@@ -17,7 +17,7 @@ import {
   // PostgreSQL repositories removed - use DuckDB equivalents
   // CallsRepository, TokensRepository, AlertsRepository, SimulationRunsRepository
 } from '@quantbot/storage';
-import type { ExperimentRepository, RawDataRepository, CanonicalRepository, FeatureStore } from '@quantbot/core';
+import type { ExperimentRepository, RawDataRepository, CanonicalRepository, FeatureStore, MarketDataPort } from '@quantbot/core';
 import { OhlcvIngestionService } from '@quantbot/ingestion';
 import { MarketDataIngestionService } from '@quantbot/jobs';
 // TelegramAlertIngestionService temporarily commented out - needs repository refactoring
@@ -83,6 +83,8 @@ export interface CommandServices {
   rawDataRepository(): RawDataRepository; // Raw immutable data (Telegram exports, API responses)
   canonicalRepository(): CanonicalRepository; // Canonical events (unified market data)
   featureStore(): FeatureStore; // Feature store (computation and caching)
+  // Note: marketDataPort is async - use ctx.getMarketDataPort() instead
+  marketDataPort(): never; // Market data port (for fetching OHLCV, metadata, etc.) - use getMarketDataPort() instead
   // Add more services as needed
 }
 
@@ -266,6 +268,11 @@ export class CommandContext {
           defaultTTL: 10 * 60 * 1000, // 10 minutes
           maxSize: 1000,
         });
+      },
+      // Note: marketDataPort is async and should be accessed via getMarketDataPort()
+      // Keeping in interface for type safety but implementation is async
+      marketDataPort: () => {
+        throw new Error('Use ctx.getMarketDataPort() instead - MarketDataPort requires async initialization');
       },
     };
   }

@@ -68,6 +68,12 @@ export type { OhlcvWorklistConfig, OhlcvWorklistResult } from './duckdb/duckdb-w
 export { ArtifactDuckDBAdapter } from './adapters/artifact-duckdb-adapter.js';
 export { ExperimentDuckDBAdapter } from './adapters/experiment-duckdb-adapter.js';
 
+// Raw data repository adapter
+export { RawDataDuckDBAdapter } from './adapters/raw-data-duckdb-adapter.js';
+
+// Canonical events repository adapter
+export { CanonicalDuckDBAdapter } from './adapters/canonical-duckdb-adapter.js';
+
 // Slice export and analysis adapters
 export {
   ClickHouseSliceExporterAdapterImpl,

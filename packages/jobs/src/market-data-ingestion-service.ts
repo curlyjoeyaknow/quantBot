@@ -3,6 +3,10 @@
  *
  * Fetches market creation data and token creation info for all tokens in the database
  * and stores them in ClickHouse for correlation analysis with price/volume pumps.
+ *
+ * NOTE: This service uses Birdeye-specific APIs (searchMarkets, fetchTokenCreationInfo)
+ * that are not part of the standard MarketDataPort interface. It accepts BirdeyeClient
+ * directly as a dependency. For standard OHLCV fetching, use MarketDataPort instead.
  */
 
 import { DateTime } from 'luxon';

@@ -917,6 +917,59 @@ def cluster_parameters(
     return islands
 
 
+def format_params_summary(params: Dict[str, Any]) -> str:
+    """Format a compact summary of all parameters for display."""
+    parts = []
+    
+    # Core params (always shown)
+    parts.append(f"TP={params.get('tp_mult', 0):.2f}x SL={params.get('sl_mult', 0):.2f}x")
+    
+    # Extended exits
+    if params.get('time_stop_hours'):
+        parts.append(f"TStop={params['time_stop_hours']}h")
+    if params.get('breakeven_trigger_pct'):
+        parts.append(f"BE@{params['breakeven_trigger_pct']:.0%}")
+    if params.get('trail_activation_pct'):
+        parts.append(f"Trail@{params['trail_activation_pct']:.0%}/{params.get('trail_distance_pct', 0):.0%}")
+    
+    # Tiered SL (show if any tier is set)
+    tiers = []
+    if params.get('tier_1_2x_sl'):
+        tiers.append(f"1.2x@{params['tier_1_2x_sl']:.2f}")
+    if params.get('tier_1_5x_sl'):
+        tiers.append(f"1.5x@{params['tier_1_5x_sl']:.2f}")
+    if params.get('tier_2x_sl'):
+        tiers.append(f"2x@{params['tier_2x_sl']:.2f}")
+    if params.get('tier_3x_sl'):
+        tiers.append(f"3x@{params['tier_3x_sl']:.2f}")
+    if params.get('tier_4x_sl'):
+        tiers.append(f"4x@{params['tier_4x_sl']:.2f}")
+    if tiers:
+        parts.append(f"Tiers=[{','.join(tiers[:2])}")  # Show first 2 tiers
+        if len(tiers) > 2:
+            parts[-1] += f"+{len(tiers)-2}]"
+        else:
+            parts[-1] += "]"
+    
+    # Delayed entry
+    entry_mode = params.get('entry_mode', 'immediate')
+    if entry_mode != 'immediate':
+        if entry_mode == 'wait_dip':
+            parts.append(f"Dip@{params.get('dip_pct', 0):.1%}")
+        elif entry_mode == 'wait_confirm':
+            parts.append(f"Confirm{params.get('confirm_candles', 1)}")
+    
+    # Re-entry
+    if params.get('reentry_enabled'):
+        parts.append(f"ReEntry={params.get('max_reentries', 1)}")
+    
+    # Intrabar order (compact)
+    if params.get('intrabar_order') == 'tp_first':
+        parts.append("TP1st")
+    
+    return " ".join(parts)
+
+
 def print_islands(islands: List[ParameterIsland]) -> None:
     """Print parameter islands summary."""
     print(f"\n{'='*80}")
@@ -926,7 +979,8 @@ def print_islands(islands: List[ParameterIsland]) -> None:
     for island in islands:
         print(f"\n{'─'*60}")
         print(f"ISLAND {island.island_id}: {len(island.members)} candidates")
-        print(f"  Centroid: TP={island.centroid.get('tp_mult', 0):.2f}x SL={island.centroid.get('sl_mult', 0):.2f}x")
+        centroid_summary = format_params_summary(island.centroid)
+        print(f"  Centroid: {centroid_summary}")
         print(f"  Spread:   TP±{island.param_spread.get('tp_mult', 0):.2f} SL±{island.param_spread.get('sl_mult', 0):.2f}")
         print(f"  Scores:")
         print(f"    Mean Robust:   {island.mean_robust_score:+.2f}")
@@ -941,7 +995,8 @@ def print_islands(islands: List[ParameterIsland]) -> None:
         print(f"  Top 3:")
         for m in sorted_members:
             gate_str = "✓" if m.get("passes_gates") else "✗"
-            print(f"    TP={m['params']['tp_mult']:.2f}x SL={m['params']['sl_mult']:.2f}x | "
+            params_summary = format_params_summary(m['params'])
+            print(f"    {params_summary} | "
                   f"Score={m.get('robust_score', 0):+.2f} TestR={m.get('median_test_r', 0):+.2f} {gate_str}")
 
 
@@ -1039,9 +1094,11 @@ def print_island_champions(champions: List[IslandChampion]) -> None:
     for champ in champions:
         params = champ.params
         gate_str = "✓" if champ.passes_gates else "✗"
+        params_summary = format_params_summary(params)
+        centroid_summary = format_params_summary(champ.island_centroid)
         print(f"\nIsland {champ.island_id} Champion:")
-        print(f"  Params:    TP={params.get('tp_mult', 0):.2f}x SL={params.get('sl_mult', 0):.2f}x")
-        print(f"  Centroid:  TP={champ.island_centroid.get('tp_mult', 0):.2f}x SL={champ.island_centroid.get('sl_mult', 0):.2f}x")
+        print(f"  Params:    {params_summary}")
+        print(f"  Centroid:  {centroid_summary}")
         print(f"  Discovery: Score={champ.discovery_score:+.2f} TestR={champ.median_test_r:+.2f} {gate_str}")
         print(f"  Island:    {champ.island_size} candidates")
 

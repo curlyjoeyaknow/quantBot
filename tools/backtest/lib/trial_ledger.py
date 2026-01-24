@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import duckdb
 
@@ -917,6 +917,133 @@ def list_runs(duckdb_path: str, limit: int = 50) -> List[Dict[str, Any]]:
         rows = con.execute(f"SELECT * FROM optimizer.recent_runs_v LIMIT {limit}").fetchall()
         cols = [d[0] for d in con.description]
         return [dict(zip(cols, r)) for r in rows]
+
+
+def load_trials_for_resume(duckdb_path: str, run_id: str) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """
+    Load trials from DuckDB for resume mode.
+    
+    Returns:
+        (results, robust_candidates) - List of TrialResult dicts and robust_candidates for clustering
+    """
+    import json
+    from tools.shared.duckdb_adapter import get_readonly_connection
+    
+    results: List[Dict[str, Any]] = []
+    robust_candidates: List[Dict[str, Any]] = []
+    
+    with get_readonly_connection(duckdb_path) as con:
+        # Load all trials for this run_id
+        rows = con.execute("""
+            SELECT 
+                trial_id,
+                params_json,
+                summary_json,
+                total_r,
+                avg_r,
+                alerts_ok,
+                alerts_total,
+                test_train_ratio,
+                robust_score,
+                stress_penalty,
+                worst_lane,
+                worst_lane_score,
+                gate_check_json,
+                passes_gates,
+                duration_ms,
+                median_dd_pre2x,
+                p75_dd_pre2x,
+                hit2x_pct,
+                median_time_to_2x_min,
+                objective_score
+            FROM optimizer.trials_f
+            WHERE run_id = ?
+            ORDER BY created_at
+        """, [run_id]).fetchall()
+        
+        for row in rows:
+            trial_id = row[0]
+            params_json = row[1]
+            summary_json = row[2]
+            
+            # Parse JSON fields
+            params = json.loads(params_json) if params_json else {}
+            summary = json.loads(summary_json) if summary_json else {}
+            gate_check = json.loads(row[12]) if row[12] else {}
+            
+            # Extract robust metrics (if available)
+            # Column indices: 0=trial_id, 1=params_json, 2=summary_json, 3=total_r, 4=avg_r,
+            # 5=alerts_ok, 6=alerts_total, 7=test_train_ratio, 8=robust_score, 9=stress_penalty,
+            # 10=worst_lane, 11=worst_lane_score, 12=gate_check_json, 13=passes_gates,
+            # 14=duration_ms, 15=median_dd_pre2x, 16=p75_dd_pre2x, 17=hit2x_pct,
+            # 18=median_time_to_2x_min, 19=objective_score
+            
+            test_train_ratio = row[7]  # Column 7
+            robust_score = row[8]  # Column 8
+            stress_penalty = row[9]  # Column 9
+            worst_lane = row[10]  # Column 10
+            worst_lane_score = row[11]  # Column 11
+            passes_gates = row[13] if len(row) > 13 else False  # Column 13
+            total_r = row[3] or 0.0  # Column 3
+            
+            robust_result = {}
+            median_test_r = None
+            median_train_r = None
+            
+            if test_train_ratio is not None:
+                # Estimate: use total_r as proxy for test_r, back-calculate train_r
+                median_test_r = total_r
+                median_train_r = median_test_r / test_train_ratio if test_train_ratio > 0 else 0.0
+                
+                robust_result = {
+                    "robust_score": robust_score or 0.0,
+                    "median_test_r": median_test_r,
+                    "median_train_r": median_train_r,
+                    "median_ratio": test_train_ratio,
+                    "stress_penalty": stress_penalty or 0.0,
+                    "worst_lane": worst_lane,
+                    "worst_lane_score": worst_lane_score,
+                    "passes_gates": passes_gates,
+                }
+            
+            # Build objective dict
+            objective = {
+                "final_score": row[19] if len(row) > 19 else (row[3] or 0.0),  # objective_score or total_r
+                "robust_score": robust_score,
+                "test_train_ratio": test_train_ratio,
+            }
+            if robust_result:
+                objective.update(robust_result)
+            
+            # Build TrialResult dict
+            trial_result = {
+                "trial_id": trial_id,
+                "params": params,
+                "summary": summary,
+                "objective": objective,
+                "duration_ms": row[14] if len(row) > 14 else 0,  # Column 14
+                "alerts_ok": row[5] or 0,  # Column 5
+                "alerts_total": row[6] or 0,  # Column 6
+                "test_r": median_test_r,
+                "train_r": median_train_r,
+                "ratio": test_train_ratio,
+                "median_dd_pre2x": row[15] if len(row) > 15 else None,  # Column 15
+                "p75_dd_pre2x": row[16] if len(row) > 16 else None,  # Column 16
+                "hit2x_pct": row[17] if len(row) > 17 else None,  # Column 17
+                "median_t2x_min": row[18] if len(row) > 18 else None,  # Column 18
+                "passes_gates": passes_gates,
+            }
+            
+            results.append(trial_result)
+            
+            # Add to robust_candidates if robust mode
+            if robust_result:
+                robust_candidates.append({
+                    "params": params,
+                    "robust_result": robust_result,
+                })
+    
+    return results, robust_candidates
 
 
 def get_best_trials(duckdb_path: str, run_id: str, limit: int = 10) -> List[Dict[str, Any]]:

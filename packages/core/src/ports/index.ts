@@ -48,6 +48,22 @@ export type {
   RawDataSourceType,
 } from './raw-data-repository-port.js';
 export type {
+  CanonicalRepository,
+  CanonicalEventQueryFilter,
+  CanonicalEventQueryResult,
+} from './canonical-repository-port.js';
+export type {
+  FeatureStore,
+  FeatureSetId,
+  FeatureComputationResult,
+  FeatureMetadata,
+} from './feature-store-port.js';
+export type {
+  CallsPort,
+  CallsQueryFilter,
+  CallsQueryResult,
+} from './calls-port.js';
+export type {
   ExperimentRepository,
   ExperimentMetadata,
   ExperimentQueryFilter,

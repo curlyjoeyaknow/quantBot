@@ -859,6 +859,16 @@ def store_baseline_to_duckdb(
     slice_path: str,
     partitioned: bool,
 ) -> None:
+    """
+    Store baseline results to DuckDB.
+    
+    ARCHITECTURE NOTE: This is a write operation. According to architecture rules:
+    - Reads MUST use read_only=True (see load_alerts)
+    - Writes SHOULD use the write queue adapter (lib.write_queue) to avoid lock conflicts
+    - Direct writes like this are acceptable for CLI tools, but ensure only one writer at a time
+    
+    TODO: Migrate to write queue adapter for production use.
+    """
     con = duckdb.connect(duckdb_path)
     try:
         con.execute("BEGIN;")

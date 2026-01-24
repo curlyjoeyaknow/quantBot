@@ -8,9 +8,7 @@
 
 ### Task I.1: Complete ESLint Boundary Rules
 
-**Duration**: 2 days
-
-**Priority**: P0 (Blocks everything)
+**Duration**: 2 days**Priority**: P0 (Blocks everything)
 
 #### Subtasks:
 
@@ -57,9 +55,7 @@
 
 ### Task I.2: Integrate Architecture Tests into CI
 
-**Duration**: 1 day
-
-**Priority**: P0
+**Duration**: 1 day**Priority**: P0
 
 #### Subtasks:
 
@@ -131,9 +127,7 @@ rm packages/backtest/src/test-violation.ts
 
 ### Task II.1: Implement Feature Store Versioning
 
-**Duration**: 3 days
-
-**Priority**: P0
+**Duration**: 3 days**Priority**: P0
 
 #### Subtasks:
 
@@ -206,9 +200,7 @@ rm packages/backtest/src/test-violation.ts
 
 ### Task II.2: Implement Raw Data Hash Tracking
 
-**Duration**: 2 days
-
-**Priority**: P0
+**Duration**: 2 days**Priority**: P0
 
 #### Subtasks:
 
@@ -301,9 +293,7 @@ quantbot ingestion telegram --file messages.json --skip-duplicates  # Should ski
 
 ### Task III.0: Migrate Simulation to Backtest Package (Python)
 
-**Duration**: 5 days
-
-**Priority**: P0 (Must complete before III.1)
+**Duration**: 5 days**Priority**: P0 (Must complete before III.1)
 
 #### Subtasks:
 
@@ -395,9 +385,7 @@ quantbot ingestion telegram --file messages.json --skip-duplicates  # Should ski
 
 ### Task III.1: Implement Runtime Contract Version Validation
 
-**Duration**: 2 days
-
-**Priority**: P0
+**Duration**: 2 days**Priority**: P0
 
 #### Subtasks:
 
@@ -507,9 +495,7 @@ quantbot backtest run --strategy test --from 2024-01-01 --to 2024-02-01
 
 ### Task IV.1: Complete Git Commit Hash Auto-Capture
 
-**Duration**: 1 day
-
-**Priority**: P0
+**Duration**: 1 day**Priority**: P0
 
 #### Subtasks:
 
@@ -560,9 +546,7 @@ quantbot backtest run --strategy test --from 2024-01-01 --to 2024-02-01
 
 ### Task IV.2: Complete Data Snapshot Hash Storage
 
-**Duration**: 2 days
-
-**Priority**: P0
+**Duration**: 2 days**Priority**: P0
 
 #### Subtasks:
 
@@ -613,9 +597,7 @@ quantbot backtest run --strategy test --from 2024-01-01 --to 2024-02-01
 
 ### Task IV.3: Complete Parameter Vector Hashing
 
-**Duration**: 2 days
-
-**Priority**: P0
+**Duration**: 2 days**Priority**: P0
 
 #### Subtasks:
 
@@ -716,9 +698,7 @@ quantbot research run --request-file request.json --skip-duplicates  # Should sk
 
 ### Task V.1: Implement Strategy Comparison/Diff Tooling
 
-**Duration**: 3 days
-
-**Priority**: P0
+**Duration**: 3 days**Priority**: P0
 
 #### Subtasks:
 
@@ -904,5 +884,3 @@ graph TD
 
 - **No Partial Implementations**: Each phase must be 100% complete before moving to next
 - **Command Handlers First**: Implement command handlers early to verify functionality
-- **End-to-End Tests**: Each phase must have working end-to-end tests
-- **Documentation**: Update documentation as you go

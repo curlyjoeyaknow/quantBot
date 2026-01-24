@@ -15,6 +15,7 @@ import { logger } from '@quantbot/infra/utils';
 import { readAllBytes } from '../utils/readAllBytes.js';
 import { datasetRegistry } from './dataset-registry.js';
 import { intervalToSeconds } from '../utils/interval-converter.js';
+import { validateParquetLayout } from '@quantbot/core';
 import type {
   SliceExporter,
   ParquetLayoutSpec,
@@ -229,6 +230,20 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
 
     const tableName = `${process.env.CLICKHOUSE_DATABASE || 'quantbot'}.${datasetMetadata.tableName}`;
     const interval = datasetMetadata.interval;
+
+    // Validate layout against canonical artifact spec
+    const layoutValidation = validateParquetLayout(layout);
+    if (!layoutValidation.valid) {
+      throw new Error(
+        `Invalid ParquetLayoutSpec: ${layoutValidation.errors.join(', ')}. Warnings: ${layoutValidation.warnings.join(', ')}`
+      );
+    }
+    if (layoutValidation.warnings.length > 0) {
+      logger.warn('ParquetLayoutSpec warnings (non-fatal)', {
+        warnings: layoutValidation.warnings,
+        layout,
+      });
+    }
 
     // Build output directory from template
     const day = spec.timeRange.startIso.slice(0, 10);

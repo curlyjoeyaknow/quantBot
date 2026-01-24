@@ -9,9 +9,9 @@ import { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
 import { logger } from '@quantbot/infra/utils';
 import { getDuckDBWorklistService } from '@quantbot/infra/storage';
-import { fetchBirdeyeCandles } from '@quantbot/infra/api-clients';
 import { storeCandles, getCoverage } from '@quantbot/ohlcv';
 import type { Chain } from '@quantbot/core';
+import { createTokenAddress } from '@quantbot/core';
 
 // Console colors for filtered output
 const c = {
@@ -60,7 +60,7 @@ export type FetchFromDuckdbArgs = z.infer<typeof fetchFromDuckdbSchema>;
 /**
  * Fetch OHLCV for all alerts in DuckDB
  */
-export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, _ctx: CommandContext) {
+export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, ctx: CommandContext) {
   const { resolve } = await import('path');
   const duckdbPath = resolve(process.cwd(), args.duckdb);
 
@@ -291,9 +291,27 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, _ctx: Co
           requiredCandles: MIN_CANDLES,
         });
 
-        // Fetch candles (single attempt, no retry loop)
+        // Fetch candles via MarketDataPort (single attempt, no retry loop)
+        const marketDataPort = await ctx.getMarketDataPort();
         const fetchStart = Date.now();
-        const candles = await fetchBirdeyeCandles(mint, args.interval, fromUnix, toUnix, chain);
+        
+        // Map interval to MarketDataPort format
+        const marketDataInterval: '15s' | '1m' | '5m' | '1H' =
+          args.interval === '1s' || args.interval === '15s'
+            ? '15s'
+            : args.interval === '1H'
+              ? '1H'
+              : args.interval === '1m'
+                ? '1m'
+                : '5m';
+        
+        const candles = await marketDataPort.fetchOhlcv({
+          tokenAddress: createTokenAddress(mint),
+          chain,
+          interval: marketDataInterval,
+          from: fromUnix,
+          to: toUnix,
+        });
         const fetchDuration = Date.now() - fetchStart;
 
         if (candles.length > 0) {

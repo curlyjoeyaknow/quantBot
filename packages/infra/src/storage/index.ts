@@ -60,6 +60,13 @@ export {
   createClickHouseSliceExporterAdapterImpl,
 } from './adapters/clickhouse-slice-exporter-adapter-impl.js';
 export {
+  LakeExporterService,
+} from './services/lake-exporter-service.js';
+export type {
+  LakeRunSliceExportConfig,
+  LakeExportResult,
+} from './services/lake-exporter-service.js';
+export {
   insertSqlForParquet,
   type InsertMode,
   type InsertParquetOptions,

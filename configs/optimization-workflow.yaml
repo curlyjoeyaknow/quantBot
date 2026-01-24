@@ -1,0 +1,41 @@
+# Optimization Workflow Configuration
+#
+# Complete workflow for optimizing trading strategies:
+# Phase 1: Lab Sweep Discovery - Quick parameter range identification
+# Phase 2: Backtest Optimization - Full optimization with walk-forward validation
+# Phase 3: Stress Validation - Rolling window stress testing
+
+# Data selection
+dateFrom: "2024-01-01T00:00:00Z"
+dateTo: "2024-12-31T23:59:59Z"
+callers: []  # Optional: filter by specific callers, empty = all callers
+
+# Phase 1: Lab Sweep Discovery
+phase1:
+  enabled: true
+  tpMults: [1.5, 2.0, 2.5, 3.0, 4.0, 5.0]
+  slMults: [0.80, 0.85, 0.90, 0.95]
+  intervals: ["1m", "5m", "15m", "1h"]
+  lagsMs: [0, 10000, 30000]
+  minCallsPerCaller: 50  # Optional: minimum calls required per caller
+
+# Phase 2: Backtest Optimization
+phase2:
+  enabled: true
+  mode: "serious"  # Options: "cheap", "serious", "war_room"
+  nTrials: 1000
+  nFolds: 5
+  extendedParams: true  # Include trailing stops, breakeven, time limits, tiered SL
+
+# Phase 3: Stress Validation
+phase3:
+  enabled: true
+  trainDays: 14
+  testDays: 7
+  stepDays: 7
+  lanePack: "full"  # Options: "minimal", "full"
+
+# Output configuration
+dataRoot: "data"  # Creates data/lake/runs/run_id={workflowRunId}/
+resume: false  # Resume from last completed phase
+

@@ -65,6 +65,7 @@ from lib.trial_ledger import (
     load_trades_from_parquet,
     get_completed_trial_ids_from_parquet,
     replay_run_from_parquet,
+    load_trials_for_resume,
     # Pipeline phases (audit trail + resume)
     store_phase_start,
     store_phase_complete,
@@ -1224,12 +1225,102 @@ def run_random_search(
                 print(f"   Will skip these and continue from trial {len(completed_trial_ids) + 1}", file=sys.stderr)
     
     if skip_discovery:
-        # Load previous results from DuckDB
-        # For now, we'll need to load from the trials table
-        # This is a placeholder - you could also store robust_candidates as JSON
+        # Load previous results from DuckDB or Parquet
         if verbose:
             print(f"  Loading previous discovery results...", file=sys.stderr)
-        # TODO: Load from trials_f table
+        
+        # Try loading from Parquet first (more reliable, includes all data)
+        output_dir = output_dir or Path("output")
+        trials_parquet_path = output_dir / f"{run_id}_trials.parquet"
+        
+        if trials_parquet_path.exists():
+            if verbose:
+                print(f"  Loading from Parquet: {trials_parquet_path}", file=sys.stderr)
+            try:
+                import pandas as pd
+                df = pd.read_parquet(trials_parquet_path)
+                
+                # Convert DataFrame rows to TrialResult dicts
+                for _, row in df.iterrows():
+                    import json
+                    params = json.loads(row['params_json']) if pd.notna(row['params_json']) else {}
+                    summary = json.loads(row['summary_json']) if pd.notna(row['summary_json']) else {}
+                    
+                    # Build robust_result if available
+                    robust_result = {}
+                    if pd.notna(row.get('test_train_ratio')):
+                        robust_result = {
+                            "robust_score": row.get('robust_score', 0.0) or 0.0,
+                            "median_test_r": row.get('total_r', 0.0) or 0.0,  # Approximate
+                            "median_train_r": (row.get('total_r', 0.0) or 0.0) / (row.get('test_train_ratio', 1.0) or 1.0),
+                            "median_ratio": row.get('test_train_ratio', 0.0) or 0.0,
+                            "stress_penalty": row.get('stress_penalty', 0.0) or 0.0,
+                            "worst_lane": row.get('worst_lane'),
+                            "worst_lane_score": row.get('worst_lane_score'),
+                            "passes_gates": bool(row.get('passes_gates', False)),
+                        }
+                    
+                    objective = {
+                        "final_score": row.get('objective_score', 0.0) or 0.0,
+                        "robust_score": row.get('robust_score'),
+                        "test_train_ratio": row.get('test_train_ratio'),
+                    }
+                    if robust_result:
+                        objective.update(robust_result)
+                    
+                    trial_result = {
+                        "trial_id": row['trial_id'],
+                        "params": params,
+                        "summary": summary,
+                        "objective": objective,
+                        "duration_ms": int(row.get('duration_ms', 0) or 0),
+                        "alerts_ok": int(row.get('alerts_ok', 0) or 0),
+                        "alerts_total": int(row.get('alerts_total', 0) or 0),
+                        "test_r": robust_result.get("median_test_r") if robust_result else None,
+                        "train_r": robust_result.get("median_train_r") if robust_result else None,
+                        "ratio": row.get('test_train_ratio'),
+                        "median_dd_pre2x": row.get('median_dd_pre2x'),
+                        "p75_dd_pre2x": row.get('p75_dd_pre2x'),
+                        "hit2x_pct": row.get('hit2x_pct'),
+                        "median_t2x_min": row.get('median_time_to_2x_min'),
+                        "passes_gates": bool(row.get('passes_gates', False)),
+                    }
+                    
+                    results.append(trial_result)
+                    
+                    if robust_result:
+                        robust_candidates.append({
+                            "params": params,
+                            "robust_result": robust_result,
+                        })
+                
+                if verbose:
+                    print(f"  ✅ Loaded {len(results)} trials from Parquet", file=sys.stderr)
+            except Exception as e:
+                if verbose:
+                    print(f"  ⚠️  Failed to load from Parquet: {e}, trying DuckDB...", file=sys.stderr)
+                # Fall through to DuckDB loading
+        
+        # If Parquet loading failed or doesn't exist, try DuckDB
+        if not results:
+            if verbose:
+                print(f"  Loading from DuckDB: {config.duckdb_path}", file=sys.stderr)
+            try:
+                trial_dicts, robust_candidates_list = load_trials_for_resume(config.duckdb_path, run_id)
+                results = trial_dicts
+                robust_candidates = robust_candidates_list
+                if verbose:
+                    print(f"  ✅ Loaded {len(results)} trials from DuckDB", file=sys.stderr)
+            except Exception as e:
+                if verbose:
+                    print(f"  ❌ Failed to load from DuckDB: {e}", file=sys.stderr)
+                raise ValueError(f"Cannot resume: failed to load trials for run_id={run_id}")
+        
+        if not results:
+            raise ValueError(f"Cannot resume: no trials found for run_id={run_id}")
+        
+        if verbose:
+            print(f"  Resuming with {len(results)} completed trials, proceeding to clustering...", file=sys.stderr)
     else:
         # Defer phase tracking to avoid DuckDB lock conflicts during parallel execution
         # Phase will be recorded after all trials complete
@@ -1237,9 +1328,10 @@ def run_random_search(
         
         if verbose:
             print(f"📝 Phase 1: Discovery (phase_id={discovery_phase_id})", file=sys.stderr)
-    
-    with timing.phase("trials"):
-        if config.max_workers > 1:
+        
+        # Run discovery trials
+        with timing.phase("trials"):
+            if config.max_workers > 1:
             # Parallel execution
             if verbose:
                 print(f"Running {config.n_trials} trials in parallel (max_workers={config.max_workers})...", file=sys.stderr)

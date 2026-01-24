@@ -11,3 +11,7 @@
 
 // Re-export all from @quantbot/simulation/analytics
 export * from '@quantbot/simulation/analytics';
+
+// Feature store (new)
+export { featureRegistry } from './feature-store/feature-registry.js';
+export { InMemoryFeatureStore } from './feature-store/in-memory-feature-store.js';

@@ -81,3 +81,20 @@ export { ExecutionRealityService } from './services/ExecutionRealityService.js';
 export * from './leaderboard.js';
 export { getLeaderboard, getTopRuns, compareRuns } from './leaderboard.js';
 export type { RankingCriteria, LeaderboardEntry, LeaderboardOptions } from './leaderboard.js';
+
+// Optimization Workflow
+export { runOptimizationWorkflow } from './optimization-workflow.js';
+export type {
+  OptimizationWorkflowConfig,
+  OptimizationWorkflowResult,
+  WorkflowRunMetadata,
+  Phase1Config,
+  Phase1Result,
+  Phase2Config,
+  Phase2Result,
+  Phase3Config,
+  Phase3Result,
+} from './phases/types.js';
+export { runPhase1LabSweepDiscovery } from './phases/lab-sweep-discovery.js';
+export { runPhase2BacktestOptimization } from './phases/backtest-optimization.js';
+export { runPhase3StressValidation } from './phases/stress-validation.js';

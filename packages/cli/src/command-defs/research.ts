@@ -173,3 +173,15 @@ export const researchLeaderboardSchema = z.object({
 });
 
 export type ResearchLeaderboardArgs = z.infer<typeof researchLeaderboardSchema>;
+
+/**
+ * Optimize command schema - runs complete optimization workflow
+ */
+export const researchOptimizeSchema = z.object({
+  config: z.string().min(1, 'Config file path is required'),
+  phase: z.enum(['phase1', 'phase2', 'phase3']).optional(),
+  resume: z.boolean().default(false),
+  format: z.enum(['json', 'table']).default('table'),
+});
+
+export type ResearchOptimizeArgs = z.infer<typeof researchOptimizeSchema>;

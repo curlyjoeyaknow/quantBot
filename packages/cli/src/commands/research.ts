@@ -35,7 +35,9 @@ import {
   createCostModelSchema,
   createRiskModelSchema,
   researchLeaderboardSchema,
+  researchOptimizeSchema,
 } from '../command-defs/research.js';
+import { optimizeWorkflowHandler } from '../handlers/research/optimize-workflow.js';
 
 /**
  * Register research commands
@@ -295,6 +297,22 @@ export function registerResearchCommands(program: Command): void {
     validate: (opts) => createRiskModelSchema.parse(opts),
     onError: die,
   });
+
+  // Optimize command
+  const optimizeCmd = researchCmd
+    .command('optimize')
+    .description('Run complete optimization workflow (Phase 1 → Phase 2 → Phase 3)')
+    .requiredOption('--config <path>', 'Path to optimization workflow config file')
+    .option('--phase <phase>', 'Run specific phase only (phase1|phase2|phase3)')
+    .option('--resume', 'Resume from last completed phase', false)
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(optimizeCmd, {
+    name: 'optimize',
+    packageName: 'research',
+    validate: (opts) => researchOptimizeSchema.parse(opts),
+    onError: die,
+  });
 }
 
 /**
@@ -445,6 +463,20 @@ const researchModule: PackageCommandModule = {
       },
       examples: [
         'quantbot research create-risk-model --max-drawdown-percent 20 --max-loss-per-day 1000',
+      ],
+    },
+    {
+      name: 'optimize',
+      description: 'Run complete optimization workflow (Phase 1 → Phase 2 → Phase 3)',
+      schema: researchOptimizeSchema,
+      handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof researchOptimizeSchema>;
+        return await optimizeWorkflowHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot research optimize --config configs/optimization-workflow.yaml',
+        'quantbot research optimize --config configs/optimization-workflow.yaml --resume',
       ],
     },
   ],

@@ -24,11 +24,8 @@
  */
 
 import { logger } from '@quantbot/utils';
-import { fetchBirdeyeCandles } from '@quantbot/api-clients';
 import { storeCandles, getCoverage } from '@quantbot/ohlcv';
-import type { OhlcvWorkItem } from '@quantbot/core';
-// Candle type is returned by fetchBirdeyeCandles - infer from return type
-type Candle = Awaited<ReturnType<typeof fetchBirdeyeCandles>>[number];
+import type { OhlcvWorkItem, MarketDataPort, Candle } from '@quantbot/core';
 
 /**
  * Result of fetching candles for a work item
@@ -96,7 +93,7 @@ export interface OhlcvFetchJobOptions {
 /**
  * OHLCV Fetch Job
  *
- * Unit-of-work executor: Fetches candles from Birdeye API and stores in ClickHouse.
+ * Unit-of-work executor: Fetches candles via MarketDataPort and stores in ClickHouse.
  *
  * Architecture (Data-plane executor):
  * - This job performs the effectful unit of work: fetch (online) + store (storage)
@@ -106,9 +103,9 @@ export interface OhlcvFetchJobOptions {
  *   duplicate inserts are deduplicated (or use ReplacingMergeTree for true upserts)
  *
  * Responsibilities:
- * - Enforce rate limits and circuit breakers (Birdeye API)
+ * - Enforce rate limits and circuit breakers
  * - Check coverage to avoid unnecessary fetches
- * - Fetch from Birdeye API (online boundary)
+ * - Fetch from market data provider via MarketDataPort (online boundary)
  * - Upsert to ClickHouse (storage layer, idempotent)
  * - Return structured results for workflow aggregation
  *
@@ -116,6 +113,7 @@ export interface OhlcvFetchJobOptions {
  * (control-plane) after all unit-of-work jobs complete.
  */
 export class OhlcvFetchJob {
+  private marketDataPort: MarketDataPort;
   private rateLimitMs: number;
   private parallelWorkers: number;
   private rateLimitMsPerWorker: number;
@@ -125,7 +123,11 @@ export class OhlcvFetchJob {
   private minCoverageToSkip: number;
   private failureCount: number = 0;
 
-  constructor(options: OhlcvFetchJobOptions = {}) {
+  constructor(
+    marketDataPort: MarketDataPort,
+    options: OhlcvFetchJobOptions = {}
+  ) {
+    this.marketDataPort = marketDataPort;
     this.rateLimitMs = options.rateLimitMs ?? 100;
     this.parallelWorkers = options.parallelWorkers ?? 1;
     this.rateLimitMsPerWorker = options.rateLimitMsPerWorker ?? 330;
@@ -186,76 +188,38 @@ export class OhlcvFetchJob {
         }
       }
 
-      // Fetch from Birdeye API
+      // Fetch from market data provider via port
       const from = Math.floor(workItem.startTime.toSeconds());
       const to = Math.floor(workItem.endTime.toSeconds());
 
-      // For '1s' interval, call Birdeye client directly (fetchBirdeyeCandles doesn't support '1s')
-      // For other intervals, use fetchBirdeyeCandles wrapper
-      let candles: Candle[];
-
-      if (workItem.interval === '1s') {
-        // Call Birdeye client directly for 1s intervals
-        const { getBirdeyeClient } = await import('@quantbot/api-clients');
-        const birdeyeClient = getBirdeyeClient();
-
-        logger.debug('Fetching 1s OHLCV from Birdeye (direct call)', {
-          mint: workItem.mint,
-          chain: workItem.chain,
-          interval: '1s',
-          from: workItem.startTime.toISO(),
-          to: workItem.endTime.toISO(),
-        });
-
-        const response = await birdeyeClient.fetchOHLCVData(
-          workItem.mint,
-          workItem.startTime.toJSDate(),
-          workItem.endTime.toJSDate(),
-          '1s',
-          workItem.chain
-        );
-
-        if (!response || !response.items) {
-          candles = [];
-        } else {
-          candles = response.items.map((item) => ({
-            timestamp: item.unixTime,
-            open: item.open,
-            high: item.high,
-            low: item.low,
-            close: item.close,
-            volume: item.volume,
-          }));
-        }
-      } else {
-        // Map other intervals to supported Birdeye intervals
-        // fetchBirdeyeCandles only supports '15s' | '1m' | '5m' | '1H'
-        const birdeyeInterval: '15s' | '1m' | '5m' | '1H' =
-          workItem.interval === '1H'
+      // Map intervals to supported market data intervals
+      // MarketDataPort supports '15s' | '1m' | '5m' | '1H'
+      // Note: '1s' maps to '15s' since most providers don't support '1s'
+      const marketDataInterval: '15s' | '1m' | '5m' | '1H' =
+        workItem.interval === '1s' || workItem.interval === '15s'
+          ? '15s'
+          : workItem.interval === '1H'
             ? '1H'
-            : workItem.interval === '15s'
-              ? '15s'
-              : workItem.interval === '1m'
-                ? '1m'
-                : '5m';
+            : workItem.interval === '1m'
+              ? '1m'
+              : '5m';
 
-        logger.debug('Fetching OHLCV from Birdeye', {
-          mint: workItem.mint,
-          chain: workItem.chain,
-          interval: workItem.interval,
-          birdeyeInterval,
-          from: workItem.startTime.toISO(),
-          to: workItem.endTime.toISO(),
-        });
+      logger.debug('Fetching OHLCV via MarketDataPort', {
+        mint: workItem.mint,
+        chain: workItem.chain,
+        interval: workItem.interval,
+        marketDataInterval,
+        from: workItem.startTime.toISO(),
+        to: workItem.endTime.toISO(),
+      });
 
-        candles = await fetchBirdeyeCandles(
-          workItem.mint,
-          birdeyeInterval,
-          from,
-          to,
-          workItem.chain
-        );
-      }
+      const candles = await this.marketDataPort.fetchOhlcv({
+        tokenAddress: workItem.mint as import('@quantbot/core').TokenAddress,
+        chain: workItem.chain,
+        interval: marketDataInterval,
+        from,
+        to,
+      });
 
       if (candles.length === 0) {
         logger.debug('No candles returned from Birdeye', {

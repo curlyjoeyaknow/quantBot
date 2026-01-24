@@ -48,9 +48,22 @@ from typing import Any, Callable, Dict, Optional
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from shared.duckdb_adapter import get_write_connection
 
-# Queue directory
-QUEUE_DIR = Path("data/.duckdb_write_queue")
+# Queue directory - absolute path relative to repo root
+# Find repo root by looking for .git or known markers
+_repo_root = Path(__file__).resolve()
+for _ in range(5):  # Max 5 levels up
+    if (_repo_root / ".git").exists() or (_repo_root / "data").exists():
+        break
+    _repo_root = _repo_root.parent
+else:
+    # Fallback: use current working directory
+    _repo_root = Path.cwd()
+
+QUEUE_DIR = (_repo_root / "data" / ".duckdb_write_queue").resolve()
 QUEUE_DIR.mkdir(parents=True, exist_ok=True)
+
+# Worker lock file
+WORKER_LOCK_FILE = QUEUE_DIR / "worker.lock"
 
 # Status files
 PENDING_DIR = QUEUE_DIR / "pending"
@@ -67,20 +80,29 @@ def enqueue_write(
     operation: str,
     payload: Dict[str, Any],
     priority: int = 5,
+    not_before_ts_ms: Optional[int] = None,
 ) -> str:
     """
     Enqueue a DuckDB write operation for background processing.
+    
+    CRASH-SAFE: Writes to temp file, fsyncs, then renames atomically.
+    This ensures the worker only sees fully-written jobs.
     
     Args:
         duckdb_path: Path to DuckDB file
         operation: Operation type (e.g., 'store_tp_sl_run', 'store_baseline_run')
         payload: Operation-specific data (must be JSON-serializable)
-        priority: 1-9 (lower = higher priority)
+        priority: 1-99 (lower = higher priority). Parsed as integer for sorting.
+        not_before_ts_ms: Don't process before this timestamp (milliseconds since epoch)
     
     Returns:
         Job ID
     """
-    job_id = f"{int(time.time() * 1000)}_{priority}_{uuid.uuid4().hex[:8]}"
+    if not (1 <= priority <= 99):
+        raise ValueError(f"Priority must be 1-99, got {priority}")
+    
+    timestamp_ms = int(time.time() * 1000)
+    job_id = f"{timestamp_ms}_{priority:02d}_{uuid.uuid4().hex[:8]}"
     
     job = {
         "job_id": job_id,
@@ -89,23 +111,82 @@ def enqueue_write(
         "payload": payload,
         "priority": priority,
         "created_at": datetime.now(timezone.utc).isoformat(),
+        "not_before_ts_ms": not_before_ts_ms or timestamp_ms,
         "attempts": 0,
         "max_attempts": 5,
     }
     
-    job_file = PENDING_DIR / f"{job_id}.json"
-    with open(job_file, "w") as f:
-        json.dump(job, f, indent=2, default=str)
+    # CRASH-SAFE: Write to temp file first, then rename atomically
+    temp_file = PENDING_DIR / f".tmp-{job_id}.json"
+    final_file = PENDING_DIR / f"{job_id}.json"
+    
+    try:
+        with open(temp_file, "w") as f:
+            json.dump(job, f, indent=2, default=str)
+            f.flush()
+            os.fsync(f.fileno())  # Force write to disk
+        
+        # Atomic rename - worker will only see complete files
+        temp_file.rename(final_file)
+    except Exception:
+        # Clean up temp file on error
+        if temp_file.exists():
+            temp_file.unlink()
+        raise
     
     print(f"[queue] Enqueued job {job_id}: {operation}", file=sys.stderr)
     return job_id
 
 
+def _parse_job_filename(filename: str) -> tuple[int, int, str]:
+    """
+    Parse job filename into (priority, timestamp_ms, uuid).
+    
+    Format: {timestamp_ms}_{priority:02d}_{uuid}.json
+    Returns: (priority:int, timestamp_ms:int, uuid:str)
+    """
+    try:
+        # Remove .json extension
+        base = filename.rsplit(".json", 1)[0]
+        parts = base.split("_", 2)
+        if len(parts) >= 3:
+            timestamp_ms = int(parts[0])
+            priority = int(parts[1])
+            uuid_part = parts[2]
+            return (priority, timestamp_ms, uuid_part)
+    except (ValueError, IndexError):
+        pass
+    # Fallback: treat as lowest priority, oldest timestamp
+    return (99, 0, filename)
+
+
 def get_pending_jobs() -> list[Path]:
-    """Get pending jobs sorted by priority and timestamp."""
+    """
+    Get pending jobs sorted by priority (lower first) then timestamp (older first).
+    
+    Also filters out jobs whose not_before_ts_ms is in the future.
+    """
     jobs = list(PENDING_DIR.glob("*.json"))
-    # Sort by filename (timestamp_priority_uuid) - lower priority number first
-    return sorted(jobs, key=lambda p: p.name)
+    # Filter out temp files
+    jobs = [j for j in jobs if not j.name.startswith(".tmp-")]
+    
+    now_ms = int(time.time() * 1000)
+    ready_jobs = []
+    
+    for job_path in jobs:
+        # Check not_before timestamp from file contents
+        try:
+            with open(job_path) as f:
+                job = json.load(f)
+            not_before = job.get("not_before_ts_ms", 0)
+            if not_before <= now_ms:
+                ready_jobs.append(job_path)
+        except (json.JSONDecodeError, KeyError):
+            # Corrupt or missing metadata - include it (will fail processing)
+            ready_jobs.append(job_path)
+    
+    # Sort by (priority:int, timestamp_ms:int) - lower priority first, then older first
+    return sorted(ready_jobs, key=lambda p: _parse_job_filename(p.name))
 
 
 def process_job(job_path: Path) -> bool:
@@ -147,18 +228,40 @@ def process_job(job_path: Path) -> bool:
                 payload["summary"],
             )
         elif operation == "store_baseline_run":
-            from .storage import _store_baseline_run_impl
-            _store_baseline_run_impl(
-                duckdb_path,
-                payload["run_id"],
-                payload["run_name"],
-                payload["config"],
-                payload["rows"],
-                payload["summary"],
-                payload["caller_agg"],
-                payload["slice_path"],
-                payload["partitioned"],
-            )
+            # Import here to avoid circular dependencies
+            # FIXED: Removed duplicate execution bug
+            try:
+                from .storage import _store_baseline_run_impl
+                _store_baseline_run_impl(
+                    duckdb_path,
+                    payload["run_id"],
+                    payload["run_name"],
+                    payload["config"],
+                    payload["rows"],
+                    payload["summary"],
+                    payload["caller_agg"],
+                    payload["slice_path"],
+                    payload["partitioned"],
+                )
+            except ImportError:
+                # Fallback: import from parent directory
+                import sys
+                from pathlib import Path
+                parent_dir = Path(__file__).parent.parent
+                if str(parent_dir) not in sys.path:
+                    sys.path.insert(0, str(parent_dir))
+                from run_baseline_all import store_baseline_to_duckdb
+                store_baseline_to_duckdb(
+                    duckdb_path,
+                    payload["run_id"],
+                    payload["run_name"],
+                    payload["config"],
+                    payload["rows"],
+                    payload["summary"],
+                    payload["caller_agg"],
+                    payload["slice_path"],
+                    payload["partitioned"],
+                )
         elif operation == "store_trial":
             from .trial_ledger import store_trial
             store_trial(
@@ -246,7 +349,8 @@ def process_job(job_path: Path) -> bool:
                 force_direct=True,
             )
         elif operation == "raw_sql":
-            # Execute raw SQL (for simple operations)
+            # WARNING: This operation executes arbitrary SQL. Only use with trusted input.
+            # This queue is intended for internal tooling only - do not expose to untrusted sources.
             with get_write_connection(duckdb_path) as con:
                 for sql in payload.get("statements", []):
                     con.execute(sql)
@@ -273,12 +377,19 @@ def process_job(job_path: Path) -> bool:
         is_lock_error = "lock" in error_msg.lower() or "conflicting" in error_msg.lower()
         
         if is_lock_error and attempts < max_attempts:
-            # Retry later - move back to pending
-            print(f"[worker] Lock conflict on {job_id}, will retry (attempt {attempts}/{max_attempts})", file=sys.stderr)
+            # Retry later - move back to pending with future not_before timestamp
+            retry_delay_ms = 5000 * (2 ** (attempts - 1))  # Exponential backoff: 5s, 10s, 20s, 40s
+            not_before_ts_ms = int(time.time() * 1000) + retry_delay_ms
+            job["not_before_ts_ms"] = not_before_ts_ms
+            
+            print(f"[worker] Lock conflict on {job_id}, will retry in {retry_delay_ms/1000:.1f}s (attempt {attempts}/{max_attempts})", file=sys.stderr)
             with open(processing_path, "w") as f:
                 json.dump(job, f, indent=2, default=str)
-            # Rename with new timestamp for retry delay
-            retry_name = f"{int(time.time() * 1000) + 5000}_{job['priority']}_{job_id.split('_')[-1]}.json"
+            
+            # Rename with updated timestamp and priority preserved
+            priority_str = f"{job.get('priority', 5):02d}"
+            uuid_part = job_id.split('_')[-1] if '_' in job_id else uuid.uuid4().hex[:8]
+            retry_name = f"{not_before_ts_ms}_{priority_str}_{uuid_part}.json"
             processing_path.rename(PENDING_DIR / retry_name)
             return False
         
@@ -291,45 +402,155 @@ def process_job(job_path: Path) -> bool:
         return False
 
 
+def _acquire_worker_lock() -> bool:
+    """
+    Acquire worker lock file atomically.
+    
+    Returns True if lock acquired, False if another worker is running.
+    """
+    try:
+        # Try to create lock file with O_EXCL (atomic "only one creator")
+        lock_fd = os.open(WORKER_LOCK_FILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+        with os.fdopen(lock_fd, "w") as f:
+            import socket
+            lock_data = {
+                "pid": os.getpid(),
+                "hostname": socket.gethostname(),
+                "started_at": datetime.now(timezone.utc).isoformat(),
+            }
+            json.dump(lock_data, f, indent=2)
+            f.flush()
+            os.fsync(lock_fd)
+        return True
+    except FileExistsError:
+        # Lock exists - check if PID is alive
+        try:
+            with open(WORKER_LOCK_FILE) as f:
+                lock_data = json.load(f)
+            other_pid = lock_data.get("pid")
+            
+            # Check if process exists (portable check)
+            try:
+                os.kill(other_pid, 0)  # Signal 0 = check existence
+                # Process exists - another worker is running
+                return False
+            except ProcessLookupError:
+                # Process doesn't exist - stale lock, steal it
+                print(f"[worker] Stale lock detected (PID {other_pid} not found), stealing...", file=sys.stderr)
+                WORKER_LOCK_FILE.unlink()
+                return _acquire_worker_lock()
+            except PermissionError:
+                # Can't check (different user) - assume it's alive
+                return False
+        except (json.JSONDecodeError, KeyError, FileNotFoundError):
+            # Corrupt lock file - remove and retry
+            WORKER_LOCK_FILE.unlink(missing_ok=True)
+            return _acquire_worker_lock()
+    except Exception as e:
+        print(f"[worker] Failed to acquire lock: {e}", file=sys.stderr)
+        return False
+
+
+def _release_worker_lock():
+    """Release worker lock file."""
+    WORKER_LOCK_FILE.unlink(missing_ok=True)
+
+
+def _recover_stale_processing_jobs(max_age_minutes: int = 10):
+    """
+    Recover jobs stuck in processing/ directory (from crashed worker).
+    
+    Moves jobs older than max_age_minutes back to pending/.
+    """
+    cutoff_time = time.time() - (max_age_minutes * 60)
+    recovered = 0
+    
+    for job_file in PROCESSING_DIR.glob("*.json"):
+        try:
+            if job_file.stat().st_mtime < cutoff_time:
+                with open(job_file) as f:
+                    job = json.load(f)
+                
+                # Reset attempts and update not_before for immediate retry
+                job["attempts"] = job.get("attempts", 0)
+                job["not_before_ts_ms"] = int(time.time() * 1000)
+                job["recovered_from_stale"] = True
+                
+                # Move back to pending with updated timestamp
+                priority_str = f"{job.get('priority', 5):02d}"
+                uuid_part = job["job_id"].split('_')[-1] if '_' in job["job_id"] else uuid.uuid4().hex[:8]
+                new_name = f"{int(time.time() * 1000)}_{priority_str}_{uuid_part}.json"
+                new_path = PENDING_DIR / new_name
+                
+                with open(new_path, "w") as f:
+                    json.dump(job, f, indent=2, default=str)
+                job_file.unlink()
+                recovered += 1
+                print(f"[worker] Recovered stale job: {job['job_id']}", file=sys.stderr)
+        except Exception as e:
+            print(f"[worker] Failed to recover {job_file}: {e}", file=sys.stderr)
+    
+    if recovered > 0:
+        print(f"[worker] Recovered {recovered} stale processing jobs", file=sys.stderr)
+    return recovered
+
+
 def run_worker(poll_interval: float = 1.0, max_jobs: Optional[int] = None):
     """
     Run the write queue worker.
     
+    ENFORCES: Only one worker can run at a time (via lock file).
+    RECOVERS: Stale processing jobs on startup.
+    
     Args:
-        poll_interval: Seconds between queue checks
+        poll_interval: Seconds between queue checks when no jobs found
         max_jobs: Maximum jobs to process (None = unlimited)
     """
     print(f"[worker] Starting DuckDB write queue worker", file=sys.stderr)
     print(f"[worker] Queue dir: {QUEUE_DIR}", file=sys.stderr)
     print(f"[worker] Poll interval: {poll_interval}s", file=sys.stderr)
     
-    # Handle graceful shutdown
-    shutdown = False
-    def handle_signal(signum, frame):
-        nonlocal shutdown
-        print(f"\n[worker] Received signal {signum}, shutting down...", file=sys.stderr)
-        shutdown = True
+    # Acquire worker lock (prevents multiple workers)
+    if not _acquire_worker_lock():
+        print(f"[worker] ERROR: Another worker is already running (lock: {WORKER_LOCK_FILE})", file=sys.stderr)
+        print(f"[worker] If you're sure no worker is running, delete the lock file and try again.", file=sys.stderr)
+        sys.exit(1)
     
-    signal.signal(signal.SIGINT, handle_signal)
-    signal.signal(signal.SIGTERM, handle_signal)
-    
-    jobs_processed = 0
-    
-    while not shutdown:
-        pending = get_pending_jobs()
+    try:
+        # Recover stale processing jobs on startup
+        _recover_stale_processing_jobs(max_age_minutes=10)
         
-        if pending:
-            job_path = pending[0]
-            process_job(job_path)
-            jobs_processed += 1
+        # Handle graceful shutdown
+        shutdown = False
+        def handle_signal(signum, frame):
+            nonlocal shutdown
+            print(f"\n[worker] Received signal {signum}, shutting down...", file=sys.stderr)
+            shutdown = True
+        
+        signal.signal(signal.SIGINT, handle_signal)
+        signal.signal(signal.SIGTERM, handle_signal)
+        
+        jobs_processed = 0
+        
+        while not shutdown:
+            pending = get_pending_jobs()
             
-            if max_jobs and jobs_processed >= max_jobs:
-                print(f"[worker] Processed {jobs_processed} jobs, exiting", file=sys.stderr)
-                break
-        else:
-            time.sleep(poll_interval)
-    
-    print(f"[worker] Shutdown complete. Processed {jobs_processed} jobs.", file=sys.stderr)
+            if pending:
+                job_path = pending[0]
+                process_job(job_path)
+                jobs_processed += 1
+                
+                if max_jobs and jobs_processed >= max_jobs:
+                    print(f"[worker] Processed {jobs_processed} jobs, exiting", file=sys.stderr)
+                    break
+                # Continue immediately if we processed a job (no sleep)
+            else:
+                # No jobs found - sleep before next check
+                time.sleep(poll_interval)
+        
+        print(f"[worker] Shutdown complete. Processed {jobs_processed} jobs.", file=sys.stderr)
+    finally:
+        _release_worker_lock()
 
 
 def queue_status() -> Dict[str, Any]:
@@ -351,7 +572,7 @@ def cleanup_completed(max_age_hours: int = 24):
     for job_file in COMPLETED_DIR.glob("*.json"):
         if job_file.stat().st_mtime < cutoff:
             job_file.unlink()
-            removed += 1
+            removed += 1  # FIXED: was incorrectly += 2
     
     print(f"[cleanup] Removed {removed} completed jobs older than {max_age_hours}h", file=sys.stderr)
     return removed

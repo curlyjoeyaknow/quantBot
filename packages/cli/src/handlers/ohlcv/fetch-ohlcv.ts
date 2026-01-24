@@ -7,10 +7,10 @@
 
 import { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
-import { fetchBirdeyeCandles } from '@quantbot/infra/api-clients';
 import { storeCandles } from '@quantbot/ohlcv';
 import { DateTime } from 'luxon';
 import { logger } from '@quantbot/infra/utils';
+import { createTokenAddress } from '@quantbot/core';
 
 export const fetchOhlcvSchema = z.object({
   mint: z.string().min(1, 'Mint address is required'),
@@ -87,9 +87,27 @@ export async function fetchOhlcvHandler(args: FetchOhlcvArgs, ctx: CommandContex
     forwardSeconds: args.to ? undefined : defaultForwardSeconds,
   });
 
-  // Fetch candles directly from Birdeye
+  // Fetch candles via MarketDataPort
+  const marketDataPort = await ctx.getMarketDataPort();
   const fetchStart = Date.now();
-  const candles = await fetchBirdeyeCandles(args.mint, args.interval, fromUnix, toUnix, args.chain);
+  
+  // Map interval to MarketDataPort format
+  const marketDataInterval: '15s' | '1m' | '5m' | '1H' =
+    args.interval === '1s' || args.interval === '15s'
+      ? '15s'
+      : args.interval === '1H'
+        ? '1H'
+        : args.interval === '1m'
+          ? '1m'
+          : '5m';
+  
+  const candles = await marketDataPort.fetchOhlcv({
+    tokenAddress: createTokenAddress(args.mint),
+    chain: args.chain,
+    interval: marketDataInterval,
+    from: fromUnix,
+    to: toUnix,
+  });
   const fetchDuration = Date.now() - fetchStart;
 
   logger.info('Fetched candles from Birdeye', {

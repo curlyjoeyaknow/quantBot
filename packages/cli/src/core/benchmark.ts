@@ -15,6 +15,37 @@
  */
 
 import { performance } from 'node:perf_hooks';
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { execSync } from 'child_process';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+/**
+ * Get CLI version from package.json
+ */
+function getCliVersion(): string {
+  try {
+    const packageJsonPath = join(__dirname, '../../../package.json');
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+    return packageJson.version || '1.0.0';
+  } catch {
+    return '1.0.0'; // Fallback version
+  }
+}
+
+/**
+ * Get git commit hash (or "unknown" if not in git repo)
+ */
+function getGitCommitHash(): string {
+  try {
+    return execSync('git rev-parse HEAD', { encoding: 'utf-8', stdio: 'pipe' }).trim();
+  } catch {
+    return 'unknown';
+  }
+}
 
 export interface BenchmarkMetric {
   name: string;
@@ -26,6 +57,10 @@ export interface BenchmarkMetric {
 
 export interface BenchmarkReport {
   enabled: boolean;
+  timestamp: string; // ISO 8601 timestamp when benchmark started
+  commandName?: string; // Full command name (e.g., "calls.sweep")
+  commandVersion?: string; // CLI version (e.g., "1.0.0")
+  gitCommit?: string; // Git commit hash (e.g., "abc123def456...")
   totalDurationMs: number;
   metrics: BenchmarkMetric[];
   summary: {
@@ -44,11 +79,19 @@ export class Benchmark {
   private enabled: boolean;
   private metrics: BenchmarkMetric[] = [];
   private startTime: number;
+  private timestamp: string; // ISO 8601 timestamp when benchmark started
+  private commandName?: string; // Full command name (e.g., "calls.sweep")
+  private commandVersion?: string; // CLI version (e.g., "1.0.0")
+  private gitCommit?: string; // Git commit hash (e.g., "abc123def456...")
   private currentOperation: { name: string; startTime: number; metadata?: Record<string, unknown> } | null = null;
 
-  constructor(enabled: boolean = false) {
+  constructor(enabled: boolean = false, commandName?: string, commandVersion?: string, gitCommit?: string) {
     this.enabled = enabled;
     this.startTime = performance.now();
+    this.timestamp = new Date().toISOString();
+    this.commandName = commandName;
+    this.commandVersion = commandVersion;
+    this.gitCommit = gitCommit;
   }
 
   /**
@@ -168,6 +211,10 @@ export class Benchmark {
     if (!this.enabled || this.metrics.length === 0) {
       return {
         enabled: this.enabled,
+        timestamp: this.timestamp,
+        commandName: this.commandName,
+        commandVersion: this.commandVersion,
+        gitCommit: this.gitCommit,
         totalDurationMs,
         metrics: [],
         summary: {
@@ -204,6 +251,10 @@ export class Benchmark {
 
     return {
       enabled: this.enabled,
+      timestamp: this.timestamp,
+      commandName: this.commandName,
+      commandVersion: this.commandVersion,
+      gitCommit: this.gitCommit,
       totalDurationMs,
       metrics: [...this.metrics],
       summary: {
@@ -229,6 +280,17 @@ export class Benchmark {
     const lines: string[] = [];
     lines.push('\n📊 Benchmark Report');
     lines.push('═'.repeat(60));
+    lines.push(`Timestamp: ${report.timestamp}`);
+    if (report.commandName) {
+      lines.push(`Command: ${report.commandName}`);
+    }
+    if (report.commandVersion) {
+      lines.push(`Version: ${report.commandVersion}`);
+    }
+    if (report.gitCommit) {
+      const shortCommit = report.gitCommit.length > 12 ? report.gitCommit.substring(0, 12) : report.gitCommit;
+      lines.push(`Git Commit: ${shortCommit}`);
+    }
     lines.push(`Total Duration: ${formatDuration(report.totalDurationMs)}`);
     lines.push(`Operations: ${report.summary.operationCount}`);
     lines.push(`Average: ${formatDuration(report.summary.averageDurationMs)}`);
@@ -292,6 +354,7 @@ export class Benchmark {
   reset(): void {
     this.metrics = [];
     this.startTime = performance.now();
+    this.timestamp = new Date().toISOString();
     this.currentOperation = null;
   }
 }
@@ -313,8 +376,43 @@ function formatDuration(ms: number): string {
 
 /**
  * Create benchmark instance from command args
+ * 
+ * @param args - Command arguments with optional benchmark flag
+ * @param commandName - Full command name (e.g., "calls.sweep"). If not provided, will attempt to infer from process.argv
+ * @param commandVersion - CLI version. If not provided, will read from package.json
+ * @param gitCommit - Git commit hash. If not provided, will attempt to get from git
  */
-export function createBenchmark(args: { benchmark?: boolean }): Benchmark {
-  return new Benchmark(args.benchmark === true);
+export function createBenchmark(
+  args: { benchmark?: boolean },
+  commandName?: string,
+  commandVersion?: string,
+  gitCommit?: string
+): Benchmark {
+  // Auto-detect command name from process.argv if not provided
+  const detectedCommandName = commandName || detectCommandName();
+  // Auto-detect version from package.json if not provided
+  const detectedVersion = commandVersion || getCliVersion();
+  // Auto-detect git commit hash if not provided
+  const detectedGitCommit = gitCommit || getGitCommitHash();
+  
+  return new Benchmark(args.benchmark === true, detectedCommandName, detectedVersion, detectedGitCommit);
+}
+
+/**
+ * Detect command name from process.argv
+ * Attempts to extract command name from CLI arguments (e.g., "calls sweep" -> "calls.sweep")
+ */
+function detectCommandName(): string | undefined {
+  try {
+    const args = process.argv.slice(2); // Skip node and script path
+    // Filter out flags and options
+    const commandParts = args.filter((arg) => !arg.startsWith('-') && !arg.startsWith('--'));
+    if (commandParts.length > 0) {
+      return commandParts.join('.');
+    }
+  } catch {
+    // Ignore errors, return undefined
+  }
+  return undefined;
 }
 

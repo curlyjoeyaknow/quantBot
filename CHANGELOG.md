@@ -38,9 +38,16 @@ All notable changes to this project will be documented in this file.
     - Returns result as JSON
   - **Testing**: Comprehensive test suite
     - 26 Python unit tests (bucket, window, coverage, manifest)
-    - 3 TypeScript service tests
+    - 4 Python E2E tests (full pipeline verification)
+    - 3 TypeScript service unit tests
+    - 3 TypeScript service integration tests
     - 3 CLI handler tests
-    - All tests passing
+    - **Total: 39 tests, all passing** ✅
+  - **Verification**: Full E2E integration tests verify complete pipeline
+    - Parquet alerts → ClickHouse query → Bucket partitioning → Coverage → Manifest
+    - CSV alerts conversion
+    - Deterministic bucket partitioning
+    - Manifest sealing (atomic write)
 
 - **Slice Export & Analyze Workflow - Phase 4: Dataset Expansion** ✅ Complete
   - **Dataset Registry** (`packages/storage/src/adapters/dataset-registry.ts`):

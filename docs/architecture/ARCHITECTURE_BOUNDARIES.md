@@ -350,45 +350,52 @@ pnpm typecheck
 
 ## Enforcement Strategy
 
-### Phase 1: Documentation (Current)
+### Phase 1: Documentation ✅
 
-✅ **Status**: This document created
+✅ **Status**: Complete
 
 - Maps packages to layers
 - Documents allowed/forbidden dependencies
-- Identifies violations (TBD)
+- Identifies violations (all fixed)
 
-### Phase 2: ESLint Rules (Next)
+### Phase 2: ESLint Rules ✅
 
-**Goal**: Prevent violations at write-time
+✅ **Status**: Complete
 
-**Rules to Add**:
-1. Block `@quantbot/simulation` from importing I/O packages
-2. Block `@quantbot/analytics` from importing `@quantbot/api-clients`
-3. Block `@quantbot/workflows` from importing storage implementations
-4. Block handlers from using `console.log`, `process.exit`, etc.
+**Implemented Rules**:
+1. ✅ Block `@quantbot/simulation` from importing I/O packages
+2. ✅ Block `@quantbot/analytics` from importing `@quantbot/api-clients`
+3. ✅ Block `@quantbot/workflows` from importing storage implementations
+4. ✅ Block handlers from using `console.log`, `process.exit`, etc.
+5. ✅ Block `@quantbot/backtest` from importing I/O packages
+6. ✅ Block `@quantbot/ohlcv` from importing Data Ingestion layer
+7. ✅ Enforce determinism (no `Date.now()`, `Math.random()` in simulation/handlers)
 
 **Files**: `eslint.config.mjs`
 
-### Phase 3: Architecture Tests (Future)
+### Phase 3: Architecture Tests ✅
 
-**Goal**: Prevent regressions in CI
+✅ **Status**: Complete
 
-**Test**: `scripts/verify-architecture-boundaries.ts`
+**Tests**:
+- ✅ `scripts/verify-architecture-boundaries.ts` - Regex-based boundary checks
+- ✅ `scripts/verify-boundaries-ast.ts` - AST-based boundary checks (more accurate)
+- ✅ Runs in CI on every commit (`.github/workflows/ci.yml`)
 
 **Checks**:
-- Parse all package.json files
-- Verify no forbidden dependencies
-- Verify import paths (no deep imports)
-- Run in CI on every commit
+- ✅ Parse all package.json files
+- ✅ Verify no forbidden dependencies
+- ✅ Verify import paths (no deep imports)
+- ✅ Layer boundary enforcement
 
-### Phase 4: Refactor Violations (Future)
+### Phase 4: Refactor Violations ✅
 
-**Goal**: Fix existing violations
+✅ **Status**: Complete
 
-- Move code to appropriate layers
-- Extract adapters where needed
-- Update imports to use ports/interfaces
+- ✅ All violations fixed
+- ✅ Code moved to appropriate layers
+- ✅ Adapters extracted where needed
+- ✅ Imports updated to use ports/interfaces
 
 ---
 
@@ -421,9 +428,9 @@ pnpm typecheck
 
 - ✅ All packages mapped to layers
 - ✅ Boundary rules documented
-- ⏳ ESLint rules block cross-layer imports
-- ⏳ Architecture tests pass in CI
-- ⏳ Zero violations in existing code
+- ✅ ESLint rules block cross-layer imports
+- ✅ Architecture tests pass in CI
+- ✅ Zero violations in existing code
 
 ---
 
