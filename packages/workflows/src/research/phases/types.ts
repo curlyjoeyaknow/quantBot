@@ -107,6 +107,8 @@ export const Phase2ResultSchema = z.object({
 });
 
 export type Phase2Result = z.infer<typeof Phase2ResultSchema>;
+export type ParameterIsland = z.infer<typeof ParameterIslandSchema>;
+export type IslandChampion = z.infer<typeof IslandChampionSchema>;
 
 /**
  * Phase 3 Configuration: Stress Validation
@@ -161,6 +163,8 @@ export const Phase3ResultSchema = z.object({
 });
 
 export type Phase3Result = z.infer<typeof Phase3ResultSchema>;
+export type ChampionValidation = z.infer<typeof ChampionValidationSchema>;
+export type StressWindowResult = z.infer<typeof StressWindowResultSchema>;
 
 /**
  * Complete Optimization Workflow Configuration

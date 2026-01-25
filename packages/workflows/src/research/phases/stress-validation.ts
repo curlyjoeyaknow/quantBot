@@ -85,6 +85,9 @@ async function loadAlertsForWindow(
   const { DuckDBClient } = await import('@quantbot/storage');
   const db = new DuckDBClient(duckdbPath);
 
+  const fromMs = new Date(testFrom).getTime();
+  const toMs = new Date(testTo).getTime();
+
   const query = `
     SELECT 
       call_id,
@@ -93,17 +96,16 @@ async function loadAlertsForWindow(
       ts_ms,
       chain
     FROM alerts
-    WHERE ts_ms >= ? AND ts_ms < ?
+    WHERE ts_ms >= ${fromMs} AND ts_ms < ${toMs}
     ORDER BY ts_ms
   `;
 
-  const rows = await db.query(query, [
-    new Date(testFrom).getTime(),
-    new Date(testTo).getTime(),
-  ]);
+  const result = await db.query(query);
   await db.close();
 
-  return rows.map((row) => ({
+  // DuckDBQueryResult has a rows property
+  const rows = (result as { rows?: unknown[] }).rows || [];
+  return rows.map((row: Record<string, unknown>) => ({
     call_id: row.call_id as string,
     caller: row.caller as string,
     mint: row.mint as string,
@@ -135,7 +137,8 @@ async function runStressLaneBacktest(
 }> {
   logger.debug('Running stress lane backtest', {
     champion: champion.championId,
-    window: window.windowId || 'unknown',
+    testFrom: window.testFrom,
+    testTo: window.testTo,
     lane: lane.name,
   });
 
@@ -192,7 +195,7 @@ async function runStressLaneBacktest(
         test_r: z.number(),
         ratio: z.number(),
         passes_gates: z.boolean(),
-        summary: z.record(z.unknown()).optional(),
+        summary: z.record(z.string(), z.unknown()).optional(),
       }),
       {
         timeout: 5 * 60 * 1000, // 5 minutes
@@ -342,7 +345,7 @@ export async function runPhase3StressValidation(
 
     // Compute aggregate scores across windows
     const allScores = windowResults.flatMap((wr) =>
-      Object.values(wr.laneResults).map((lr) => lr.testR)
+      Object.values(wr.laneResults).map((lr: { testR: number; ratio: number; passesGates: boolean }) => lr.testR)
     );
     const maximinScore = Math.min(...allScores);
     const medianScore = allScores.sort((a, b) => a - b)[Math.floor(allScores.length / 2)] || 0;
@@ -355,8 +358,9 @@ export async function runPhase3StressValidation(
 
     for (const wr of windowResults) {
       for (const [laneName, laneResult] of Object.entries(wr.laneResults)) {
-        if (laneResult.testR < worstScore) {
-          worstScore = laneResult.testR;
+        const result = laneResult as { testR: number; ratio: number; passesGates: boolean };
+        if (result.testR < worstScore) {
+          worstScore = result.testR;
           worstWindow = wr.windowId;
           worstLane = laneName;
         }
@@ -447,31 +451,35 @@ async function writeStressResultsToParquet(
     )
   `);
 
-  // Insert rows
+  // Insert rows - build SQL with values directly (DuckDBClient.execute doesn't support parameters)
+  const insertValues: string[] = [];
   for (const validation of result.validations) {
     for (const window of validation.windows) {
-      for (const [laneName, laneResult] of Object.entries(window.laneResults)) {
-        await db.execute(
-          `
-          INSERT INTO stress_results VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `,
-          [
-            validation.championId,
-            window.windowId,
-            laneName,
-            laneResult.testR,
-            laneResult.ratio,
-            laneResult.passesGates,
-            validation.maximinScore,
-            validation.medianScore,
-            validation.meanScore,
-            validation.worstWindow,
-            validation.worstLane,
-            validation.validationRank || null,
-          ]
-        );
+      for (const [laneName, laneResultRaw] of Object.entries(window.laneResults)) {
+        const laneResult = laneResultRaw as { testR: number; ratio: number; passesGates: boolean };
+        const values = [
+          `'${validation.championId.replace(/'/g, "''")}'`,
+          `'${window.windowId.replace(/'/g, "''")}'`,
+          `'${laneName.replace(/'/g, "''")}'`,
+          String(laneResult.testR),
+          String(laneResult.ratio),
+          laneResult.passesGates ? 'true' : 'false',
+          String(validation.maximinScore),
+          String(validation.medianScore),
+          String(validation.meanScore),
+          validation.worstWindow ? `'${validation.worstWindow.replace(/'/g, "''")}'` : 'NULL',
+          validation.worstLane ? `'${validation.worstLane.replace(/'/g, "''")}'` : 'NULL',
+          validation.validationRank ? String(validation.validationRank) : 'NULL',
+        ];
+        insertValues.push(`(${values.join(', ')})`);
       }
     }
+  }
+
+  if (insertValues.length > 0) {
+    await db.execute(`
+      INSERT INTO stress_results VALUES ${insertValues.join(', ')}
+    `);
   }
 
   // Export to Parquet

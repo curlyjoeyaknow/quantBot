@@ -13,6 +13,7 @@ import { logger } from '@quantbot/utils';
 import { PythonEngine } from '@quantbot/utils';
 import { findWorkspaceRoot } from '@quantbot/utils';
 import { DuckDBClient } from '@quantbot/storage';
+import { z } from 'zod';
 import { getPhaseArtifactPath } from './lake-directory.js';
 import type { Phase1Result } from './types.js';
 
@@ -118,6 +119,7 @@ export async function runPhase2BacktestOptimization(
     await pythonEngine.runScript(
       scriptPath,
       pythonArgs,
+      z.any(),
       {
         timeout: 60 * 60 * 1000, // 1 hour timeout
         cwd: findWorkspaceRoot(),

@@ -34,7 +34,18 @@ import { runPhase2BacktestOptimization } from './phases/backtest-optimization.js
 import { runPhase3StressValidation } from './phases/stress-validation.js';
 import { logger } from '@quantbot/utils';
 import { getDuckDBPath } from '@quantbot/utils';
-import { getGitProvenance } from '@quantbot/core';
+// Git provenance helper
+async function getGitProvenance(): Promise<{ commit: string; branch: string; dirty: boolean }> {
+  const { execSync } = await import('child_process');
+  try {
+    const commit = execSync('git rev-parse HEAD', { encoding: 'utf-8' }).trim();
+    const branch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8' }).trim();
+    const status = execSync('git status --porcelain', { encoding: 'utf-8' }).trim();
+    return { commit, branch, dirty: status.length > 0 };
+  } catch {
+    return { commit: 'unknown', branch: 'unknown', dirty: false };
+  }
+}
 
 /**
  * Run complete optimization workflow
@@ -74,7 +85,7 @@ export async function runOptimizationWorkflow(
     metadata.gitBranch = gitInfo.branch;
     metadata.gitDirty = gitInfo.dirty;
   } catch (error) {
-    logger.warn('Failed to get git provenance', error as Error);
+    logger.warn('Failed to get git provenance', { error: error instanceof Error ? error.message : String(error) });
   }
 
   // Check for resume
@@ -99,7 +110,9 @@ export async function runOptimizationWorkflow(
             phase1Result = { optimalRanges, summary };
           }
         } catch (error) {
-          logger.warn('Failed to load Phase 1 results', error as Error);
+          logger.warn('Failed to load Phase 1 results', {
+          error: error instanceof Error ? error.message : String(error),
+        });
         }
       }
 
@@ -115,7 +128,9 @@ export async function runOptimizationWorkflow(
             phase2Result = { islands, champions, summary };
           }
         } catch (error) {
-          logger.warn('Failed to load Phase 2 results', error as Error);
+          logger.warn('Failed to load Phase 2 results', {
+          error: error instanceof Error ? error.message : String(error),
+        });
         }
       }
     }
@@ -239,7 +254,7 @@ export async function runOptimizationWorkflow(
     // Write final parameters per caller
     if (phase3Result?.winner && phase2Result) {
       const winnerChampion = phase2Result.champions.find(
-        (c) => c.championId === phase3Result.winner!.championId
+        (c) => c.championId === phase3Result!.winner!.championId
       );
       if (winnerChampion) {
         const finalParams = {
@@ -279,8 +294,9 @@ export async function runOptimizationWorkflow(
     metadata.status = 'failed';
     await writeWorkflowManifest(runDir, metadata);
 
-    logger.error('Optimization workflow failed', error as Error, {
+    logger.error('Optimization workflow failed', {
       workflowRunId,
+      error: error instanceof Error ? error.message : String(error),
     });
 
     return {

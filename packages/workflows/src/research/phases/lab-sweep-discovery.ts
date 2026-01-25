@@ -161,6 +161,9 @@ async function loadCallsFromDuckDB(
 ): Promise<CallSignal[]> {
   const db = new StorageDuckDBClient(duckdbPath);
   
+  const fromMs = new Date(dateFrom).getTime();
+  const toMs = new Date(dateTo).getTime();
+  
   let query = `
     SELECT 
       call_id,
@@ -169,31 +172,43 @@ async function loadCallsFromDuckDB(
       ts_ms,
       chain
     FROM alerts
-    WHERE ts_ms >= ? AND ts_ms < ?
+    WHERE ts_ms >= ${fromMs} AND ts_ms < ${toMs}
   `;
   
-  const params: unknown[] = [
-    new Date(dateFrom).getTime(),
-    new Date(dateTo).getTime(),
-  ];
-  
   if (caller) {
-    query += ' AND caller = ?';
-    params.push(caller);
+    query += ` AND caller = '${caller.replace(/'/g, "''")}'`;
   }
   
   query += ' ORDER BY ts_ms';
   
-  const rows = await db.query(query, params);
+  const result = await db.query(query);
   await db.close();
   
-  return rows.map((row) => ({
-    callId: row.call_id as string,
-    caller: row.caller as string,
-    mint: row.mint as string,
-    timestampMs: row.ts_ms as number,
-    chain: (row.chain as string) || 'solana',
-  }));
+  // DuckDBQueryResult has a rows property - convert to CallSignal format
+  const rows = (result as { rows?: unknown[] }).rows || [];
+  return rows.map((rowRaw: unknown) => {
+    const row = rowRaw as Record<string, unknown>;
+    const callerName = row.caller as string;
+    const chain = (row.chain as string) || 'solana';
+    return {
+      kind: 'token_call' as const,
+      tsMs: row.ts_ms as number,
+      token: {
+        address: row.mint as string,
+        chain: chain === 'solana' ? 'sol' : (chain as 'bsc' | 'eth' | 'base' | 'arb' | 'op' | 'unknown'),
+      },
+      caller: {
+        fromId: callerName,
+        displayName: callerName,
+      },
+      source: {
+        callerMessageId: 0, // Not available from alerts table
+      },
+      parse: {
+        confidence: 1.0,
+      },
+    } as CallSignal;
+  });
 }
 
 /**
@@ -229,10 +244,11 @@ export async function runPhase1LabSweepDiscovery(
   // Group calls by caller
   const callsByCaller = new Map<string, CallSignal[]>();
   for (const call of allCalls) {
-    if (!callsByCaller.has(call.caller)) {
-      callsByCaller.set(call.caller, []);
+    const callerKey = call.caller.displayName || call.caller.fromId;
+    if (!callsByCaller.has(callerKey)) {
+      callsByCaller.set(callerKey, []);
     }
-    callsByCaller.get(call.caller)!.push(call);
+    callsByCaller.get(callerKey)!.push(call);
   }
 
   // Determine which callers to process
@@ -240,24 +256,24 @@ export async function runPhase1LabSweepDiscovery(
   const allResults: Phase1Result['optimalRanges'] = [];
 
   // Run sweeps for each caller
-  for (const caller of callersToProcess) {
-    const calls = callsByCaller.get(caller) || [];
+  for (const callerName of callersToProcess) {
+    const calls = callsByCaller.get(callerName) || [];
     
     if (calls.length === 0) {
-      logger.warn('No calls found for caller', { caller });
+      logger.warn('No calls found for caller', { caller: callerName });
       continue;
     }
 
     if (config.minCallsPerCaller && calls.length < config.minCallsPerCaller) {
       logger.info('Skipping caller - insufficient calls', {
-        caller,
+        caller: callerName,
         callsCount: calls.length,
         minRequired: config.minCallsPerCaller,
       });
       continue;
     }
 
-    logger.info('Running lab sweep for caller', { caller, callsCount: calls.length });
+    logger.info('Running lab sweep for caller', { caller: callerName, callsCount: calls.length });
 
     const callerResults: Array<{
       tpMult: number;
@@ -301,11 +317,11 @@ export async function runPhase1LabSweepDiscovery(
             const result = await evaluateCallsWorkflow(request, workflowCtx);
 
             // Extract metrics from result
-            const successfulResults = result.results.filter((r) => r.tradeable && r.trade);
+            const successfulResults = result.results.filter((r) => r.diagnostics.tradeable && !r.diagnostics.skippedReason);
             if (successfulResults.length === 0) continue;
 
-            const returns = successfulResults.map((r) => r.trade!.realizedReturnBps / 100);
-            const wins = successfulResults.filter((r) => (r.trade!.realizedReturnBps || 0) > 0).length;
+            const returns = successfulResults.map((r) => r.pnl.netReturnPct);
+            const wins = successfulResults.filter((r) => r.pnl.netReturnPct > 0).length;
             const winRate = wins / successfulResults.length;
             const sortedReturns = [...returns].sort((a, b) => a - b);
             const medianReturnPct = sortedReturns[Math.floor(sortedReturns.length / 2)] || 0;
@@ -326,11 +342,12 @@ export async function runPhase1LabSweepDiscovery(
               callsCount: successfulResults.length,
             });
           } catch (error) {
-            logger.error('Lab sweep scenario failed', error as Error, {
-              caller,
+            logger.error('Lab sweep scenario failed', {
+              caller: callerName,
               overlaySet: overlaySet.id,
               interval,
               lagMs,
+              error: error instanceof Error ? error.message : String(error),
             });
             // Continue with next scenario
           }
@@ -355,7 +372,7 @@ export async function runPhase1LabSweepDiscovery(
 
       if (tpMults.length > 0 && slMults.length > 0) {
         allResults.push({
-          caller,
+          caller: callerName,
           tpMult: {
             min: Math.min(...tpMults),
             max: Math.max(...tpMults),
@@ -440,26 +457,29 @@ async function writeResultsToParquet(
     )
   `);
 
-  // Insert rows
+  // Insert rows - build SQL with values directly (DuckDBClient.execute doesn't support parameters)
+  const insertValues: string[] = [];
   for (const range of result.optimalRanges) {
-    await db.execute(
-      `
-      INSERT INTO phase1_results VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `,
-      [
-        range.caller,
-        range.tpMult.min,
-        range.tpMult.max,
-        range.tpMult.optimal || null,
-        range.slMult.min,
-        range.slMult.max,
-        range.slMult.optimal || null,
-        range.metrics.winRate,
-        range.metrics.medianReturnPct,
-        range.metrics.hit2xPct,
-        range.metrics.callsCount,
-      ]
-    );
+    const values = [
+      `'${range.caller.replace(/'/g, "''")}'`,
+      String(range.tpMult.min),
+      String(range.tpMult.max),
+      range.tpMult.optimal ? String(range.tpMult.optimal) : 'NULL',
+      String(range.slMult.min),
+      String(range.slMult.max),
+      range.slMult.optimal ? String(range.slMult.optimal) : 'NULL',
+      String(range.metrics.winRate),
+      String(range.metrics.medianReturnPct),
+      String(range.metrics.hit2xPct),
+      String(range.metrics.callsCount),
+    ];
+    insertValues.push(`(${values.join(', ')})`);
+  }
+
+  if (insertValues.length > 0) {
+    await db.execute(`
+      INSERT INTO phase1_results VALUES ${insertValues.join(', ')}
+    `);
   }
 
   // Export to Parquet
