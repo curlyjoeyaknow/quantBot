@@ -868,9 +868,11 @@ def _write_partitioned_parquet(
     # target_bytes reserved for future file size chunking logic
     
     with get_connection(":memory:", read_only=False) as con:
-        # Set compression
+        # Set compression (DuckDB uses force_compression for COPY TO PARQUET)
         if compression != "none":
-            con.execute(f"SET parquet_compression = '{compression}'")
+            # Note: DuckDB compression is set per COPY statement, not via SET
+            # We'll pass it in the COPY statement itself
+            pass
         
         for bucket, bucket_rows in sorted(buckets.items()):
             bucket_dir = output_dir / f"mint_bucket={bucket}"
@@ -909,6 +911,7 @@ def _write_partitioned_parquet(
             
             # Select columns matching OHLCV spec: mint, ts, interval_s, open, high, low, close, volume, source
             # Note: source column not in ClickHouse data, will be added as constant or left out
+            compression_clause = f", COMPRESSION '{compression}'" if compression != "none" else ""
             con.execute(f"""
                 COPY (
                     SELECT 
@@ -924,7 +927,7 @@ def _write_partitioned_parquet(
                     ORDER BY mint, ts
                 )
                 TO '{sql_escape(str(file_path))}'
-                (FORMAT PARQUET)
+                (FORMAT PARQUET{compression_clause})
             """)
             
             bucket_files[bucket].append(str(file_path))
@@ -1088,9 +1091,6 @@ def _write_coverage_parquet(
     from tools.shared.duckdb_adapter import get_connection
     
     with get_connection(":memory:", read_only=False) as con:
-        if compression != "none":
-            con.execute(f"SET parquet_compression = '{compression}'")
-        
         # Create table
         con.execute("""
             CREATE TABLE coverage (
@@ -1123,11 +1123,12 @@ def _write_coverage_parquet(
                 )
             )
         
-        # Write Parquet
+        # Write Parquet with compression
+        compression_clause = f", COMPRESSION '{compression}'" if compression != "none" else ""
         con.execute(f"""
             COPY coverage
             TO '{sql_escape(str(output_path))}'
-            (FORMAT PARQUET)
+            (FORMAT PARQUET{compression_clause})
         """)
         
         con.execute("DROP TABLE coverage")

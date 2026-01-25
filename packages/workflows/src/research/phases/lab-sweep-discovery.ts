@@ -16,6 +16,7 @@ import type { WorkflowContextWithPorts } from '../../calls/evaluate.js';
 import { evaluateCallsWorkflow, type EvaluateCallsRequest } from '../../calls/evaluate.js';
 import { createProductionContextWithPorts } from '../../context/createProductionContext.js';
 import type { CallSignal } from '@quantbot/core';
+import type { ExitOverlay } from '@quantbot/simulation';
 import { DuckDBClient as StorageDuckDBClient } from '@quantbot/storage';
 
 /**
@@ -23,11 +24,11 @@ import { DuckDBClient as StorageDuckDBClient } from '@quantbot/storage';
  */
 function generateOverlaySets(tpMults: number[], slMults: number[]): Array<{
   id: string;
-  overlays: Array<{ kind: string; takePct?: number; stopPct?: number }>;
+  overlays: ExitOverlay[];
 }> {
   const sets: Array<{
     id: string;
-    overlays: Array<{ kind: string; takePct?: number; stopPct?: number }>;
+    overlays: ExitOverlay[];
   }> = [];
 
   for (const tpMult of tpMults) {
@@ -35,8 +36,8 @@ function generateOverlaySets(tpMults: number[], slMults: number[]): Array<{
       sets.push({
         id: `tp${tpMult}_sl${slMult}`,
         overlays: [
-          { kind: 'take_profit', takePct: (tpMult - 1) * 100 },
-          { kind: 'stop_loss', stopPct: (1 - slMult) * 100 },
+          { kind: 'take_profit' as const, takePct: (tpMult - 1) * 100 },
+          { kind: 'stop_loss' as const, stopPct: (1 - slMult) * 100 },
         ],
       });
     }
@@ -329,8 +330,8 @@ export async function runPhase1LabSweepDiscovery(
             // Extract TP/SL from overlay set ID
             const tpMatch = overlaySet.id.match(/tp([\d.]+)/);
             const slMatch = overlaySet.id.match(/sl([\d.]+)/);
-            const tpMult = tpMatch ? parseFloat(tpMatch[1]) : 0;
-            const slMult = slMatch ? parseFloat(slMatch[1]) : 0;
+            const tpMult = tpMatch && tpMatch[1] ? parseFloat(tpMatch[1]) : 0;
+            const slMult = slMatch && slMatch[1] ? parseFloat(slMatch[1]) : 0;
 
             callerResults.push({
               tpMult,

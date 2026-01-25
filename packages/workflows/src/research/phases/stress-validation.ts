@@ -105,13 +105,16 @@ async function loadAlertsForWindow(
 
   // DuckDBQueryResult has a rows property
   const rows = (result as { rows?: unknown[] }).rows || [];
-  return rows.map((row: Record<string, unknown>) => ({
-    call_id: row.call_id as string,
-    caller: row.caller as string,
-    mint: row.mint as string,
-    ts: new Date(row.ts_ms as number).toISOString(),
-    chain: (row.chain as string) || 'solana',
-  }));
+  return rows.map((rowRaw: unknown) => {
+    const row = rowRaw as Record<string, unknown>;
+    return {
+      call_id: row.call_id as string,
+      caller: row.caller as string,
+      mint: row.mint as string,
+      ts: new Date(row.ts_ms as number).toISOString(),
+      chain: (row.chain as string) || 'solana',
+    };
+  });
 }
 
 /**
@@ -381,7 +384,10 @@ export async function runPhase3StressValidation(
   // Rank champions by maximin score
   validations.sort((a, b) => b.maximinScore - a.maximinScore);
   for (let i = 0; i < validations.length; i++) {
-    validations[i].validationRank = i + 1;
+    const validation = validations[i];
+    if (validation) {
+      validation.validationRank = i + 1;
+    }
   }
 
   const winner = validations[0];
