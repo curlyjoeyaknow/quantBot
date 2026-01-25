@@ -19,8 +19,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { getBirdeyeClient, fetchMultiChainMetadata } from '@quantbot/infra/api-clients';
-import { fetchBirdeyeCandles } from '@quantbot/infra/api-clients';
+import { fetchMultiChainMetadata } from '@quantbot/infra/api-clients';
 import {
   getStorageEngine,
   initClickHouse,
@@ -31,25 +30,12 @@ import {
   type UpsertResult,
 } from '@quantbot/storage';
 // TokensRepository removed (PostgreSQL) - metadata storage not critical for OHLCV ingestion
-import type { Candle, Chain } from '@quantbot/core';
+import type { Candle, Chain, MarketDataPort } from '@quantbot/core';
 import { logger, ValidationError } from '@quantbot/infra/utils';
 import { LRUCache } from 'lru-cache';
 import { isEvmAddress } from '@quantbot/infra/utils';
+import { createTokenAddress } from '@quantbot/core';
 // storeCandles removed - using OhlcvRepository.upsertCandles() with run manifest instead
-
-// Lazy initialization to avoid requiring API keys at module load time
-let birdeyeClientInstance: ReturnType<typeof getBirdeyeClient> | null = null;
-function getBirdeyeClientInstance(): ReturnType<typeof getBirdeyeClient> {
-  if (!birdeyeClientInstance) {
-    birdeyeClientInstance = getBirdeyeClient();
-  }
-  return birdeyeClientInstance;
-}
-
-// Export reset function for testing
-export function resetBirdeyeClientInstance(): void {
-  birdeyeClientInstance = null;
-}
 
 // --- Interfaces ---
 
@@ -149,6 +135,7 @@ function getStartOffsetTime(
 }
 
 export class OhlcvIngestionEngine {
+  private marketDataPort: MarketDataPort | null = null;
   private clickhouseInitialized = false;
   private storageEngine = getStorageEngine();
   private ohlcvRepository = new OhlcvRepository();
@@ -169,6 +156,30 @@ export class OhlcvIngestionEngine {
     warnings: 0,
     zeroVolumeCount: 0,
   };
+
+  /**
+   * Set MarketDataPort for this engine instance
+   * Must be called before using the engine for fetching candles
+   */
+  setMarketDataPort(port: MarketDataPort): void {
+    this.marketDataPort = port;
+  }
+
+  /**
+   * Get MarketDataPort (lazy initialization for backward compatibility)
+   * @deprecated Use setMarketDataPort() instead - this will be removed
+   */
+  private async getMarketDataPort(): Promise<MarketDataPort> {
+    if (this.marketDataPort) {
+      return this.marketDataPort;
+    }
+    // Lazy initialization for backward compatibility
+    // In production, ports should be injected via setMarketDataPort()
+    const { createProductionPorts } = await import('@quantbot/workflows');
+    const ports = await createProductionPorts();
+    this.marketDataPort = ports.marketData;
+    return this.marketDataPort;
+  }
 
   /**
    * Initialize the engine (ensure ClickHouse is ready)
@@ -618,16 +629,17 @@ export class OhlcvIngestionEngine {
     // Check if price exists at alert time - if price exists, data exists
     const alertUnixTime = Math.floor(alertTime.toSeconds());
     try {
-      const historicalPrice = await getBirdeyeClientInstance().fetchHistoricalPriceAtUnixTime(
-        mint,
-        alertUnixTime,
-        chain
-      );
+      const marketDataPort = await this.getMarketDataPort();
+      const historicalPriceResult = await marketDataPort.fetchHistoricalPriceAtTime({
+        tokenAddress: createTokenAddress(mint),
+        unixTime: alertUnixTime,
+        chain,
+      });
 
       if (
-        historicalPrice &&
-        historicalPrice.value !== null &&
-        historicalPrice.value !== undefined
+        historicalPriceResult &&
+        historicalPriceResult.value !== null &&
+        historicalPriceResult.value !== undefined
       ) {
         logger.debug(
           `[OhlcvIngestionEngine] Probe: Historical price found for ${mint}... (10 credits)`
@@ -687,16 +699,17 @@ export class OhlcvIngestionEngine {
     // Check if price exists at alert time - if price exists, data exists
     const alertUnixTime = Math.floor(alertTime.toSeconds());
     try {
-      const historicalPrice = await getBirdeyeClientInstance().fetchHistoricalPriceAtUnixTime(
-        mint,
-        alertUnixTime,
-        chain
-      );
+      const marketDataPort = await this.getMarketDataPort();
+      const historicalPriceResult = await marketDataPort.fetchHistoricalPriceAtTime({
+        tokenAddress: createTokenAddress(mint),
+        unixTime: alertUnixTime,
+        chain,
+      });
 
       if (
-        historicalPrice &&
-        historicalPrice.value !== null &&
-        historicalPrice.value !== undefined
+        historicalPriceResult &&
+        historicalPriceResult.value !== null &&
+        historicalPriceResult.value !== undefined
       ) {
         logger.debug(
           `[OhlcvIngestionEngine] Probe: Historical price found for 5m check ${mint}... (10 credits)`
@@ -758,8 +771,12 @@ export class OhlcvIngestionEngine {
         return false;
       }
 
-      // Solana: use existing logic
-      const metadata = await getBirdeyeClientInstance().getTokenMetadata(mint, chain);
+      // Solana: use MarketDataPort for metadata
+      const marketDataPort = await this.getMarketDataPort();
+      const metadata = await marketDataPort.fetchMetadata({
+        tokenAddress: createTokenAddress(mint),
+        chain,
+      });
       if (metadata) {
         // TokensRepository removed (PostgreSQL) - metadata storage not critical for OHLCV ingestion
         // Metadata is still fetched and used, just not persisted to database
@@ -1198,12 +1215,18 @@ export class OhlcvIngestionEngine {
       const from = Math.floor(startTime.toSeconds());
       const to = Math.floor(endTime.toSeconds());
 
-      // Use fetchBirdeyeCandles from api-clients (handles chunking automatically)
-      // Note: fetchBirdeyeCandles only supports '15s' | '1m' | '5m' | '1H'
-      // Map interval to supported Birdeye interval
-      const birdeyeInterval: '15s' | '1m' | '5m' | '1H' =
+      // Fetch candles via MarketDataPort
+      // Map interval to supported market data interval
+      const marketDataInterval: '15s' | '1m' | '5m' | '1H' =
         interval === '1H' ? '1H' : interval === '15s' ? '15s' : interval === '1m' ? '1m' : '5m';
-      let candles = await fetchBirdeyeCandles(mint, birdeyeInterval, from, to, chain);
+      const marketDataPort = await this.getMarketDataPort();
+      let candles = await marketDataPort.fetchOhlcv({
+        tokenAddress: createTokenAddress(mint),
+        chain,
+        interval: marketDataInterval,
+        from,
+        to,
+      });
 
       if (candles.length === 0) {
         logger.debug(`[OhlcvIngestionEngine] No data returned from Birdeye for ${mint}...`);
@@ -1296,7 +1319,14 @@ export class OhlcvIngestionEngine {
         // Try a repeat fetch first
         logger.debug(`[OhlcvIngestionEngine] Attempting repeat OHLCV fetch for ${mint}...`);
         try {
-          const retryCandles = await fetchBirdeyeCandles(mint, interval, from, to, chain);
+          const retryMarketDataPort = await this.getMarketDataPort();
+          const retryCandles = await retryMarketDataPort.fetchOhlcv({
+            tokenAddress: createTokenAddress(mint),
+            chain,
+            interval: marketDataInterval,
+            from,
+            to,
+          });
 
           if (retryCandles.length > 0) {
             // Re-validate the retry data
@@ -1527,18 +1557,19 @@ export class OhlcvIngestionEngine {
       `[OhlcvIngestionEngine] Fixing ${timestampsToFix.size} candles using historical price API for ${mint}...`
     );
 
+    const marketDataPort = await this.getMarketDataPort();
     for (const timestamp of timestampsToFix) {
       try {
-        const historicalPrice = await getBirdeyeClientInstance().fetchHistoricalPriceAtUnixTime(
-          mint,
-          timestamp,
-          chain
-        );
+        const historicalPriceResult = await marketDataPort.fetchHistoricalPriceAtTime({
+          tokenAddress: createTokenAddress(mint),
+          unixTime: timestamp,
+          chain,
+        });
 
-        if (historicalPrice && historicalPrice.value > 0) {
+        if (historicalPriceResult && historicalPriceResult.value > 0) {
           // Create a candle from the historical price
           // Use the price as open, high, low, close (since we only have one price point)
-          const price = historicalPrice.value;
+          const price = historicalPriceResult.value;
           fixedCandles.push({
             timestamp,
             open: price,

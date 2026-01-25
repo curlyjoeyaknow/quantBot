@@ -235,6 +235,148 @@ describe('Optimization Workflow Integration', () => {
     const content = JSON.parse(await readFile(manifestPath, 'utf-8'));
     expect(content.workflowRunId).toBe(workflowRunId);
     expect(content.gitCommit).toBe('abc123');
+    expect(content.gitBranch).toBe('main');
+    expect(content.gitDirty).toBe(false);
+  });
+
+  it('should write phase configs to inputs directory', async () => {
+    const { createLakeRunDirectory, writePhaseConfig } = await import(
+      '../../../../src/research/phases/lake-directory.js'
+    );
+    const workflowRunId = 'test-configs-123';
+    const runDir = await createLakeRunDirectory(tempDataRoot, workflowRunId);
+
+    const phase1Config = {
+      enabled: true,
+      tpMults: [2.0, 3.0],
+      slMults: [0.85, 0.90],
+      intervals: ['5m'],
+      lagsMs: [0],
+    };
+
+    await writePhaseConfig(runDir, 'phase1', phase1Config);
+
+    const configPath = join(runDir, 'inputs', 'phase1-config.json');
+    expect(existsSync(configPath)).toBe(true);
+
+    const { readFile } = await import('fs/promises');
+    const content = JSON.parse(await readFile(configPath, 'utf-8'));
+    expect(content.enabled).toBe(true);
+    expect(content.tpMults).toEqual([2.0, 3.0]);
+  });
+
+  it('should handle phase result loading on resume', async () => {
+    const { createLakeRunDirectory, writeWorkflowManifest } = await import(
+      '../../../../src/research/phases/lake-directory.js'
+    );
+    const { loadWorkflowManifest } = await import('../../../../src/research/phases/lake-directory.js');
+    
+    const workflowRunId = 'test-resume-load-123';
+    const runDir = await createLakeRunDirectory(tempDataRoot, workflowRunId);
+
+    // Write Phase 2 results
+    await writeFile(
+      join(runDir, 'phase2', 'summary.json'),
+      JSON.stringify({
+        totalTrials: 100,
+        islandsFound: 3,
+        championsSelected: 5,
+      }),
+      'utf-8'
+    );
+
+    await writeFile(
+      join(runDir, 'phase2', 'islands.json'),
+      JSON.stringify([
+        {
+          islandId: 'island1',
+          centroid: { tpMult: 2.5, slMult: 0.875 },
+          nMembers: 5,
+          meanRobustScore: 0.5,
+          bestRobustScore: 0.6,
+        },
+      ]),
+      'utf-8'
+    );
+
+    await writeFile(
+      join(runDir, 'phase2', 'champions.json'),
+      JSON.stringify([
+        {
+          championId: 'champ1',
+          islandId: 'island1',
+          tpMult: 2.5,
+          slMult: 0.875,
+          discoveryScore: 0.6,
+          passesGates: true,
+        },
+      ]),
+      'utf-8'
+    );
+
+    await writeWorkflowManifest(runDir, {
+      workflowRunId,
+      createdAt: new Date().toISOString(),
+      status: 'running',
+      phases: {
+        phase1: 'completed',
+        phase2: 'completed',
+        phase3: 'pending',
+      },
+    });
+
+    // Verify manifest can be loaded
+    const manifest = await loadWorkflowManifest(runDir);
+    expect(manifest).toBeDefined();
+    expect(manifest?.phases.phase2).toBe('completed');
+
+    // Verify Phase 2 results can be loaded
+    const { readFile } = await import('fs/promises');
+    const summary = JSON.parse(await readFile(join(runDir, 'phase2', 'summary.json'), 'utf-8'));
+    const islands = JSON.parse(await readFile(join(runDir, 'phase2', 'islands.json'), 'utf-8'));
+    const champions = JSON.parse(await readFile(join(runDir, 'phase2', 'champions.json'), 'utf-8'));
+
+    expect(summary.totalTrials).toBe(100);
+    expect(islands.length).toBe(1);
+    expect(champions.length).toBe(1);
+  });
+
+  it('should handle workflow run directory structure correctly', async () => {
+    const { createLakeRunDirectory, getPhaseArtifactPath, getOutputArtifactPath } = await import(
+      '../../../../src/research/phases/lake-directory.js'
+    );
+    const workflowRunId = 'test-structure-123';
+    const runDir = await createLakeRunDirectory(tempDataRoot, workflowRunId);
+
+    // Verify paths are correct
+    const phase1Artifact = getPhaseArtifactPath(runDir, 'phase1', 'summary.json');
+    expect(phase1Artifact).toBe(join(runDir, 'phase1', 'summary.json'));
+
+    const outputArtifact = getOutputArtifactPath(runDir, 'final-parameters.json');
+    expect(outputArtifact).toBe(join(runDir, 'outputs', 'final-parameters.json'));
+
+    // Verify all directories exist
+    expect(existsSync(join(runDir, 'inputs'))).toBe(true);
+    expect(existsSync(join(runDir, 'phase1'))).toBe(true);
+    expect(existsSync(join(runDir, 'phase2'))).toBe(true);
+    expect(existsSync(join(runDir, 'phase3'))).toBe(true);
+    expect(existsSync(join(runDir, 'outputs'))).toBe(true);
+  });
+
+  it('should check if workflow run exists', async () => {
+    const { createLakeRunDirectory, workflowRunExists } = await import(
+      '../../../../src/research/phases/lake-directory.js'
+    );
+    const workflowRunId = 'test-exists-123';
+    
+    // Initially should not exist
+    expect(workflowRunExists(tempDataRoot, workflowRunId)).toBe(false);
+
+    // Create directory
+    await createLakeRunDirectory(tempDataRoot, workflowRunId);
+
+    // Now should exist
+    expect(workflowRunExists(tempDataRoot, workflowRunId)).toBe(true);
   });
 });
 

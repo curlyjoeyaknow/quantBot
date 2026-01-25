@@ -8,6 +8,9 @@
  * - creation_time: when the token was created
  * - last_trade_unix_time: when the token last traded
  *
+ * NOTE: Uses BirdeyeClient.searchToken() directly for Birdeye-specific token search API.
+ * This is acceptable as it's a Birdeye-specific feature not covered by MarketDataPort.
+ *
  * A token is considered "effectively fully covered" if:
  * - We have OHLCV data from alertTime to either:
  *   a) The full 150k sec horizon (normal full coverage), OR

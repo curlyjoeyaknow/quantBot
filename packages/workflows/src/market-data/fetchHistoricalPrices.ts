@@ -1,16 +1,19 @@
 /**
  * Fetch Historical Prices Workflow
  * =================================
- * Fetches historical prices from Birdeye API at exact timestamps.
+ * Fetches historical prices from market data provider via MarketDataPort.
  *
  * This is a workflow function (orchestration) that belongs in workflows
  * because it coordinates external API calls. Analytics should only read
  * from storage, not fetch from APIs.
+ *
+ * Uses MarketDataPort for all market data operations (ports & adapters pattern).
  */
 
 import { logger } from '@quantbot/infra/utils';
-import { getBirdeyeClient } from '@quantbot/infra/api-clients';
 import { DateTime } from 'luxon';
+import type { MarketDataPort } from '@quantbot/core';
+import { createTokenAddress } from '@quantbot/core';
 
 /**
  * Detect chain from token address format
@@ -49,31 +52,36 @@ function normalizeTokenAddress(address: string): string {
 }
 
 /**
- * Fetch historical price at exact timestamp using Birdeye API
+ * Fetch historical price at exact timestamp using MarketDataPort
  * Automatically detects chain from address format
+ *
+ * @param tokenAddress - Token address (will be normalized)
+ * @param timestamp - Timestamp to fetch price at
+ * @param chain - Optional chain hint (auto-detected if not provided)
+ * @param marketDataPort - MarketDataPort instance (required for ports pattern)
  */
 export async function fetchHistoricalPriceAtTime(
   tokenAddress: string,
   timestamp: Date | DateTime,
+  marketDataPort: MarketDataPort,
   chain?: string
 ): Promise<number | null> {
   try {
-    const birdeyeClient = getBirdeyeClient();
     const alertTime = timestamp instanceof DateTime ? timestamp : DateTime.fromJSDate(timestamp);
     const unixTimestamp = Math.floor(alertTime.toSeconds());
 
     // Normalize address and detect chain if not provided
     const normalizedAddress = normalizeTokenAddress(tokenAddress);
-    const detectedChain = chain || detectChainFromAddress(tokenAddress);
+    const detectedChain = (chain || detectChainFromAddress(tokenAddress)) as import('@quantbot/core').Chain;
 
-    const result = await birdeyeClient.fetchHistoricalPriceAtUnixTime(
-      normalizedAddress,
-      unixTimestamp,
-      detectedChain
-    );
+    const result = await marketDataPort.fetchHistoricalPriceAtTime({
+      tokenAddress: createTokenAddress(normalizedAddress),
+      unixTime: unixTimestamp,
+      chain: detectedChain,
+    });
 
     if (result?.value && result.value > 0 && Number.isFinite(result.value)) {
-      logger.trace('[fetchHistoricalPrices] Fetched price from Birdeye', {
+      logger.trace('[fetchHistoricalPrices] Fetched price via MarketDataPort', {
         token: normalizedAddress,
         chain: detectedChain,
         timestamp: unixTimestamp,
@@ -99,6 +107,10 @@ export async function fetchHistoricalPriceAtTime(
  * Fetch historical prices for multiple calls in batches
  * Returns a map of call index -> price
  * Each call gets its price at its exact alert timestamp
+ *
+ * @param calls - Array of calls with token address and alert timestamp
+ * @param marketDataPort - MarketDataPort instance (required for ports pattern)
+ * @param batchSize - Number of calls to process per batch
  */
 export async function fetchHistoricalPricesBatch(
   calls: Array<{
@@ -106,6 +118,7 @@ export async function fetchHistoricalPricesBatch(
     alertTimestamp: Date;
     chain?: string;
   }>,
+  marketDataPort: MarketDataPort,
   batchSize: number = 10
 ): Promise<Map<number, number>> {
   const priceMap = new Map<number, number>(); // Map call index -> price
@@ -117,11 +130,12 @@ export async function fetchHistoricalPricesBatch(
       batch.map(async (call, batchIndex) => {
         const callIndex = i + batchIndex; // Global call index
 
-        // Fetch price at exact alert timestamp from Birdeye API
+        // Fetch price at exact alert timestamp via MarketDataPort
         // Chain is auto-detected from address format if not provided
         const price = await fetchHistoricalPriceAtTime(
           call.tokenAddress,
           call.alertTimestamp,
+          marketDataPort,
           call.chain
         );
 
