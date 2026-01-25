@@ -304,11 +304,7 @@ export async function runPhase1LabSweepDiscovery(
                   takerFeeBps: 30,
                   slippageBps: 10,
                 },
-                overlays: overlaySet.overlays as Array<{
-                  kind: string;
-                  takePct?: number;
-                  stopPct?: number;
-                }>,
+                overlays: overlaySet.overlays,
                 position: {
                   notionalUsd: 1000,
                 },

@@ -7,7 +7,7 @@
 
 import { join } from 'path';
 import { z } from 'zod';
-import type { RawDataRepository, RawDataQueryFilter } from '@quantbot/core';
+import type { RawDataRepository, RawDataQueryFilter, RawDataSourceType } from '@quantbot/core';
 import type { RawDataRecord } from '@quantbot/core';
 import { DuckDBClient } from '../duckdb/duckdb-client.js';
 import { logger, findWorkspaceRoot } from '@quantbot/infra/utils';
@@ -83,7 +83,7 @@ export class RawDataDuckDBAdapter implements RawDataRepository {
   }
 
   async listSources(): Promise<
-    Array<{ sourceType: string; sourceId: string; recordCount: number }>
+    Array<{ sourceType: RawDataSourceType; sourceId: string; recordCount: number }>
   > {
     try {
       const results = await this.client.execute(
@@ -94,7 +94,7 @@ export class RawDataDuckDBAdapter implements RawDataRepository {
       );
 
       return results.map((r) => ({
-        sourceType: r.sourceType,
+        sourceType: r.sourceType as RawDataSourceType,
         sourceId: r.sourceId,
         recordCount: r.recordCount,
       }));

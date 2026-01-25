@@ -49,6 +49,8 @@ import {
 } from '@quantbot/infra/storage';
 import type { ArtifactRepository } from '@quantbot/core';
 import { ensureInitialized } from './initialization-manager.js';
+import { getBirdeyeClient } from '@quantbot/infra/api-clients';
+import { createMarketDataBirdeyeAdapter } from '../../../workflows/src/adapters/marketDataBirdeyeAdapter.js';
 
 /**
  * Services available in command context
@@ -275,6 +277,16 @@ export class CommandContext {
         throw new Error('Use ctx.getMarketDataPort() instead - MarketDataPort requires async initialization');
       },
     };
+  }
+
+  /**
+   * Get MarketDataPort (async initialization)
+   * Creates a Birdeye adapter for market data operations
+   */
+  async getMarketDataPort(): Promise<MarketDataPort> {
+    await this.ensureInitialized();
+    const birdeyeClient = getBirdeyeClient();
+    return createMarketDataBirdeyeAdapter(birdeyeClient);
   }
 }
 

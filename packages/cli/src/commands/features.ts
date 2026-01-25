@@ -3,10 +3,12 @@
  */
 
 import type { Command } from 'commander';
+import { z } from 'zod';
 import { defineCommand } from '../core/defineCommand.js';
 import { die } from '../core/cliErrors.js';
 import { commandRegistry } from '../core/command-registry.js';
 import type { PackageCommandModule } from '../types/index.js';
+import type { CommandContext } from '../core/command-context.js';
 import { featuresListSchema, featuresComputeSchema } from '../command-defs/features.js';
 import { listFeaturesHandler } from '../handlers/features/list-features.js';
 import { computeFeaturesHandler } from '../handlers/features/compute-features.js';
@@ -30,7 +32,6 @@ export function registerFeaturesCommands(program: Command): void {
     packageName: 'features',
     validate: (opts) => featuresListSchema.parse(opts),
     onError: die,
-    handler: listFeaturesHandler,
   });
 
   // Compute features
@@ -47,7 +48,6 @@ export function registerFeaturesCommands(program: Command): void {
     packageName: 'features',
     validate: (opts) => featuresComputeSchema.parse(opts),
     onError: die,
-    handler: computeFeaturesHandler,
   });
 }
 
@@ -62,7 +62,10 @@ const featuresModule: PackageCommandModule = {
       name: 'list',
       description: 'List all registered features',
       schema: featuresListSchema,
-      handler: listFeaturesHandler,
+      handler: async (args: unknown, ctx: CommandContext) => {
+        const typedArgs = args as z.infer<typeof featuresListSchema>;
+        return await listFeaturesHandler(typedArgs, ctx);
+      },
       examples: [
         'quantbot features list',
         'quantbot features list --format json',
@@ -72,7 +75,10 @@ const featuresModule: PackageCommandModule = {
       name: 'compute',
       description: 'Compute features for a feature set',
       schema: featuresComputeSchema,
-      handler: computeFeaturesHandler,
+      handler: async (args: unknown, ctx: CommandContext) => {
+        const typedArgs = args as z.infer<typeof featuresComputeSchema>;
+        return await computeFeaturesHandler(typedArgs, ctx);
+      },
       examples: [
         'quantbot features compute --feature-set rsi:1.0.0',
         'quantbot features compute --feature-set rsi:1.0.0 --from 2024-01-01 --to 2024-12-31',

@@ -5,7 +5,8 @@
  */
 
 import { DateTime } from 'luxon';
-import type { Call, Alert, CallSelection } from '../domain/calls/index.js';
+import type { Call, Alert } from '../domain/calls/index.js';
+import type { CallSelection } from '../domain/strategies/index.js';
 import type { TokenAddress } from '../domain/tokens/index.js';
 
 /**

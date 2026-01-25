@@ -95,11 +95,11 @@ export async function fetchOhlcvHandler(args: FetchOhlcvArgs, ctx: CommandContex
   const marketDataInterval: '15s' | '1m' | '5m' | '1H' =
     args.interval === '1s' || args.interval === '15s'
       ? '15s'
-      : args.interval === '1H'
-        ? '1H'
+      : args.interval === '5m'
+        ? '5m'
         : args.interval === '1m'
           ? '1m'
-          : '5m';
+          : '1m'; // Default to 1m
   
   const candles = await marketDataPort.fetchOhlcv({
     tokenAddress: createTokenAddress(args.mint),

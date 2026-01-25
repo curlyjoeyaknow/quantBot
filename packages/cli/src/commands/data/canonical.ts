@@ -43,7 +43,6 @@ export function registerCanonicalCommands(program: Command): void {
     packageName: 'data.canonical',
     validate: (opts) => canonicalQuerySchema.parse(opts),
     onError: die,
-    handler: queryCanonicalHandler,
   });
 
   // Get events by asset
@@ -67,13 +66,15 @@ export function registerCanonicalCommands(program: Command): void {
       return canonicalGetByAssetSchema.parse(opts);
     },
     onError: die,
-    handler: getCanonicalByAssetHandler,
   });
 }
 
 /**
  * Register as package command module
  */
+import type { z } from 'zod';
+import type { CommandContext } from '../../core/command-context.js';
+
 const canonicalModule: PackageCommandModule = {
   packageName: 'data.canonical',
   description: 'Canonical events operations (unified market data)',
@@ -82,7 +83,10 @@ const canonicalModule: PackageCommandModule = {
       name: 'query',
       description: 'Query canonical events',
       schema: canonicalQuerySchema,
-      handler: queryCanonicalHandler,
+      handler: async (args: unknown, ctx: CommandContext) => {
+        const typedArgs = args as z.infer<typeof canonicalQuerySchema>;
+        return await queryCanonicalHandler(typedArgs, ctx);
+      },
       examples: [
         'quantbot data canonical query --asset-address ABC123...',
         'quantbot data canonical query --chain solana --event-type alert',
@@ -93,7 +97,10 @@ const canonicalModule: PackageCommandModule = {
       name: 'get-by-asset',
       description: 'Get canonical events for a specific asset',
       schema: canonicalGetByAssetSchema,
-      handler: getCanonicalByAssetHandler,
+      handler: async (args: unknown, ctx: CommandContext) => {
+        const typedArgs = args as z.infer<typeof canonicalGetByAssetSchema>;
+        return await getCanonicalByAssetHandler(typedArgs, ctx);
+      },
       examples: [
         'quantbot data canonical get-by-asset --asset-address ABC123...',
         'quantbot data canonical get-by-asset --asset-address ABC123... --event-types alert,candle',

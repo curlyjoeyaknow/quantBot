@@ -98,5 +98,5 @@ const lakeModule: PackageCommandModule = {
 };
 
 // Register module
-commandRegistry.registerModule(lakeModule);
+commandRegistry.registerPackage(lakeModule);
 

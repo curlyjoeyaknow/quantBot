@@ -19,7 +19,7 @@ export async function queryRawDataHandler(
     sourceId: args.sourceId,
     hash: args.hash,
     timeRange:
-      args.from || args.to
+      args.from && args.to
         ? {
             from: args.from,
             to: args.to,
