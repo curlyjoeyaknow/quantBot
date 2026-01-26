@@ -16,7 +16,9 @@ No more root-level files like:
 
 These are how drift grows legs.
 
-## Root directory: allowed markdown files only
+## Root directory: allowed files and directories
+
+### Allowed markdown files
 
 Only these markdown files are allowed in repo root:
 
@@ -26,6 +28,23 @@ Only these markdown files are allowed in repo root:
 - `ARCHITECTURE.md` (if used)
 
 Everything else belongs in `docs/`.
+
+### Required directories
+
+The `data/` directory is **required** in the root and has special rules:
+
+- **MUST be present** in the repo root
+- **NEVER move or delete** the `data/` directory
+- **ONLY copy and backup** - never relocate
+- Contains critical runtime state and databases
+- Excluded from git via `.gitignore`
+
+This directory is the canonical location for:
+- DuckDB databases (`*.duckdb`)
+- ClickHouse data (if local)
+- Runtime state files
+- Ingestion artifacts
+- Analysis outputs
 
 ## Do instead
 

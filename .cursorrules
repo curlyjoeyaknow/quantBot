@@ -4,7 +4,8 @@ Non-negotiables:
 - Handlers depend only on ports + domain.
 - Adapters implement ports; apps wire adapters to handlers.
 - Hot path is dependency-sterile.
-- No runtime state inside the repo (no logs/data/.pids/backups).
+- The `data/` directory MUST exist in root; never move or delete it (only copy/backup).
+- No other runtime state directories (no logs/.pids/backups/output/runs).
 - No root-level "status/trophy" files; use docs.
 
 When uncertain, choose:

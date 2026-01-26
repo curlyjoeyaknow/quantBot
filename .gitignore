@@ -39,17 +39,24 @@ lerna-debug.log*
 *.sqlite
 *.sqlite3
 
-# Database backups
+# Data directory (runtime state - NEVER DELETE)
+# The data/ directory MUST exist but its contents are gitignored
+# Only exception: data/README.md is tracked
+data/*
+!data/README.md
+!data/.gitkeep
+
+# Legacy specific data/ patterns (kept for compatibility)
 data/backups/
 data/archive/
-
-# Large data files
 data/**/*.json
 data/**/*.ndjson
 data/**/*.html
 data/**/*.duckdb
 data/messages/
 data/normalized/
+
+# DuckDB files anywhere
 *.ndjson
 *.duckdb
 
