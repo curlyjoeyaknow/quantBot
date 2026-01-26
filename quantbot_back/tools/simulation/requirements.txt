@@ -1,4 +1,0 @@
-# Python dependencies for DuckDB storage and simulation tools
-pydantic>=2.0.0,<3.0.0
-duckdb>=0.9.0
-

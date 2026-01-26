@@ -1,8 +1,0 @@
-[
-  { "week": "Week 6", "startDate": "Feb 5", "endDate": "Feb 9", "totalExpenses": 1149, "totalPnl": 8400, "netEquity": 141151 },
-  { "week": "Week 5", "startDate": "Jan 29", "endDate": "Feb 2", "totalExpenses": 59.95, "totalPnl": 6200, "netEquity": 133900 },
-  { "week": "Week 4", "startDate": "Jan 22", "endDate": "Jan 26", "totalExpenses": 450, "totalPnl": 4800, "netEquity": 127759.95 },
-  { "week": "Week 3", "startDate": "Jan 15", "endDate": "Jan 19", "totalExpenses": 1200, "totalPnl": 5100, "netEquity": 123409.95 },
-  { "week": "Week 2", "startDate": "Jan 8", "endDate": "Jan 12", "totalExpenses": 930, "totalPnl": 3900, "netEquity": 119509.95 },
-  { "week": "Week 1", "startDate": "Jan 1", "endDate": "Jan 5", "totalExpenses": 103.95, "totalPnl": 3100, "netEquity": 116539.95 }
-]

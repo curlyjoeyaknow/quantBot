@@ -1,6 +1,0 @@
-# Example token set
-# One token address per line
-# Add your token addresses here (Solana mint addresses)
-
-So11111111111111111111111111111111111111112
-

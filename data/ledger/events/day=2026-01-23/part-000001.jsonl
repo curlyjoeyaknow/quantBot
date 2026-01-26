@@ -1,6 +1,0 @@
-{"event_type":"test.event","test_field":"test_value","timestamp_ms":1769174319945,"event_id":"1769174319945_8e7b925a"}
-{"event_type":"run.created","timestamp_ms":1769174319947,"run_id":"test-run-123","run_type":"test","config":{"test":true},"data_fingerprint":"abc123","event_id":"1769174319947_552b9a0d"}
-{"event_type":"run.created","timestamp_ms":1769174467324,"run_id":"test-run-1","run_type":"baseline","config":{"test":true},"data_fingerprint":"fp1","event_id":"1769174467324_b57ff1b9"}
-{"event_type":"run.started","timestamp_ms":1769174467330,"run_id":"test-run-1","event_id":"1769174467330_e11d34e5"}
-{"event_type":"run.completed","timestamp_ms":1769174467331,"run_id":"test-run-1","summary":{"status":"done"},"artifact_paths":{"summary":"test.json"},"event_id":"1769174467331_a50ce990"}
-{"event_type":"run.created","timestamp_ms":1769174624740,"run_id":"test-run-logging","run_type":"baseline","config":{"test":true},"data_fingerprint":"fp1","event_id":"1769174624740_ec838d8a"}

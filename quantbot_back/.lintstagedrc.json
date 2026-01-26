@@ -1,9 +1,0 @@
-{
-  "*.ts": [
-    "prettier --write",
-    "eslint --fix --max-warnings=0",
-    "vitest related --run --reporter=verbose"
-  ],
-  "*.{json,md,yml,yaml}": ["prettier --write"],
-  "*.sql": ["sql-formatter --fix"]
-}
