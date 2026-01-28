@@ -85,7 +85,9 @@ export async function runOptimizationWorkflow(
     metadata.gitBranch = gitInfo.branch;
     metadata.gitDirty = gitInfo.dirty;
   } catch (error) {
-    logger.warn('Failed to get git provenance', { error: error instanceof Error ? error.message : String(error) });
+    logger.warn('Failed to get git provenance', {
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 
   // Check for resume
@@ -111,8 +113,8 @@ export async function runOptimizationWorkflow(
           }
         } catch (error) {
           logger.warn('Failed to load Phase 1 results', {
-          error: error instanceof Error ? error.message : String(error),
-        });
+            error: error instanceof Error ? error.message : String(error),
+          });
         }
       }
 
@@ -129,8 +131,8 @@ export async function runOptimizationWorkflow(
           }
         } catch (error) {
           logger.warn('Failed to load Phase 2 results', {
-          error: error instanceof Error ? error.message : String(error),
-        });
+            error: error instanceof Error ? error.message : String(error),
+          });
         }
       }
     }
@@ -309,4 +311,3 @@ export async function runOptimizationWorkflow(
     };
   }
 }
-

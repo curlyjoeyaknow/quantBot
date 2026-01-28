@@ -348,7 +348,9 @@ export async function runPhase3StressValidation(
 
     // Compute aggregate scores across windows
     const allScores = windowResults.flatMap((wr) =>
-      Object.values(wr.laneResults).map((lr: { testR: number; ratio: number; passesGates: boolean }) => lr.testR)
+      Object.values(wr.laneResults).map(
+        (lr: { testR: number; ratio: number; passesGates: boolean }) => lr.testR
+      )
     );
     const maximinScore = Math.min(...allScores);
     const medianScore = allScores.sort((a, b) => a - b)[Math.floor(allScores.length / 2)] || 0;
@@ -494,4 +496,3 @@ async function writeStressResultsToParquet(
 
   logger.debug('Wrote Phase 3 stress results to Parquet', { parquetPath });
 }
-

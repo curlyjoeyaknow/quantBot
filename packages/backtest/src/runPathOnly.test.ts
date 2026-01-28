@@ -126,7 +126,9 @@ vi.mock('fs/promises', () => ({
 }));
 
 // Mock @quantbot/utils
-vi.mock('@quantbot/infra/utils', () => {
+vi.mock('@quantbot/infra/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@quantbot/infra/utils')>();
+
   class MockTimingContext {
     private partsMap: Record<string, number> = {};
     start = vi.fn();
@@ -167,10 +169,12 @@ vi.mock('@quantbot/infra/utils', () => {
   }
 
   return {
+    ...actual,
     logger: mockLogger,
     TimingContext: MockTimingContext,
     createPackageLogger: vi.fn(() => mockLogger),
     getPythonEngine: vi.fn(() => new MockPythonEngine()),
+    PythonEngine: MockPythonEngine,
     findWorkspaceRoot: vi.fn(() => process.cwd()),
   };
 });

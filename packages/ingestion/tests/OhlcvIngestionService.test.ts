@@ -6,11 +6,14 @@ import type { Chain } from '@quantbot/core';
 // Mock logger is handled in tests/setup.ts
 
 // Mock storage for worklist service
-vi.mock('@quantbot/infra/storage', async () => {
-  const actual = await vi.importActual('@quantbot/infra/storage');
+vi.mock('@quantbot/storage', async () => {
+  const actual = await vi.importActual('@quantbot/storage');
+  const mockWorklistService = {
+    queryWorklist: vi.fn(),
+  };
   return {
     ...actual,
-    getDuckDBWorklistService: vi.fn(),
+    getDuckDBWorklistService: vi.fn(() => mockWorklistService),
   };
 });
 
@@ -51,12 +54,11 @@ describe('OhlcvIngestionService', () => {
     ingestionEngine.initialize.mockResolvedValue(undefined);
     mockPythonEngine.runOhlcvWorklist.mockReset();
 
-    // Mock the worklist service to use our mocked Python engine
-    const { getDuckDBWorklistService } = await import('@quantbot/infra/storage');
-    mockWorklistService = {
-      queryWorklist: vi.fn(),
-    };
-    vi.mocked(getDuckDBWorklistService).mockReturnValue(mockWorklistService as any);
+    // Get the mocked worklist service
+    const { getDuckDBWorklistService } = await import('@quantbot/storage');
+    mockWorklistService = getDuckDBWorklistService() as any;
+    // Reset the queryWorklist mock
+    vi.mocked(mockWorklistService.queryWorklist).mockReset();
 
     // Pass ingestion engine to constructor (pythonEngine is not a constructor parameter)
     service = new OhlcvIngestionService(

@@ -15,7 +15,13 @@ vi.mock('@quantbot/workflows', async () => {
   return {
     ...actual,
     surgicalOhlcvFetch: vi.fn(),
-    createOhlcvIngestionContext: vi.fn(() => ({})),
+    createOhlcvIngestionContext: vi.fn(async () => ({
+      ports: {
+        marketData: {
+          fetchOhlcv: vi.fn(),
+        },
+      },
+    })),
   };
 });
 

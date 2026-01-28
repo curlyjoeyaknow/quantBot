@@ -12,20 +12,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
 import { generateOhlcvWorklist } from '../../src/ohlcv-work-planning.js';
-import { getDuckDBWorklistService } from '@quantbot/infra/storage';
+import { getDuckDBWorklistService } from '@quantbot/storage';
 import type { OhlcvWorkItem } from '../../src/ohlcv-work-planning.js';
 
 // Mock dependencies
-vi.mock('@quantbot/infra/utils', () => ({
-  logger: {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  },
-}));
+vi.mock('@quantbot/infra/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@quantbot/infra/utils')>();
+  return {
+    ...actual,
+    logger: {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    },
+    findWorkspaceRoot: vi.fn(() => process.cwd()),
+  };
+});
 
-vi.mock('@quantbot/infra/storage', () => ({
+vi.mock('@quantbot/storage', () => ({
   getDuckDBWorklistService: vi.fn(),
 }));
 

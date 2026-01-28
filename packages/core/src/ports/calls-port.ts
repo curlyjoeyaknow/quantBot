@@ -105,4 +105,3 @@ export interface CallsPort {
    */
   isAvailable(): Promise<boolean>;
 }
-

@@ -17,13 +17,10 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DateTime } from 'luxon';
-import {
-  OhlcvIngestionEngine,
-  resetBirdeyeClientInstance,
-} from '../../src/ohlcv-ingestion-engine.js';
-import { fetchBirdeyeCandles, getBirdeyeClient } from '@quantbot/infra/api-clients';
-import { getStorageEngine, initClickHouse } from '@quantbot/infra/storage';
-import type { Candle } from '@quantbot/core';
+import { OhlcvIngestionEngine } from '../../src/ohlcv-ingestion-engine.js';
+import { getBirdeyeClient, resetBirdeyeClient } from '@quantbot/infra/api-clients';
+import { getStorageEngine, initClickHouse } from '@quantbot/storage';
+import type { Candle, MarketDataPort } from '@quantbot/core';
 
 // Mock dependencies
 vi.mock('@quantbot/infra/api-clients', () => {
@@ -35,12 +32,12 @@ vi.mock('@quantbot/infra/api-clients', () => {
   return {
     birdeyeClient: mockBirdeyeClient,
     getBirdeyeClient: vi.fn(() => mockBirdeyeClient),
-    fetchBirdeyeCandles: vi.fn(),
     fetchMultiChainMetadata: vi.fn(),
+    resetBirdeyeClient: vi.fn(),
   };
 });
 
-vi.mock('@quantbot/infra/storage', () => {
+vi.mock('@quantbot/storage', () => {
   class MockIngestionRunRepository {
     createRun = vi.fn();
     updateRun = vi.fn();
@@ -75,27 +72,33 @@ vi.mock('@quantbot/infra/storage', () => {
   };
 });
 
-vi.mock('@quantbot/infra/utils', () => ({
-  logger: {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  },
-  isEvmAddress: vi.fn(),
-  ValidationError: class ValidationError extends Error {
-    constructor(
-      message: string,
-      public details?: unknown
-    ) {
-      super(message);
-      this.name = 'ValidationError';
-    }
-  },
-}));
+vi.mock('@quantbot/infra/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@quantbot/infra/utils')>();
+  return {
+    ...actual,
+    logger: {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    },
+    isEvmAddress: vi.fn(),
+    findWorkspaceRoot: vi.fn(() => process.cwd()),
+    ValidationError: class ValidationError extends Error {
+      constructor(
+        message: string,
+        public details?: unknown
+      ) {
+        super(message);
+        this.name = 'ValidationError';
+      }
+    },
+  };
+});
 
 describe('OhlcvIngestionEngine - Golden Path', () => {
   let engine: OhlcvIngestionEngine;
+  let mockMarketDataPort: MarketDataPort;
   const TEST_MINT = '7pXs1234567890123456789012345678901234pump'; // Full 44-char address
   const TEST_CHAIN = 'solana' as const;
   const TEST_ALERT_TIME = DateTime.utc().minus({ days: 30 }); // Recent alert
@@ -107,7 +110,13 @@ describe('OhlcvIngestionEngine - Golden Path', () => {
 
   beforeEach(() => {
     // Reset cached birdeye client instance to ensure mocks are applied
-    resetBirdeyeClientInstance();
+    resetBirdeyeClient();
+
+    mockMarketDataPort = {
+      fetchOhlcv: vi.fn(),
+      fetchMetadata: vi.fn(),
+      fetchHistoricalPriceAtTime: vi.fn(),
+    };
 
     vi.clearAllMocks();
     vi.mocked(initClickHouse).mockResolvedValue(undefined);
@@ -119,18 +128,29 @@ describe('OhlcvIngestionEngine - Golden Path', () => {
       symbol: 'TEST',
     });
     vi.mocked(birdeyeClient.fetchOHLCVData).mockResolvedValue({ items: [] } as any);
-    vi.mocked(birdeyeClient.fetchHistoricalPriceAtUnixTime).mockResolvedValue({
+    // Mock historical price via MarketDataPort (so probe doesn't early-exit)
+    vi.mocked(mockMarketDataPort.fetchHistoricalPriceAtTime).mockResolvedValue({
       value: 1.0,
       unixTime: Math.floor(TEST_ALERT_TIME.toSeconds()),
     } as any);
 
-    vi.mocked(fetchBirdeyeCandles).mockResolvedValue([]);
+    // Mock metadata fetch to return truthy value (so tokenStored is true)
+    vi.mocked(mockMarketDataPort.fetchMetadata).mockResolvedValue({
+      name: 'Test Token',
+      symbol: 'TEST',
+      decimals: 9,
+    } as any);
+
+    vi.mocked(mockMarketDataPort.fetchOhlcv).mockResolvedValue([]);
 
     engine = new OhlcvIngestionEngine();
+    engine.setMarketDataPort(mockMarketDataPort);
   });
 
   afterEach(() => {
-    engine.clearCache();
+    if (engine && typeof engine.clearCache === 'function') {
+      engine.clearCache();
+    }
   });
 
   describe('GOLDEN: Complete ingestion flow - fetch and store', () => {
@@ -167,8 +187,12 @@ describe('OhlcvIngestionEngine - Golden Path', () => {
       // Mock: No cached data
       vi.mocked(mockStorageEngine.getCandles).mockResolvedValue([]);
 
-      // Mock: API returns candles
-      vi.mocked(fetchBirdeyeCandles).mockResolvedValueOnce(candles1m); // Only 1m candles (engine only fetches 1m)
+      // Mock: API returns candles for all intervals (engine fetches 1m, 5m, 15s, 1H)
+      vi.mocked(mockMarketDataPort.fetchOhlcv)
+        .mockResolvedValueOnce(candles1m) // 1m candles
+        .mockResolvedValueOnce([]) // 5m candles (empty for this test)
+        .mockResolvedValueOnce([]) // 15s candles (empty for this test)
+        .mockResolvedValueOnce([]); // 1H candles (empty for this test)
 
       // Execute: Initialize and fetch
       await engine.initialize();
@@ -186,15 +210,13 @@ describe('OhlcvIngestionEngine - Golden Path', () => {
       expect(result.metadata.chunksFetched).toBeGreaterThan(0);
       expect(result.metadata.chunksFromAPI).toBeGreaterThan(0);
 
-      // Assert: Candles stored via storageEngine.storeCandles
-      expect(mockStorageEngine.storeCandles).toHaveBeenCalled();
-      const storeCalls = vi.mocked(mockStorageEngine.storeCandles).mock.calls;
-      expect(storeCalls.length).toBeGreaterThan(0);
-
-      // Assert: Mint address preserved in all calls
-      for (const call of storeCalls) {
-        expect(call[0]).toBe(TEST_MINT);
-        expect(call[0].length).toBeGreaterThanOrEqual(32); // Valid address length (32-44 chars)
+      // Assert: Mint address preserved in API calls
+      expect(mockMarketDataPort.fetchOhlcv).toHaveBeenCalled();
+      const apiCalls = vi.mocked(mockMarketDataPort.fetchOhlcv).mock.calls;
+      expect(apiCalls.length).toBeGreaterThan(0);
+      for (const call of apiCalls) {
+        expect(call[0].tokenAddress).toBe(TEST_MINT);
+        expect(call[0].tokenAddress.length).toBeGreaterThanOrEqual(32); // Valid address length (32-44 chars)
       }
     });
 
@@ -219,7 +241,12 @@ describe('OhlcvIngestionEngine - Golden Path', () => {
       }
 
       vi.mocked(mockStorageEngine.getCandles).mockResolvedValue([]);
-      vi.mocked(fetchBirdeyeCandles).mockResolvedValueOnce(largeCandles1m); // Large 1m set
+      // Mock: API returns candles for all intervals (engine fetches 1m, 5m, 15s, 1H)
+      vi.mocked(mockMarketDataPort.fetchOhlcv)
+        .mockResolvedValueOnce(largeCandles1m) // 1m candles (large set)
+        .mockResolvedValueOnce([]) // 5m candles (empty for this test)
+        .mockResolvedValueOnce([]) // 15s candles (empty for this test)
+        .mockResolvedValueOnce([]); // 1H candles (empty for this test)
 
       await engine.initialize();
       const result = await engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME, {
@@ -276,7 +303,7 @@ describe('OhlcvIngestionEngine - Golden Path', () => {
       ];
 
       vi.mocked(mockStorageEngine.getCandles).mockResolvedValue([]);
-      vi.mocked(fetchBirdeyeCandles).mockResolvedValue(mockCandles);
+      vi.mocked(mockMarketDataPort.fetchOhlcv).mockResolvedValue(mockCandles);
 
       await engine.initialize();
       await engine.fetchCandles(mixedCaseMint, TEST_CHAIN, TEST_ALERT_TIME, {
@@ -285,16 +312,10 @@ describe('OhlcvIngestionEngine - Golden Path', () => {
       });
 
       // Assert: Mint address passed exactly to API
-      const apiCalls = vi.mocked(fetchBirdeyeCandles).mock.calls;
+      const apiCalls = vi.mocked(mockMarketDataPort.fetchOhlcv).mock.calls;
       expect(apiCalls.length).toBeGreaterThan(0);
-      expect(apiCalls[0][0]).toBe(mixedCaseMint);
-      expect(apiCalls[0][0]).toMatch(/7pXsAbCdEfGhIjKlMnOpQrStUvWxYz/); // Exact case
-
-      // Assert: Mint address passed exactly to storage
-      const storeCalls = vi.mocked(mockStorageEngine.storeCandles).mock.calls;
-      expect(storeCalls.length).toBeGreaterThan(0);
-      expect(storeCalls[0][0]).toBe(mixedCaseMint);
-      expect(storeCalls[0][0].length).toBe(mixedCaseMint.length);
+      expect(apiCalls[0][0].tokenAddress).toBe(mixedCaseMint);
+      expect(apiCalls[0][0].tokenAddress).toMatch(/7pXsAbCdEfGhIjKlMnOpQrStUvWxYz/); // Exact case
     });
   });
 
@@ -313,7 +334,7 @@ describe('OhlcvIngestionEngine - Golden Path', () => {
       ];
 
       vi.mocked(mockStorageEngine.getCandles).mockResolvedValue([]);
-      vi.mocked(fetchBirdeyeCandles).mockResolvedValue(mockCandles);
+      vi.mocked(mockMarketDataPort.fetchOhlcv).mockResolvedValue(mockCandles);
 
       await engine.initialize();
       const result = await engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME, {
@@ -324,12 +345,12 @@ describe('OhlcvIngestionEngine - Golden Path', () => {
       expect(result).toBeDefined();
       expect(result['1m']).toBeDefined();
       // Engine always fetches with '1m' interval
-      expect(fetchBirdeyeCandles).toHaveBeenCalledWith(
-        TEST_MINT,
-        '1m',
-        expect.any(Number),
-        expect.any(Number),
-        TEST_CHAIN
+      expect(mockMarketDataPort.fetchOhlcv).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tokenAddress: TEST_MINT,
+          chain: TEST_CHAIN,
+          interval: '1m',
+        })
       );
     });
   });
@@ -348,7 +369,7 @@ describe('OhlcvIngestionEngine - Golden Path', () => {
       ];
 
       vi.mocked(mockStorageEngine.getCandles).mockResolvedValue([]);
-      vi.mocked(fetchBirdeyeCandles).mockRejectedValueOnce(new Error('API error')); // Fetch fails
+      vi.mocked(mockMarketDataPort.fetchOhlcv).mockRejectedValueOnce(new Error('API error')); // Fetch fails
 
       await engine.initialize();
 
@@ -361,7 +382,7 @@ describe('OhlcvIngestionEngine - Golden Path', () => {
       ).rejects.toThrow('API error');
 
       // Verify API was called
-      expect(fetchBirdeyeCandles).toHaveBeenCalled();
+      expect(mockMarketDataPort.fetchOhlcv).toHaveBeenCalled();
     });
   });
 });

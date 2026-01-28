@@ -102,7 +102,9 @@ export async function exportLabParquetHandler(
   // Build WHERE clause for filtering
   const whereConditions: string[] = [];
   if (args.caller) {
-    whereConditions.push(`COALESCE(caller_name_norm, caller_raw_name) = '${args.caller.replace(/'/g, "''")}'`);
+    whereConditions.push(
+      `COALESCE(caller_name_norm, caller_raw_name) = '${args.caller.replace(/'/g, "''")}'`
+    );
   }
   if (args.mint) {
     whereConditions.push(`mint = '${args.mint.replace(/'/g, "''")}'`);
@@ -194,4 +196,3 @@ export async function exportLabParquetHandler(
     manifest,
   };
 }
-

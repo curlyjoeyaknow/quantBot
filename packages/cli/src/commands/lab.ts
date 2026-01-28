@@ -78,7 +78,9 @@ export function registerLabCommands(program: Command): void {
   // Sweep command
   const sweepCmd = labCmd
     .command('sweep')
-    .description('Run parameter sweep across overlays, intervals, and lags (queries DuckDB directly)')
+    .description(
+      'Run parameter sweep across overlays, intervals, and lags (queries DuckDB directly)'
+    )
     .option('--config <path>', 'Path to config file (YAML/JSON)')
     .option('--from <date>', 'Start date (ISO 8601)')
     .option('--to <date>', 'End date (ISO 8601)')
@@ -101,7 +103,11 @@ export function registerLabCommands(program: Command): void {
     .option('--notional-usd <amount>', 'Position size in USD', '1000')
     .option('--resume', 'Resume from previous run', false)
     .option('--parquet-dir <dir>', 'Read from Parquet directory (enables parallel processing)')
-    .option('--workers <n>', 'Number of parallel workers (default: CPU count)', String(require('os').cpus().length))
+    .option(
+      '--workers <n>',
+      'Number of parallel workers (default: CPU count)',
+      String(require('os').cpus().length)
+    )
     .option('--format <format>', 'Output format', 'table');
 
   defineCommand(sweepCmd, {
@@ -173,7 +179,8 @@ const labModule: PackageCommandModule = {
     },
     {
       name: 'sweep',
-      description: 'Run parameter sweep across overlays, intervals, and lags (queries DuckDB directly)',
+      description:
+        'Run parameter sweep across overlays, intervals, and lags (queries DuckDB directly)',
       schema: labSweepSchema,
       handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
         const typedCtx = ctx as CommandContext;
@@ -181,7 +188,7 @@ const labModule: PackageCommandModule = {
         return await sweepLabHandler(typedArgs, typedCtx);
       },
       examples: [
-        'quantbot lab sweep --overlays-file overlays.json --intervals \'["5m"]\' --lags-ms \'[10000]\' --out results/lab-sweep/ --caller Brook',
+        "quantbot lab sweep --overlays-file overlays.json --intervals '[\"5m\"]' --lags-ms '[10000]' --out results/lab-sweep/ --caller Brook",
         'quantbot lab sweep --config sweep-config.yaml --out results/lab-sweep/',
         'quantbot lab sweep --parquet-dir exports/calls-2024-01/ --overlays-file overlays.json --out results/lab-sweep/ --workers 8',
       ],

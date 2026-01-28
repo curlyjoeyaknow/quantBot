@@ -105,10 +105,10 @@ describe('LakeExporterService Integration', () => {
     // Verify Python was called correctly
     expect(mockPythonEngine.runScriptWithStdin).toHaveBeenCalledTimes(1);
     const callArgs = vi.mocked(mockPythonEngine.runScriptWithStdin).mock.calls[0];
-    
+
     // Verify script path
     expect(callArgs[0]).toContain('export_lake_run_slices.py');
-    
+
     // Verify config passed correctly
     const passedConfig = callArgs[1] as LakeRunSliceExportConfig;
     expect(passedConfig.run_id).toBe('integration_test_run');
@@ -117,7 +117,7 @@ describe('LakeExporterService Integration', () => {
     expect(passedConfig.alerts_path).toBe('test/alerts.parquet');
     expect(passedConfig.clickhouse.host).toBe('localhost');
     expect(passedConfig.clickhouse.database).toBe('quantbot');
-    
+
     // Verify result structure
     expect(result).toEqual(mockPythonResult);
     expect(result.manifest.run_id).toBe('integration_test_run');
@@ -147,7 +147,7 @@ describe('LakeExporterService Integration', () => {
     vi.mocked(mockPythonEngine.runScriptWithStdin).mockRejectedValue(error);
 
     await expect(service.exportRunSlices(config)).rejects.toThrow('Python script execution failed');
-    
+
     // Verify PythonEngine was called
     expect(mockPythonEngine.runScriptWithStdin).toHaveBeenCalledTimes(1);
   });
@@ -167,9 +167,8 @@ describe('LakeExporterService Integration', () => {
 
     // Should fail validation before calling Python
     await expect(service.exportRunSlices(invalidConfig)).rejects.toThrow();
-    
+
     // PythonEngine should not be called if validation fails
     expect(mockPythonEngine.runScriptWithStdin).not.toHaveBeenCalled();
   });
 });
-

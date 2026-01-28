@@ -136,24 +136,12 @@ export type Chain = 'solana' | 'ethereum' | 'bsc' | 'base' | 'monad' | 'evm';
 // These re-exports maintain backward compatibility while organizing types into subfolders
 
 // Re-export for backward compatibility (types are now in domain subfolders)
-export type {
-  TokenAddress,
-  Token,
-  TokenMetadata,
-} from './domain/tokens/index.js';
+export type { TokenAddress, Token, TokenMetadata } from './domain/tokens/index.js';
 export { createTokenAddress } from './domain/tokens/index.js';
 
-export type {
-  Caller,
-  CallerInfo,
-} from './domain/callers/index.js';
+export type { Caller, CallerInfo } from './domain/callers/index.js';
 
-export type {
-  Alert,
-  Call,
-  CACall,
-  ActiveCA,
-} from './domain/calls/index.js';
+export type { Alert, Call, CACall, ActiveCA } from './domain/calls/index.js';
 
 export type {
   StrategyConfig,

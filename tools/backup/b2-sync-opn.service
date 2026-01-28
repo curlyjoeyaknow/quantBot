@@ -1,0 +1,23 @@
+[Unit]
+Description=B2 Backup Sync for /home/memez/opn/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=memez
+Group=memez
+WorkingDirectory=/home/memez/backups/quantBot/tools/backup
+ExecStart=/bin/bash /home/memez/backups/quantBot/tools/backup/b2-sync-opn.sh
+
+# Security settings
+PrivateTmp=yes
+NoNewPrivileges=yes
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=b2-sync-opn
+
+[Install]
+WantedBy=multi-user.target

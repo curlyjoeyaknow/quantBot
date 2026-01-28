@@ -88,9 +88,7 @@ export function workflowRunExists(dataRoot: string, workflowRunId: string): bool
 /**
  * Load workflow manifest if it exists
  */
-export async function loadWorkflowManifest(
-  runDir: string
-): Promise<WorkflowRunMetadata | null> {
+export async function loadWorkflowManifest(runDir: string): Promise<WorkflowRunMetadata | null> {
   const manifestPath = join(runDir, 'manifest.json');
   if (!existsSync(manifestPath)) {
     return null;
@@ -100,4 +98,3 @@ export async function loadWorkflowManifest(
   const content = await readFile(manifestPath, 'utf-8');
   return JSON.parse(content) as WorkflowRunMetadata;
 }
-

@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "artifact-store"
+version = "0.1.0"
+description = "Immutable Parquet artifact publisher with SQLite manifest"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "duckdb>=0.9",
+  "pandas>=2.0",
+]
+
+[project.scripts]
+artifacts = "artifact_store.bin.artifacts_cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["artifact_store*"]

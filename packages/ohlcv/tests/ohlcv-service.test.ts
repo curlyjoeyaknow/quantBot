@@ -15,7 +15,7 @@ import { OHLCVService } from '../src/ohlcv-service.js';
 import type { Candle } from '@quantbot/core';
 
 // Mock dependencies
-vi.mock('@quantbot/infra/storage', async () => {
+vi.mock('@quantbot/storage', async () => {
   const { vi } = await import('vitest');
   const mockStorageEngine = {
     storeCandles: vi.fn(),
@@ -29,20 +29,24 @@ vi.mock('@quantbot/infra/storage', async () => {
   return mockStorage;
 });
 
-vi.mock('@quantbot/infra/utils', () => ({
-  logger: {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  },
-  createPackageLogger: vi.fn(() => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  })),
-}));
+vi.mock('@quantbot/infra/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@quantbot/infra/utils')>();
+  return {
+    ...actual,
+    logger: {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    },
+    createPackageLogger: vi.fn(() => ({
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    })),
+  };
+});
 
 describe('OHLCVService', () => {
   let service: OHLCVService;

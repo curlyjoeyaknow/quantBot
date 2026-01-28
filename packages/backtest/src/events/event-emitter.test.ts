@@ -114,4 +114,3 @@ describe('EventEmitter', () => {
     await emitter.emitRunCreated('run-123', 'baseline', {}, 'fp1');
   });
 });
-

@@ -156,4 +156,3 @@ export class FeatureRegistry {
  * Global feature registry instance
  */
 export const featureRegistry = new FeatureRegistry();
-

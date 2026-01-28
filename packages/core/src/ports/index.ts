@@ -58,11 +58,7 @@ export type {
   FeatureComputationResult,
   FeatureMetadata,
 } from './feature-store-port.js';
-export type {
-  CallsPort,
-  CallsQueryFilter,
-  CallsQueryResult,
-} from './calls-port.js';
+export type { CallsPort, CallsQueryFilter, CallsQueryResult } from './calls-port.js';
 export type {
   ExperimentRepository,
   ExperimentMetadata,
@@ -83,3 +79,11 @@ export type {
   AnalysisResultMetadata,
 } from './slice-analyzer-port.js';
 export * from './run-event-port.js';
+export type {
+  ArtifactStorePort,
+  Artifact,
+  ArtifactFilter,
+  PublishArtifactRequest,
+  PublishArtifactResult,
+  ArtifactLineage,
+} from './artifact-store-port.js';

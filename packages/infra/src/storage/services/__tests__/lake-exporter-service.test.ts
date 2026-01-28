@@ -137,12 +137,26 @@ describe('LakeExporterService', () => {
         inputs: {
           alerts: { path: 'inputs/alerts.parquet', sha256: 'abc', rows: 10 },
           source_snapshot: {
-            clickhouse: { cluster: 'localhost', database: 'quantbot', table: 'ohlcv_candles', as_of: '2024-01-01T00:00:00Z' },
+            clickhouse: {
+              cluster: 'localhost',
+              database: 'quantbot',
+              table: 'ohlcv_candles',
+              as_of: '2024-01-01T00:00:00Z',
+            },
           },
         },
-        slice_spec: { dataset: 'ohlcv', interval: '1m', window: 'pre10_post20', anchor_rule: 'floor_to_interval(ts, interval)' },
+        slice_spec: {
+          dataset: 'ohlcv',
+          interval: '1m',
+          window: 'pre10_post20',
+          anchor_rule: 'floor_to_interval(ts, interval)',
+        },
         outputs: {
-          'slices/ohlcv/interval=1m/window=pre10_post20': { mint_buckets: ['00'], files: 1, rows: 100 },
+          'slices/ohlcv/interval=1m/window=pre10_post20': {
+            mint_buckets: ['00'],
+            files: 1,
+            rows: 100,
+          },
         },
         coverage: { min_required_pre: 10, target_total: 30, kept_events: 8, dropped_events: 2 },
       },
@@ -153,7 +167,9 @@ describe('LakeExporterService', () => {
       total_bytes: 50000,
     };
 
-    vi.mocked(mockPythonEngine.runScriptWithStdin).mockResolvedValue(mockResult as LakeExportResult);
+    vi.mocked(mockPythonEngine.runScriptWithStdin).mockResolvedValue(
+      mockResult as LakeExportResult
+    );
 
     const result = await service.exportRunSlices(config);
 
@@ -183,4 +199,3 @@ describe('LakeExporterService', () => {
     await expect(service.exportRunSlices(config)).rejects.toThrow('Python script failed');
   });
 });
-

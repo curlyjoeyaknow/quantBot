@@ -10,8 +10,12 @@ import { join } from 'path';
 import { existsSync } from 'fs';
 import { runOptimizationWorkflow } from '../../../../src/research/optimization-workflow.js';
 import type { OptimizationWorkflowConfig } from '../../../../src/research/phases/types.js';
-import { createTempDuckDBPath, createTestDuckDB, cleanupTestDuckDB } from '../../../../../ingestion/tests/helpers/createTestDuckDB.js';
-import type { TestCall } from '../../../../../ingestion/tests/helpers/createTestDuckDB.js';
+import {
+  createTempDuckDBPath,
+  createTestDuckDB,
+  cleanupTestDuckDB,
+} from '../../../../ingestion/tests/helpers/createTestDuckDB.js';
+import type { TestCall } from '../../../../ingestion/tests/helpers/createTestDuckDB.js';
 
 describe('Optimization Workflow Integration', () => {
   let tempDataRoot: string;
@@ -113,7 +117,8 @@ describe('Optimization Workflow Integration', () => {
     };
 
     // Mock the workflow to just create directories
-    const { createLakeRunDirectory } = await import('../../../../src/research/phases/lake-directory.js');
+    const { createLakeRunDirectory } =
+      await import('../../../src/research/phases/lake-directory.js');
     const workflowRunId = 'test-run-123';
     const runDir = await createLakeRunDirectory(tempDataRoot, workflowRunId);
 
@@ -156,9 +161,8 @@ describe('Optimization Workflow Integration', () => {
     };
 
     // Create a mock manifest indicating Phase 1 is completed
-    const { createLakeRunDirectory, writeWorkflowManifest } = await import(
-      '../../../../src/research/phases/lake-directory.js'
-    );
+    const { createLakeRunDirectory, writeWorkflowManifest } =
+      await import('../../../src/research/phases/lake-directory.js');
     const workflowRunId = 'test-resume-123';
     const runDir = await createLakeRunDirectory(tempDataRoot, workflowRunId);
 
@@ -190,7 +194,7 @@ describe('Optimization Workflow Integration', () => {
         {
           caller: 'test-caller',
           tpMult: { min: 2.0, max: 3.0 },
-          slMult: { min: 0.85, max: 0.90 },
+          slMult: { min: 0.85, max: 0.9 },
           metrics: { winRate: 0.6, medianReturnPct: 0.5, hit2xPct: 0.4, callsCount: 100 },
         },
       ]),
@@ -198,7 +202,7 @@ describe('Optimization Workflow Integration', () => {
     );
 
     // Verify resume can load Phase 1 results
-    const { loadWorkflowManifest } = await import('../../../../src/research/phases/lake-directory.js');
+    const { loadWorkflowManifest } = await import('../../../src/research/phases/lake-directory.js');
     const manifest = await loadWorkflowManifest(runDir);
 
     expect(manifest).toBeDefined();
@@ -206,9 +210,8 @@ describe('Optimization Workflow Integration', () => {
   });
 
   it('should write manifest.json with git provenance', async () => {
-    const { createLakeRunDirectory, writeWorkflowManifest } = await import(
-      '../../../../src/research/phases/lake-directory.js'
-    );
+    const { createLakeRunDirectory, writeWorkflowManifest } =
+      await import('../../../src/research/phases/lake-directory.js');
     const workflowRunId = 'test-manifest-123';
     const runDir = await createLakeRunDirectory(tempDataRoot, workflowRunId);
 
@@ -240,16 +243,15 @@ describe('Optimization Workflow Integration', () => {
   });
 
   it('should write phase configs to inputs directory', async () => {
-    const { createLakeRunDirectory, writePhaseConfig } = await import(
-      '../../../../src/research/phases/lake-directory.js'
-    );
+    const { createLakeRunDirectory, writePhaseConfig } =
+      await import('../../../src/research/phases/lake-directory.js');
     const workflowRunId = 'test-configs-123';
     const runDir = await createLakeRunDirectory(tempDataRoot, workflowRunId);
 
     const phase1Config = {
       enabled: true,
       tpMults: [2.0, 3.0],
-      slMults: [0.85, 0.90],
+      slMults: [0.85, 0.9],
       intervals: ['5m'],
       lagsMs: [0],
     };
@@ -266,11 +268,10 @@ describe('Optimization Workflow Integration', () => {
   });
 
   it('should handle phase result loading on resume', async () => {
-    const { createLakeRunDirectory, writeWorkflowManifest } = await import(
-      '../../../../src/research/phases/lake-directory.js'
-    );
-    const { loadWorkflowManifest } = await import('../../../../src/research/phases/lake-directory.js');
-    
+    const { createLakeRunDirectory, writeWorkflowManifest } =
+      await import('../../../src/research/phases/lake-directory.js');
+    const { loadWorkflowManifest } = await import('../../../src/research/phases/lake-directory.js');
+
     const workflowRunId = 'test-resume-load-123';
     const runDir = await createLakeRunDirectory(tempDataRoot, workflowRunId);
 
@@ -342,9 +343,8 @@ describe('Optimization Workflow Integration', () => {
   });
 
   it('should handle workflow run directory structure correctly', async () => {
-    const { createLakeRunDirectory, getPhaseArtifactPath, getOutputArtifactPath } = await import(
-      '../../../../src/research/phases/lake-directory.js'
-    );
+    const { createLakeRunDirectory, getPhaseArtifactPath, getOutputArtifactPath } =
+      await import('../../../src/research/phases/lake-directory.js');
     const workflowRunId = 'test-structure-123';
     const runDir = await createLakeRunDirectory(tempDataRoot, workflowRunId);
 
@@ -364,11 +364,10 @@ describe('Optimization Workflow Integration', () => {
   });
 
   it('should check if workflow run exists', async () => {
-    const { createLakeRunDirectory, workflowRunExists } = await import(
-      '../../../../src/research/phases/lake-directory.js'
-    );
+    const { createLakeRunDirectory, workflowRunExists } =
+      await import('../../../src/research/phases/lake-directory.js');
     const workflowRunId = 'test-exists-123';
-    
+
     // Initially should not exist
     expect(workflowRunExists(tempDataRoot, workflowRunId)).toBe(false);
 
@@ -379,4 +378,3 @@ describe('Optimization Workflow Integration', () => {
     expect(workflowRunExists(tempDataRoot, workflowRunId)).toBe(true);
   });
 });
-

@@ -107,4 +107,3 @@ export interface UserStrategy {
   isDefault: boolean;
   createdAt: DateTime;
 }
-

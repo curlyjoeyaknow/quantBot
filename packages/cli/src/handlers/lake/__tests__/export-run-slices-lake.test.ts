@@ -142,4 +142,3 @@ describe('exportRunSlicesLakeHandler', () => {
     expect(callConfig.clickhouse).toBeDefined();
   });
 });
-

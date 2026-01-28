@@ -68,4 +68,3 @@ export interface TokenMetadata {
   marketCap?: number;
   address?: string;
 }
-

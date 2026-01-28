@@ -4,7 +4,12 @@
  * Simple LRU cache for features with TTL-based expiration.
  */
 
-import type { FeatureStore, FeatureSetId, FeatureComputationResult, FeatureMetadata } from '@quantbot/core';
+import type {
+  FeatureStore,
+  FeatureSetId,
+  FeatureComputationResult,
+  FeatureMetadata,
+} from '@quantbot/core';
 import { featureRegistry } from './feature-registry.js';
 
 /**
@@ -72,7 +77,11 @@ export class InMemoryFeatureStore implements FeatureStore {
     return result;
   }
 
-  async get(featureSetId: FeatureSetId, asset: string, timestamp: number): Promise<Record<string, unknown> | null> {
+  async get(
+    featureSetId: FeatureSetId,
+    asset: string,
+    timestamp: number
+  ): Promise<Record<string, unknown> | null> {
     // Search cache for matching entry
     for (const [key, entry] of this.cache.entries()) {
       if (entry.expiresAt <= Date.now()) {
@@ -104,23 +113,25 @@ export class InMemoryFeatureStore implements FeatureStore {
   /**
    * Build features map from feature values
    */
-  private buildFeaturesMap(featureValues: Record<string, unknown>): Map<string, Map<number, Record<string, unknown>>> {
+  private buildFeaturesMap(
+    featureValues: Record<string, unknown>
+  ): Map<string, Map<number, Record<string, unknown>>> {
     // This is a simplified implementation
     // In practice, you'd extract asset and timestamp from featureValues
     const features = new Map<string, Map<number, Record<string, unknown>>>();
-    
+
     // For now, assume featureValues contains asset and timestamp
     // This would need to be adapted based on actual data structure
     const asset = (featureValues as any).asset || 'unknown';
     const timestamp = (featureValues as any).timestamp || Date.now();
-    
+
     if (!features.has(asset)) {
       features.set(asset, new Map());
     }
-    
+
     const assetMap = features.get(asset)!;
     assetMap.set(timestamp, featureValues);
-    
+
     return features;
   }
 
@@ -223,4 +234,3 @@ export class InMemoryFeatureStore implements FeatureStore {
     };
   }
 }
-

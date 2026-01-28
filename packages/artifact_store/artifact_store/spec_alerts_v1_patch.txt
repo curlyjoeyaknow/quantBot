@@ -1,0 +1,8 @@
+# Add this spec into SPECS in packages/artifact_store/artifact_store/spec.py
+
+"alerts_v1": ArtifactTypeSpec(
+    artifact_type="alerts_v1",
+    canonical_cols=("alert_ts", "source", "message_id", "token_address", "raw_text"),
+    sort_keys=("alert_ts", "source", "message_id", "token_address"),
+    casts={"alert_ts": ISO_UTC_STR},
+),

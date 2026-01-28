@@ -12,7 +12,7 @@ import { z } from 'zod';
 export const Phase1ConfigSchema = z.object({
   enabled: z.boolean().default(true),
   tpMults: z.array(z.number().positive()).default([1.5, 2.0, 2.5, 3.0, 4.0, 5.0]),
-  slMults: z.array(z.number().min(0).max(1)).default([0.80, 0.85, 0.90, 0.95]),
+  slMults: z.array(z.number().min(0).max(1)).default([0.8, 0.85, 0.9, 0.95]),
   intervals: z.array(z.enum(['1m', '5m', '15m', '1h'])).default(['1m', '5m', '15m', '1h']),
   lagsMs: z.array(z.number().int().nonnegative()).default([0, 10000, 30000]),
   minCallsPerCaller: z.number().int().positive().optional(),
@@ -221,4 +221,3 @@ export const OptimizationWorkflowResultSchema = z.object({
 });
 
 export type OptimizationWorkflowResult = z.infer<typeof OptimizationWorkflowResultSchema>;
-

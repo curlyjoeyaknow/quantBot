@@ -64,7 +64,8 @@ export {
 } from './duckdb/duckdb-worklist-service.js';
 export type { OhlcvWorklistConfig, OhlcvWorklistResult } from './duckdb/duckdb-worklist-service.js';
 
-// Artifact repository adapter
+// Artifact repository adapters
+export { ArtifactStoreAdapter } from './adapters/artifact-store-adapter.js';
 export { ArtifactDuckDBAdapter } from './adapters/artifact-duckdb-adapter.js';
 export { ExperimentDuckDBAdapter } from './adapters/experiment-duckdb-adapter.js';
 

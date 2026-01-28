@@ -123,10 +123,7 @@ export class OhlcvFetchJob {
   private minCoverageToSkip: number;
   private failureCount: number = 0;
 
-  constructor(
-    marketDataPort: MarketDataPort,
-    options: OhlcvFetchJobOptions = {}
-  ) {
+  constructor(marketDataPort: MarketDataPort, options: OhlcvFetchJobOptions = {}) {
     this.marketDataPort = marketDataPort;
     this.rateLimitMs = options.rateLimitMs ?? 100;
     this.parallelWorkers = options.parallelWorkers ?? 1;

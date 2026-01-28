@@ -17,9 +17,7 @@ import { computeFeaturesHandler } from '../handlers/features/compute-features.js
  * Register features commands
  */
 export function registerFeaturesCommands(program: Command): void {
-  const featuresCmd = program
-    .command('features')
-    .description('Feature store operations');
+  const featuresCmd = program.command('features').description('Feature store operations');
 
   // List features
   const listCmd = featuresCmd
@@ -66,10 +64,7 @@ const featuresModule: PackageCommandModule = {
         const typedArgs = args as z.infer<typeof featuresListSchema>;
         return await listFeaturesHandler(typedArgs, ctx);
       },
-      examples: [
-        'quantbot features list',
-        'quantbot features list --format json',
-      ],
+      examples: ['quantbot features list', 'quantbot features list --format json'],
     },
     {
       name: 'compute',
@@ -88,4 +83,3 @@ const featuresModule: PackageCommandModule = {
 };
 
 commandRegistry.registerPackage(featuresModule);
-

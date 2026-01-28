@@ -254,4 +254,3 @@ export interface LastSimulation {
   metadata: TokenMetadata;
   candles: Candle[];
 }
-

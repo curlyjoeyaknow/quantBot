@@ -15,7 +15,10 @@ import { join } from 'path';
 import { existsSync } from 'fs';
 import { generateRollingWindows } from '../../../../src/research/phases/stress-validation.js';
 import type { Phase3Config } from '../../../../src/research/phases/types.js';
-import { createTempDuckDBPath, cleanupTestDuckDB } from '../../../../../ingestion/tests/helpers/createTestDuckDB.js';
+import {
+  createTempDuckDBPath,
+  cleanupTestDuckDB,
+} from '../../../../../ingestion/tests/helpers/createTestDuckDB.js';
 
 describe('Phase 3: Stress Validation', () => {
   let tempDir: string;
@@ -43,8 +46,8 @@ describe('Phase 3: Stress Validation', () => {
         '2024-01-01T00:00:00Z',
         '2024-01-31T23:59:59Z',
         14, // trainDays
-        7,  // testDays
-        7   // stepDays
+        7, // testDays
+        7 // stepDays
       );
 
       expect(windows.length).toBeGreaterThan(0);
@@ -57,17 +60,23 @@ describe('Phase 3: Stress Validation', () => {
       // Verify window structure
       for (const window of windows) {
         expect(window.windowId).toMatch(/^window_\d+$/);
-        expect(new Date(window.trainFrom).getTime()).toBeLessThan(new Date(window.trainTo).getTime());
-        expect(new Date(window.trainTo).getTime()).toBeLessThanOrEqual(new Date(window.testFrom).getTime());
+        expect(new Date(window.trainFrom).getTime()).toBeLessThan(
+          new Date(window.trainTo).getTime()
+        );
+        expect(new Date(window.trainTo).getTime()).toBeLessThanOrEqual(
+          new Date(window.testFrom).getTime()
+        );
         expect(new Date(window.testFrom).getTime()).toBeLessThan(new Date(window.testTo).getTime());
       }
 
-      // Verify windows don't overlap incorrectly
+      // Verify windows don't have overlapping test periods
+      // Note: Training periods can overlap in rolling windows, but test periods should not
       for (let i = 0; i < windows.length - 1; i++) {
         const current = windows[i];
         const next = windows[i + 1];
-        expect(new Date(current.testTo).getTime()).toBeLessThanOrEqual(
-          new Date(next.trainFrom).getTime()
+        // Test periods should not overlap (next testFrom should be >= current testTo)
+        expect(new Date(next.testFrom).getTime()).toBeGreaterThanOrEqual(
+          new Date(current.testTo).getTime()
         );
       }
     });
@@ -83,7 +92,7 @@ describe('Phase 3: Stress Validation', () => {
 
       // Should generate at least one window if possible
       expect(windows.length).toBeGreaterThanOrEqual(0);
-      
+
       // If windows are generated, verify they're valid
       for (const window of windows) {
         expect(new Date(window.testTo).getTime()).toBeLessThanOrEqual(
@@ -102,7 +111,7 @@ describe('Phase 3: Stress Validation', () => {
       );
 
       const endDate = new Date('2024-01-20T00:00:00Z').getTime();
-      
+
       for (const window of windows) {
         expect(new Date(window.testTo).getTime()).toBeLessThanOrEqual(endDate);
         expect(new Date(window.trainFrom).getTime()).toBeGreaterThanOrEqual(
@@ -138,7 +147,7 @@ describe('Phase 3: Stress Validation', () => {
         '2024-01-01T00:00:00Z',
         '2024-01-15T00:00:00Z', // Only 14 days
         14, // trainDays
-        7,  // testDays (total needed: 21 days)
+        7, // testDays (total needed: 21 days)
         7
       );
 
@@ -310,4 +319,3 @@ describe('Phase 3: Stress Validation', () => {
     });
   });
 });
-

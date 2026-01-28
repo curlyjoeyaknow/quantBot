@@ -38,9 +38,7 @@ export type ExportRunSlicesArgs = z.infer<typeof exportRunSlicesSchema>;
  * Register lake commands
  */
 export function registerLakeCommands(program: Command): void {
-  const lakeCmd = program
-    .command('lake')
-    .description('Parquet Lake v1 export operations');
+  const lakeCmd = program.command('lake').description('Parquet Lake v1 export operations');
 
   // export-run-slices command
   const exportRunSlicesCmd = lakeCmd
@@ -65,8 +63,12 @@ export function registerLakeCommands(program: Command): void {
     coerce: (raw) => ({
       ...raw,
       targetFileMb: raw.targetFileMb ? coerceNumber(raw.targetFileMb, 'target-file-mb') : 512,
-      strictCoverage: raw.strictCoverage ? coerceBoolean(raw.strictCoverage, 'strict-coverage') : false,
-      minRequiredPre: raw.minRequiredPre ? coerceNumber(raw.minRequiredPre, 'min-required-pre') : 52,
+      strictCoverage: raw.strictCoverage
+        ? coerceBoolean(raw.strictCoverage, 'strict-coverage')
+        : false,
+      minRequiredPre: raw.minRequiredPre
+        ? coerceNumber(raw.minRequiredPre, 'min-required-pre')
+        : 52,
       targetTotal: raw.targetTotal ? coerceNumber(raw.targetTotal, 'target-total') : 5000,
     }),
     validate: (opts) => exportRunSlicesSchema.parse(opts),
@@ -99,4 +101,3 @@ const lakeModule: PackageCommandModule = {
 
 // Register module
 commandRegistry.registerPackage(lakeModule);
-

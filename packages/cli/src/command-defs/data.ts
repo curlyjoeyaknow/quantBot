@@ -11,9 +11,7 @@ export const rawDataListSchema = z.object({
 export const rawDataQuerySchema = z.object({
   from: z.string().optional(), // ISO 8601 date
   to: z.string().optional(), // ISO 8601 date
-  sourceType: z
-    .enum(['telegram_export', 'api_response', 'file_upload', 'stream_event'])
-    .optional(),
+  sourceType: z.enum(['telegram_export', 'api_response', 'file_upload', 'stream_event']).optional(),
   sourceId: z.string().optional(),
   hash: z.string().optional(),
   format: z.enum(['json', 'table', 'csv']).default('table'),

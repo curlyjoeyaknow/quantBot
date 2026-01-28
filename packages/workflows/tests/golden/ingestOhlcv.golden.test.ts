@@ -18,11 +18,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
 
 // Mock dependencies BEFORE imports to prevent module resolution issues
-vi.mock('@quantbot/data/ingestion', () => ({
+vi.mock('@quantbot/ingestion', () => ({
   generateOhlcvWorklist: vi.fn(),
 }));
 
-vi.mock('@quantbot/data/ohlcv', () => ({
+vi.mock('@quantbot/ohlcv', () => ({
   storeCandles: vi.fn(),
   getCoverage: vi.fn(),
 }));
@@ -73,11 +73,11 @@ vi.mock('@quantbot/infra/utils', async () => {
 
 // Now import after mocks are set up
 import { ingestOhlcv } from '../../src/ohlcv/ingestOhlcv.js';
-import { generateOhlcvWorklist } from '@quantbot/data/ingestion';
-import { storeCandles, getCoverage } from '@quantbot/data/ohlcv';
+import { generateOhlcvWorklist } from '@quantbot/ingestion';
+import { storeCandles, getCoverage } from '@quantbot/ohlcv';
 import type { IngestOhlcvContext } from '../../src/ohlcv/ingestOhlcv.js';
 import type { WorkflowContext } from '../../src/types.js';
-import type { OhlcvWorkItem } from '@quantbot/data/ingestion';
+import type { OhlcvWorkItem } from '@quantbot/core';
 import type { Candle } from '@quantbot/core';
 import { createOhlcvIngestionContext } from '../../src/context/createOhlcvIngestionContext.js';
 import { tmpdir } from 'os';

@@ -107,16 +107,10 @@ export class RawDataDuckDBAdapter implements RawDataRepository {
   async isAvailable(): Promise<boolean> {
     try {
       // Try to execute a simple query to check availability
-      await this.client.execute(
-        this.scriptPath,
-        'list_sources',
-        {},
-        SourceListSchema
-      );
+      await this.client.execute(this.scriptPath, 'list_sources', {}, SourceListSchema);
       return true;
     } catch {
       return false;
     }
   }
 }
-

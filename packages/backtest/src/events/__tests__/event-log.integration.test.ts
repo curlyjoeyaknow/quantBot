@@ -108,4 +108,3 @@ describe('Event Log Integration', () => {
     }
   }, 30000);
 });
-

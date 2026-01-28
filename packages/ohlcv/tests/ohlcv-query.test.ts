@@ -13,11 +13,15 @@ import { OHLCVQueryService } from '../src/ohlcv-query';
 import type { OHLCVData, TokenInfo } from '@quantbot/infra/storage';
 
 // Mock dependencies - must be defined inside vi.mock factory to avoid hoisting issues
-vi.mock('@quantbot/infra/storage', async () => {
+vi.mock('@quantbot/storage', async () => {
   const { vi } = await import('vitest');
   const mockStorageEngine = {
     getCandles: vi.fn(),
     storeCandles: vi.fn(),
+  };
+  const mockCache = {
+    get: vi.fn(),
+    set: vi.fn(),
   };
   return {
     influxDBClient: {
@@ -26,22 +30,23 @@ vi.mock('@quantbot/infra/storage', async () => {
       hasData: vi.fn(),
       getAvailableTokens: vi.fn(),
     },
-    ohlcvCache: {
-      get: vi.fn(),
-      set: vi.fn(),
-    },
+    ohlcvCache: mockCache,
     getStorageEngine: vi.fn(() => mockStorageEngine),
   };
 });
 
-vi.mock('@quantbot/infra/utils', () => ({
-  logger: {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  },
-}));
+vi.mock('@quantbot/infra/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@quantbot/infra/utils')>();
+  return {
+    ...actual,
+    logger: {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    },
+  };
+});
 
 describe('OHLCVQueryService', () => {
   let service: OHLCVQueryService;
@@ -54,7 +59,7 @@ describe('OHLCVQueryService', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    const storage = await import('@quantbot/infra/storage');
+    const storage = await import('@quantbot/storage');
     mockInfluxClient = storage.influxDBClient;
     mockCache = storage.ohlcvCache;
     mockStorageEngine = storage.getStorageEngine();

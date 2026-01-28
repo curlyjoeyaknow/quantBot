@@ -21,7 +21,7 @@ function getClickHousePort(): number {
     ? parseInt(process.env.CLICKHOUSE_HTTP_PORT)
     : process.env.CLICKHOUSE_PORT
       ? parseInt(process.env.CLICKHOUSE_PORT)
-      : 8123;
+      : 18123; // Default to 18123 (Docker HTTP port)
 }
 
 function getClickHouseUser(): string {

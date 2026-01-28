@@ -9,17 +9,16 @@ import type { ExportRunSlicesArgs } from '../../commands/lake.js';
 import { generateRunId } from '../../core/run-id-manager.js';
 import { DateTime } from 'luxon';
 
-export async function exportRunSlicesLakeHandler(
-  args: ExportRunSlicesArgs,
-  ctx: CommandContext
-) {
+export async function exportRunSlicesLakeHandler(args: ExportRunSlicesArgs, ctx: CommandContext) {
   // Generate run_id if not provided
-  const runId = args.runId || generateRunId({
-    command: 'lake-export',
-    strategyId: 'lake',
-    mint: 'all',
-    alertTimestamp: DateTime.now().toISO() || '',
-  });
+  const runId =
+    args.runId ||
+    generateRunId({
+      command: 'lake-export',
+      strategyId: 'lake',
+      mint: 'all',
+      alertTimestamp: DateTime.now().toISO() || '',
+    });
 
   // Get ClickHouse config from environment
   const chHost = process.env.CLICKHOUSE_HOST || 'localhost';
@@ -69,4 +68,3 @@ export async function exportRunSlicesLakeHandler(
     coverage: result.manifest.coverage,
   };
 }
-

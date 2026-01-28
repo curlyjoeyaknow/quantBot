@@ -72,7 +72,8 @@ export async function fetchHistoricalPriceAtTime(
 
     // Normalize address and detect chain if not provided
     const normalizedAddress = normalizeTokenAddress(tokenAddress);
-    const detectedChain = (chain || detectChainFromAddress(tokenAddress)) as import('@quantbot/core').Chain;
+    const detectedChain = (chain ||
+      detectChainFromAddress(tokenAddress)) as import('@quantbot/core').Chain;
 
     const result = await marketDataPort.fetchHistoricalPriceAtTime({
       tokenAddress: createTokenAddress(normalizedAddress),

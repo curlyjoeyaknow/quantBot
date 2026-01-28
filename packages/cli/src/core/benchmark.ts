@@ -83,9 +83,18 @@ export class Benchmark {
   private commandName?: string; // Full command name (e.g., "calls.sweep")
   private commandVersion?: string; // CLI version (e.g., "1.0.0")
   private gitCommit?: string; // Git commit hash (e.g., "abc123def456...")
-  private currentOperation: { name: string; startTime: number; metadata?: Record<string, unknown> } | null = null;
+  private currentOperation: {
+    name: string;
+    startTime: number;
+    metadata?: Record<string, unknown>;
+  } | null = null;
 
-  constructor(enabled: boolean = false, commandName?: string, commandVersion?: string, gitCommit?: string) {
+  constructor(
+    enabled: boolean = false,
+    commandName?: string,
+    commandVersion?: string,
+    gitCommit?: string
+  ) {
     this.enabled = enabled;
     this.startTime = performance.now();
     this.timestamp = new Date().toISOString();
@@ -147,7 +156,9 @@ export class Benchmark {
   start(name: string, metadata?: Record<string, unknown>): void {
     if (!this.enabled) return;
     if (this.currentOperation) {
-      throw new Error(`Operation "${this.currentOperation.name}" already in progress. Call end() first.`);
+      throw new Error(
+        `Operation "${this.currentOperation.name}" already in progress. Call end() first.`
+      );
     }
     this.currentOperation = {
       name,
@@ -233,7 +244,8 @@ export class Benchmark {
     const maxDurationMs = Math.max(...durations);
 
     // Group operations by category (extract category from name, e.g., "fetch-candles" -> "fetch")
-    const operationsByCategory: Record<string, { count: number; totalMs: number; avgMs: number }> = {};
+    const operationsByCategory: Record<string, { count: number; totalMs: number; avgMs: number }> =
+      {};
     for (const metric of this.metrics) {
       const category = metric.name.split('-')[0] || 'other';
       if (!operationsByCategory[category]) {
@@ -288,7 +300,8 @@ export class Benchmark {
       lines.push(`Version: ${report.commandVersion}`);
     }
     if (report.gitCommit) {
-      const shortCommit = report.gitCommit.length > 12 ? report.gitCommit.substring(0, 12) : report.gitCommit;
+      const shortCommit =
+        report.gitCommit.length > 12 ? report.gitCommit.substring(0, 12) : report.gitCommit;
       lines.push(`Git Commit: ${shortCommit}`);
     }
     lines.push(`Total Duration: ${formatDuration(report.totalDurationMs)}`);
@@ -339,7 +352,9 @@ export class Benchmark {
               .map(([k, v]) => `${k}=${v}`)
               .join(', ')}`
           : '';
-        lines.push(`  ${formatDuration(metric.durationMs).padStart(10)} ${metric.name}${metadataStr}`);
+        lines.push(
+          `  ${formatDuration(metric.durationMs).padStart(10)} ${metric.name}${metadataStr}`
+        );
       }
     } else {
       lines.push(`(Skipping detailed list - ${report.metrics.length} operations)`);
@@ -376,7 +391,7 @@ function formatDuration(ms: number): string {
 
 /**
  * Create benchmark instance from command args
- * 
+ *
  * @param args - Command arguments with optional benchmark flag
  * @param commandName - Full command name (e.g., "calls.sweep"). If not provided, will attempt to infer from process.argv
  * @param commandVersion - CLI version. If not provided, will read from package.json
@@ -394,8 +409,13 @@ export function createBenchmark(
   const detectedVersion = commandVersion || getCliVersion();
   // Auto-detect git commit hash if not provided
   const detectedGitCommit = gitCommit || getGitCommitHash();
-  
-  return new Benchmark(args.benchmark === true, detectedCommandName, detectedVersion, detectedGitCommit);
+
+  return new Benchmark(
+    args.benchmark === true,
+    detectedCommandName,
+    detectedVersion,
+    detectedGitCommit
+  );
 }
 
 /**
@@ -415,4 +435,3 @@ function detectCommandName(): string | undefined {
   }
   return undefined;
 }
-

@@ -1,0 +1,8 @@
+Metadata-Version: 2.4
+Name: artifact-store
+Version: 0.1.0
+Summary: Immutable Parquet artifact publisher with SQLite manifest
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: duckdb>=0.9
+Requires-Dist: pandas>=2.0

@@ -24,4 +24,3 @@ export class ValidationError extends Error {
     Error.captureStackTrace(this, this.constructor);
   }
 }
-

@@ -6,7 +6,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { CommandContext } from '../../../src/core/command-context.js';
-import { StrategiesRepository } from '@quantbot/infra/storage';
+import { StrategiesRepository } from '@quantbot/storage';
 
 describe('CommandContext Wiring', () => {
   describe('strategiesRepository', () => {

@@ -15,8 +15,35 @@ import { join } from 'path';
 import { existsSync } from 'fs';
 import { runPhase1LabSweepDiscovery } from '../../../../src/research/phases/lab-sweep-discovery.js';
 import type { Phase1Config } from '../../../../src/research/phases/types.js';
-import { createTempDuckDBPath, createTestDuckDB, cleanupTestDuckDB } from '../../../../../ingestion/tests/helpers/createTestDuckDB.js';
+import {
+  createTempDuckDBPath,
+  createTestDuckDB,
+  cleanupTestDuckDB,
+} from '../../../../../ingestion/tests/helpers/createTestDuckDB.js';
 import type { TestCall } from '../../../../../ingestion/tests/helpers/createTestDuckDB.js';
+
+// Mock context creation to avoid requiring API keys
+vi.mock('../../../../src/context/createProductionPorts.js', () => ({
+  createProductionPorts: vi.fn(async () => ({
+    marketData: {
+      fetchOhlcv: vi.fn(),
+    },
+    state: {
+      get: vi.fn(),
+      set: vi.fn(),
+    },
+    query: {
+      getCalls: vi.fn(),
+    },
+    telemetry: {
+      emitEvent: vi.fn(),
+      emitMetric: vi.fn(),
+    },
+    clock: {
+      nowMs: vi.fn(() => Date.now()),
+    },
+  })),
+}));
 
 describe('Phase 1: Lab Sweep Discovery', () => {
   let tempDir: string;
@@ -74,7 +101,7 @@ describe('Phase 1: Lab Sweep Discovery', () => {
     const config: Phase1Config = {
       enabled: true,
       tpMults: [2.0, 3.0],
-      slMults: [0.85, 0.90],
+      slMults: [0.85, 0.9],
       intervals: ['5m'],
       lagsMs: [0],
       minCallsPerCaller: 1,
@@ -233,7 +260,7 @@ describe('Phase 1: Lab Sweep Discovery', () => {
     const config: Phase1Config = {
       enabled: true,
       tpMults: [2.0, 2.5, 3.0],
-      slMults: [0.85, 0.90],
+      slMults: [0.85, 0.9],
       intervals: ['5m'],
       lagsMs: [0],
       minCallsPerCaller: 1,
@@ -265,4 +292,3 @@ describe('Phase 1: Lab Sweep Discovery', () => {
     }
   });
 });
-

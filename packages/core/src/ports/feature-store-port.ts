@@ -81,11 +81,14 @@ export interface FeatureStore {
    * @param timestamp - Timestamp (milliseconds)
    * @returns Feature values or null if not found
    */
-  get(featureSetId: FeatureSetId, asset: string, timestamp: number): Promise<Record<string, unknown> | null>;
+  get(
+    featureSetId: FeatureSetId,
+    asset: string,
+    timestamp: number
+  ): Promise<Record<string, unknown> | null>;
 
   /**
    * Check if feature store is available
    */
   isAvailable(): Promise<boolean>;
 }
-

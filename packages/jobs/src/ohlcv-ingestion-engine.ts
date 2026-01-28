@@ -177,8 +177,8 @@ export class OhlcvIngestionEngine {
     // In production, ports should be injected via setMarketDataPort()
     const { createProductionPorts } = await import('@quantbot/workflows');
     const ports = await createProductionPorts();
-    this.marketDataPort = ports.marketData;
-    return this.marketDataPort;
+    this.marketDataPort = ports.marketData; // marketData is non-null in ProductionPorts
+    return ports.marketData;
   }
 
   /**

@@ -46,10 +46,17 @@ export function validateParquetLayout(layout: ParquetLayoutSpec): {
   // Check for required partition keys in template
   for (const key of REQUIRED_PARTITION_KEYS) {
     const placeholder = `{${key}}`;
-    if (!template.includes(placeholder)) {
-      errors.push(
-        `subdirTemplate must include partition key '${key}' as placeholder '{${key}}'`
-      );
+    // Special case for 'dt': accept either {dt} or dt={yyyy}-{mm}-{dd} format
+    if (key === 'dt') {
+      if (!template.includes(placeholder) && !template.includes('dt={yyyy}-{mm}-{dd}')) {
+        errors.push(
+          `subdirTemplate must include partition key '${key}' as placeholder '{${key}}' or use 'dt={yyyy}-{mm}-{dd}' format`
+        );
+      }
+    } else {
+      if (!template.includes(placeholder)) {
+        errors.push(`subdirTemplate must include partition key '${key}' as placeholder '{${key}}'`);
+      }
     }
   }
 
@@ -165,4 +172,3 @@ export function assertValidParquetLayout(layout: ParquetLayoutSpec): void {
     console.warn('ParquetLayoutSpec warnings:', validation.warnings);
   }
 }
-

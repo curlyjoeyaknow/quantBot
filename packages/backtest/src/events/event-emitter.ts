@@ -147,11 +147,7 @@ export class EventEmitter {
   /**
    * Emit phase.started event
    */
-  async emitPhaseStarted(
-    runId: string,
-    phaseName: string,
-    phaseOrder: number
-  ): Promise<void> {
+  async emitPhaseStarted(runId: string, phaseName: string, phaseOrder: number): Promise<void> {
     try {
       const workspaceRoot = findWorkspaceRoot();
       const scriptPath = join(workspaceRoot, 'tools/ledger/emit_event.py');
@@ -373,4 +369,3 @@ export function getEventEmitter(): EventEmitter {
   }
   return defaultEventEmitter;
 }
-

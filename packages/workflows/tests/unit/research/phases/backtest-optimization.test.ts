@@ -15,7 +15,10 @@ import { join } from 'path';
 import { existsSync } from 'fs';
 import { runPhase2BacktestOptimization } from '../../../../src/research/phases/backtest-optimization.js';
 import type { Phase2Config, Phase1Result } from '../../../../src/research/phases/types.js';
-import { createTempDuckDBPath, cleanupTestDuckDB } from '../../../../../ingestion/tests/helpers/createTestDuckDB.js';
+import {
+  createTempDuckDBPath,
+  cleanupTestDuckDB,
+} from '../../../../../ingestion/tests/helpers/createTestDuckDB.js';
 
 describe('Phase 2: Backtest Optimization', () => {
   let tempDir: string;
@@ -43,7 +46,7 @@ describe('Phase 2: Backtest Optimization', () => {
         {
           caller: 'test-caller',
           tpMult: { min: 2.0, max: 3.0, optimal: 2.5 },
-          slMult: { min: 0.85, max: 0.90, optimal: 0.875 },
+          slMult: { min: 0.85, max: 0.9, optimal: 0.875 },
           metrics: {
             winRate: 0.6,
             medianReturnPct: 0.5,
@@ -64,13 +67,13 @@ describe('Phase 2: Backtest Optimization', () => {
     expect(phase1Result.optimalRanges[0]?.tpMult.min).toBe(2.0);
     expect(phase1Result.optimalRanges[0]?.tpMult.max).toBe(3.0);
     expect(phase1Result.optimalRanges[0]?.slMult.min).toBe(0.85);
-    expect(phase1Result.optimalRanges[0]?.slMult.max).toBe(0.90);
+    expect(phase1Result.optimalRanges[0]?.slMult.max).toBe(0.9);
   });
 
   it('should handle mode-specific parameters correctly', () => {
     // Test mode parameter logic (matches getModeParams function)
     const testModes: Array<'cheap' | 'serious' | 'war_room'> = ['cheap', 'serious', 'war_room'];
-    
+
     const expectedParams = {
       cheap: { nTrials: 200, nFolds: 3, trainDays: 7, testDays: 3, foldStep: 3 },
       serious: { nTrials: 1000, nFolds: 5, trainDays: 14, testDays: 7, foldStep: 7 },
@@ -124,8 +127,8 @@ describe('Phase 2: Backtest Optimization', () => {
     // When Phase 1 result is undefined, should use default ranges
     const defaultTpMin = 1.5;
     const defaultTpMax = 3.5;
-    const defaultSlMin = 0.30;
-    const defaultSlMax = 0.60;
+    const defaultSlMin = 0.3;
+    const defaultSlMax = 0.6;
 
     expect(defaultTpMin).toBeLessThan(defaultTpMax);
     expect(defaultSlMin).toBeLessThan(defaultSlMax);
@@ -138,13 +141,13 @@ describe('Phase 2: Backtest Optimization', () => {
         {
           caller: 'caller1',
           tpMult: { min: 2.0, max: 3.0, optimal: 2.5 },
-          slMult: { min: 0.85, max: 0.90, optimal: 0.875 },
+          slMult: { min: 0.85, max: 0.9, optimal: 0.875 },
           metrics: { winRate: 0.6, medianReturnPct: 0.5, hit2xPct: 0.4, callsCount: 100 },
         },
         {
           caller: 'caller2',
           tpMult: { min: 2.5, max: 4.0, optimal: 3.0 },
-          slMult: { min: 0.80, max: 0.95, optimal: 0.85 },
+          slMult: { min: 0.8, max: 0.95, optimal: 0.85 },
           metrics: { winRate: 0.7, medianReturnPct: 0.6, hit2xPct: 0.5, callsCount: 150 },
         },
       ],
@@ -168,7 +171,7 @@ describe('Phase 2: Backtest Optimization', () => {
 
     expect(tpMin).toBe(2.0);
     expect(tpMax).toBe(4.0);
-    expect(slMin).toBe(0.80);
+    expect(slMin).toBe(0.8);
     expect(slMax).toBe(0.95);
   });
 
@@ -176,7 +179,7 @@ describe('Phase 2: Backtest Optimization', () => {
     // Create mock Python output JSON
     const pythonOutputDir = join(tempDir, 'phase2', 'python-output');
     await mkdir(pythonOutputDir, { recursive: true });
-    
+
     const mockOutput = {
       robust_mode: {
         islands: [
@@ -213,4 +216,3 @@ describe('Phase 2: Backtest Optimization', () => {
     expect(mockOutput.summary?.total_trials).toBeGreaterThan(0);
   });
 });
-

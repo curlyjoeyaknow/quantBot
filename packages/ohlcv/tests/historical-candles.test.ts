@@ -21,18 +21,22 @@ const mockGetStorageEngine = vi.hoisted(() =>
   }))
 );
 
-vi.mock('@quantbot/infra/storage', () => ({
+vi.mock('@quantbot/storage', () => ({
   getStorageEngine: mockGetStorageEngine,
 }));
 
-vi.mock('@quantbot/infra/utils', () => ({
-  logger: {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  },
-}));
+vi.mock('@quantbot/infra/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@quantbot/infra/utils')>();
+  return {
+    ...actual,
+    logger: {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    },
+  };
+});
 
 // Import modules after mocks are set up
 import { fetchHistoricalCandlesForMonitoring } from '../src/historical-candles';

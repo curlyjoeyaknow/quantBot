@@ -15,7 +15,7 @@ const mockStorageEngine = {
   getCandles: mockGetCandles,
 };
 
-vi.mock('@quantbot/infra/storage', () => ({
+vi.mock('@quantbot/storage', () => ({
   getStorageEngine: vi.fn(() => mockStorageEngine),
 }));
 

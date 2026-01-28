@@ -236,11 +236,11 @@ export async function materialiseSlice(
 
   // Single bulk query per token (much faster than N queries)
   // Check catalog first if available
-  let catalog: import('@quantbot/lab/catalog').Catalog | null = null;
+  let catalog: import('@quantbot/labcatalog').Catalog | null = null;
   if (options.catalogPath) {
     try {
-      const { Catalog } = await import('@quantbot/lab/catalog');
-      const { FileSystemCatalogAdapter } = await import('@quantbot/lab/catalog');
+      const { Catalog } = await import('@quantbot/labcatalog');
+      const { FileSystemCatalogAdapter } = await import('@quantbot/labcatalog');
       const adapter = new FileSystemCatalogAdapter(options.catalogPath);
       catalog = new Catalog(adapter, options.catalogPath);
       logger.info('Using catalog for slice reuse', { catalogPath: options.catalogPath });

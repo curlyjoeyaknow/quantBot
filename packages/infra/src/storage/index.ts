@@ -59,9 +59,7 @@ export {
   ClickHouseSliceExporterAdapterImpl,
   createClickHouseSliceExporterAdapterImpl,
 } from './adapters/clickhouse-slice-exporter-adapter-impl.js';
-export {
-  LakeExporterService,
-} from './services/lake-exporter-service.js';
+export { LakeExporterService } from './services/lake-exporter-service.js';
 export type {
   LakeRunSliceExportConfig,
   LakeExportResult,

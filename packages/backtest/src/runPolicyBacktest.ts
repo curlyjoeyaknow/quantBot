@@ -511,7 +511,11 @@ export async function runPolicyBacktest(
   };
 
   // Emit run.completed event
-  await eventEmitter.emitRunCompleted(runId, summary as unknown as Record<string, unknown>, artifactPaths);
+  await eventEmitter.emitRunCompleted(
+    runId,
+    summary as unknown as Record<string, unknown>,
+    artifactPaths
+  );
 
   // Log the sacred timing line - when regressions happen, this screams
   logger.info(timing.summaryLine());

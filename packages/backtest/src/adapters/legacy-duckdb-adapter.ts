@@ -23,16 +23,14 @@ export class LegacyDuckDBAdapter {
   private readonly eventLogRunsDbPath: string;
   private readonly workspaceRoot: string;
 
-  constructor(
-    legacyRunsDbPath?: string,
-    eventLogRunsDbPath?: string,
-    workspaceRoot?: string
-  ) {
+  constructor(legacyRunsDbPath?: string, eventLogRunsDbPath?: string, workspaceRoot?: string) {
     this.workspaceRoot = workspaceRoot ?? findWorkspaceRoot();
-    
+
     // Default paths
-    this.legacyRunsDbPath = legacyRunsDbPath ?? join(this.workspaceRoot, 'data', 'baseline_results.duckdb');
-    this.eventLogRunsDbPath = eventLogRunsDbPath ?? join(this.workspaceRoot, 'data', 'ledger', 'index', 'runs.duckdb');
+    this.legacyRunsDbPath =
+      legacyRunsDbPath ?? join(this.workspaceRoot, 'data', 'baseline_results.duckdb');
+    this.eventLogRunsDbPath =
+      eventLogRunsDbPath ?? join(this.workspaceRoot, 'data', 'ledger', 'index', 'runs.duckdb');
   }
 
   /**
@@ -95,7 +93,9 @@ export class LegacyDuckDBAdapter {
     // Attach event log index if it exists
     if (hasEventLog) {
       try {
-        await connection.run(`ATTACH '${this.eventLogRunsDbPath.replace(/'/g, "''")}' AS event_log_db`);
+        await connection.run(
+          `ATTACH '${this.eventLogRunsDbPath.replace(/'/g, "''")}' AS event_log_db`
+        );
         queries.push(`
           SELECT 
             run_id,
@@ -167,7 +167,9 @@ export class LegacyDuckDBAdapter {
     // Event log query
     if (hasEventLog) {
       try {
-        await connection.run(`ATTACH '${this.eventLogRunsDbPath.replace(/'/g, "''")}' AS event_log_db`);
+        await connection.run(
+          `ATTACH '${this.eventLogRunsDbPath.replace(/'/g, "''")}' AS event_log_db`
+        );
         queries.push(`
           SELECT 
             run_id,
@@ -211,4 +213,3 @@ export class LegacyDuckDBAdapter {
     return 'both';
   }
 }
-

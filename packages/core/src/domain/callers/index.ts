@@ -32,4 +32,3 @@ export interface CallerInfo {
   volume_at_alert?: number;
   caller?: string;
 }
-

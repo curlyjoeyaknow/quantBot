@@ -16,31 +16,31 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
 import { OhlcvBirdeyeFetch } from '../../src/ohlcv-birdeye-fetch.js';
-import { fetchBirdeyeCandles } from '@quantbot/infra/api-clients';
-import { getCoverage } from '@quantbot/data/ohlcv';
-import type { OhlcvWorkItem } from '@quantbot/data/ingestion';
-import type { Candle } from '@quantbot/core';
+import { getCoverage } from '@quantbot/ohlcv';
+import type { OhlcvWorkItem, MarketDataPort, Candle } from '@quantbot/core';
 
 // Mock dependencies
-vi.mock('@quantbot/infra/api-clients', () => ({
-  fetchBirdeyeCandles: vi.fn(),
-}));
-
-vi.mock('@quantbot/data/ohlcv', () => ({
+vi.mock('@quantbot/ohlcv', () => ({
   getCoverage: vi.fn(),
 }));
 
-vi.mock('@quantbot/infra/utils', () => ({
-  logger: {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  },
-}));
+vi.mock('@quantbot/infra/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@quantbot/infra/utils')>();
+  return {
+    ...actual,
+    logger: {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    },
+    findWorkspaceRoot: vi.fn(() => process.cwd()),
+  };
+});
 
 describe('OhlcvBirdeyeFetch - Golden Path', () => {
   let fetchService: OhlcvBirdeyeFetch;
+  let mockMarketDataPort: MarketDataPort;
   const TEST_MINT = '7pXs1234567890123456789012345678901234pump'; // Full 44-char address
   const TEST_CHAIN = 'solana' as const;
   const TEST_INTERVAL = '1m' as const;
@@ -60,7 +60,12 @@ describe('OhlcvBirdeyeFetch - Golden Path', () => {
   };
 
   beforeEach(() => {
-    fetchService = new OhlcvBirdeyeFetch({
+    mockMarketDataPort = {
+      fetchOhlcv: vi.fn(),
+      fetchMetadata: vi.fn(),
+      fetchHistoricalPriceAtTime: vi.fn(),
+    };
+    fetchService = new OhlcvBirdeyeFetch(mockMarketDataPort, {
       rateLimitMs: 10, // Fast for tests
       maxRetries: 3,
       checkCoverage: true,
@@ -106,7 +111,7 @@ describe('OhlcvBirdeyeFetch - Golden Path', () => {
         },
       ];
 
-      vi.mocked(fetchBirdeyeCandles).mockResolvedValue(expectedCandles);
+      vi.mocked(mockMarketDataPort.fetchOhlcv).mockResolvedValue(expectedCandles);
 
       // Execute: Fetch work item
       const result = await fetchService.fetchWorkItem(mockWorkItem);
@@ -129,18 +134,18 @@ describe('OhlcvBirdeyeFetch - Golden Path', () => {
       );
 
       // Assert: API was called with correct parameters
-      expect(fetchBirdeyeCandles).toHaveBeenCalledWith(
-        TEST_MINT,
-        TEST_INTERVAL,
-        Math.floor(TEST_START_TIME.toSeconds()),
-        Math.floor(TEST_END_TIME.toSeconds()),
-        TEST_CHAIN
-      );
+      expect(mockMarketDataPort.fetchOhlcv).toHaveBeenCalledWith({
+        tokenAddress: TEST_MINT,
+        chain: TEST_CHAIN,
+        interval: TEST_INTERVAL,
+        from: Math.floor(TEST_START_TIME.toSeconds()),
+        to: Math.floor(TEST_END_TIME.toSeconds()),
+      });
 
       // Assert: Mint address preserved exactly (case and length)
-      const apiCall = vi.mocked(fetchBirdeyeCandles).mock.calls[0];
-      expect(apiCall[0]).toBe(TEST_MINT); // Exact match, no truncation
-      expect(apiCall[0].length).toBeGreaterThanOrEqual(32); // Valid address length (32-44 chars)
+      const apiCall = vi.mocked(mockMarketDataPort.fetchOhlcv).mock.calls[0];
+      expect(apiCall[0].tokenAddress).toBe(TEST_MINT); // Exact match, no truncation
+      expect(apiCall[0].tokenAddress.length).toBeGreaterThanOrEqual(32); // Valid address length (32-44 chars)
     });
 
     it('should handle large candle responses (5000+ candles - API limit)', async () => {
@@ -164,7 +169,7 @@ describe('OhlcvBirdeyeFetch - Golden Path', () => {
         candleCount: 0,
       });
 
-      vi.mocked(fetchBirdeyeCandles).mockResolvedValue(largeCandleSet);
+      vi.mocked(mockMarketDataPort.fetchOhlcv).mockResolvedValue(largeCandleSet);
 
       // Execute
       const result = await fetchService.fetchWorkItem(mockWorkItem);
@@ -198,14 +203,14 @@ describe('OhlcvBirdeyeFetch - Golden Path', () => {
         },
       ];
 
-      vi.mocked(fetchBirdeyeCandles).mockResolvedValue(mockCandles);
+      vi.mocked(mockMarketDataPort.fetchOhlcv).mockResolvedValue(mockCandles);
 
       await fetchService.fetchWorkItem(workItem);
 
       // Assert: Mint address passed exactly as provided (case preserved)
-      const apiCall = vi.mocked(fetchBirdeyeCandles).mock.calls[0];
-      expect(apiCall[0]).toBe(mixedCaseMint);
-      expect(apiCall[0]).toMatch(/7pXsAbCdEfGhIjKlMnOpQrStUvWxYz/); // Exact case match
+      const apiCall = vi.mocked(mockMarketDataPort.fetchOhlcv).mock.calls[0];
+      expect(apiCall[0].tokenAddress).toBe(mixedCaseMint);
+      expect(apiCall[0].tokenAddress).toMatch(/7pXsAbCdEfGhIjKlMnOpQrStUvWxYz/); // Exact case match
     });
   });
 
@@ -240,10 +245,13 @@ describe('OhlcvBirdeyeFetch - Golden Path', () => {
         candleCount: 0,
       });
 
-      vi.mocked(fetchBirdeyeCandles).mockResolvedValue(mockCandles);
+      vi.mocked(mockMarketDataPort.fetchOhlcv).mockResolvedValue(mockCandles);
 
       const rateLimitMs = 50;
-      fetchService = new OhlcvBirdeyeFetch({ rateLimitMs, checkCoverage: false });
+      fetchService = new OhlcvBirdeyeFetch(mockMarketDataPort, {
+        rateLimitMs,
+        checkCoverage: false,
+      });
 
       const startTime = Date.now();
       const results = await fetchService.fetchWorkList(workItems);
@@ -288,7 +296,7 @@ describe('OhlcvBirdeyeFetch - Golden Path', () => {
         candleCount: 0,
       });
 
-      vi.mocked(fetchBirdeyeCandles)
+      vi.mocked(mockMarketDataPort.fetchOhlcv)
         .mockResolvedValueOnce(mockCandles) // First succeeds
         .mockRejectedValueOnce(new Error('API error')) // Second fails
         .mockResolvedValueOnce(mockCandles); // Third succeeds
@@ -324,7 +332,7 @@ describe('OhlcvBirdeyeFetch - Golden Path', () => {
       expect(result.skipped).toBe(true);
       expect(result.candlesFetched).toBe(0);
       expect(result.candles).toEqual([]);
-      expect(fetchBirdeyeCandles).not.toHaveBeenCalled();
+      expect(mockMarketDataPort.fetchOhlcv).not.toHaveBeenCalled();
     });
 
     it('should skip when hasData but insufficient candles (< 5000 minimum)', async () => {
@@ -343,7 +351,7 @@ describe('OhlcvBirdeyeFetch - Golden Path', () => {
       expect(result.success).toBe(true);
       expect(result.skipped).toBe(true);
       expect(result.candlesFetched).toBe(0);
-      expect(fetchBirdeyeCandles).not.toHaveBeenCalled();
+      expect(mockMarketDataPort.fetchOhlcv).not.toHaveBeenCalled();
     });
 
     it('should fetch when coverage is below threshold AND has minimum candles', async () => {
@@ -366,7 +374,7 @@ describe('OhlcvBirdeyeFetch - Golden Path', () => {
         candleCount: 5000, // Has minimum candles
       });
 
-      vi.mocked(fetchBirdeyeCandles).mockResolvedValue(mockCandles);
+      vi.mocked(mockMarketDataPort.fetchOhlcv).mockResolvedValue(mockCandles);
 
       const result = await fetchService.fetchWorkItem(mockWorkItem);
 
@@ -374,19 +382,19 @@ describe('OhlcvBirdeyeFetch - Golden Path', () => {
       expect(result.success).toBe(true);
       expect(result.skipped).toBe(false);
       expect(result.candlesFetched).toBe(1);
-      expect(fetchBirdeyeCandles).toHaveBeenCalled();
+      expect(mockMarketDataPort.fetchOhlcv).toHaveBeenCalled();
     });
   });
 
   describe('GOLDEN: Circuit breaker - failure handling', () => {
     it('should open circuit breaker after threshold failures and block requests', async () => {
       const threshold = 5;
-      fetchService = new OhlcvBirdeyeFetch({
+      fetchService = new OhlcvBirdeyeFetch(mockMarketDataPort, {
         circuitBreakerThreshold: threshold,
         checkCoverage: false,
       });
 
-      vi.mocked(fetchBirdeyeCandles).mockRejectedValue(new Error('API error'));
+      vi.mocked(mockMarketDataPort.fetchOhlcv).mockRejectedValue(new Error('API error'));
 
       // Trigger failures up to threshold
       for (let i = 0; i < threshold; i++) {
@@ -402,12 +410,12 @@ describe('OhlcvBirdeyeFetch - Golden Path', () => {
       const result = await fetchService.fetchWorkItem(mockWorkItem);
       expect(result.success).toBe(false);
       expect(result.error).toBe('Circuit breaker open');
-      expect(fetchBirdeyeCandles).toHaveBeenCalledTimes(threshold); // No additional call
+      expect(mockMarketDataPort.fetchOhlcv).toHaveBeenCalledTimes(threshold); // No additional call
     });
 
     it('should reset circuit breaker on successful fetch', async () => {
       const threshold = 3;
-      fetchService = new OhlcvBirdeyeFetch({
+      fetchService = new OhlcvBirdeyeFetch(mockMarketDataPort, {
         circuitBreakerThreshold: threshold,
         checkCoverage: false,
       });
@@ -424,13 +432,13 @@ describe('OhlcvBirdeyeFetch - Golden Path', () => {
       ];
 
       // Trigger failures
-      vi.mocked(fetchBirdeyeCandles).mockRejectedValue(new Error('API error'));
+      vi.mocked(mockMarketDataPort.fetchOhlcv).mockRejectedValue(new Error('API error'));
       for (let i = 0; i < threshold - 1; i++) {
         await fetchService.fetchWorkItem(mockWorkItem);
       }
 
       // Success should reset
-      vi.mocked(fetchBirdeyeCandles).mockResolvedValue(mockCandles);
+      vi.mocked(mockMarketDataPort.fetchOhlcv).mockResolvedValue(mockCandles);
       const successResult = await fetchService.fetchWorkItem(mockWorkItem);
 
       expect(successResult.success).toBe(true);
@@ -447,7 +455,7 @@ describe('OhlcvBirdeyeFetch - Golden Path', () => {
         candleCount: 0,
       });
 
-      vi.mocked(fetchBirdeyeCandles).mockResolvedValue([]);
+      vi.mocked(mockMarketDataPort.fetchOhlcv).mockResolvedValue([]);
 
       const result = await fetchService.fetchWorkItem(mockWorkItem);
 
@@ -487,7 +495,7 @@ describe('OhlcvBirdeyeFetch - Golden Path', () => {
         candleCount: 0,
       });
 
-      vi.mocked(fetchBirdeyeCandles).mockResolvedValue(largeCandleSet);
+      vi.mocked(mockMarketDataPort.fetchOhlcv).mockResolvedValue(largeCandleSet);
 
       const result = await fetchService.fetchWorkItem(largeWindowWorkItem);
 
@@ -518,18 +526,18 @@ describe('OhlcvBirdeyeFetch - Golden Path', () => {
           candleCount: 0,
         });
 
-        vi.mocked(fetchBirdeyeCandles).mockResolvedValue(mockCandles);
+        vi.mocked(mockMarketDataPort.fetchOhlcv).mockResolvedValue(mockCandles);
 
         const result = await fetchService.fetchWorkItem(workItem);
 
         expect(result.success).toBe(true);
-        expect(fetchBirdeyeCandles).toHaveBeenCalledWith(
-          TEST_MINT,
+        expect(mockMarketDataPort.fetchOhlcv).toHaveBeenCalledWith({
+          tokenAddress: TEST_MINT,
+          chain: TEST_CHAIN,
           interval,
-          expect.any(Number),
-          expect.any(Number),
-          TEST_CHAIN
-        );
+          from: expect.any(Number),
+          to: expect.any(Number),
+        });
       }
     });
 
@@ -560,18 +568,18 @@ describe('OhlcvBirdeyeFetch - Golden Path', () => {
           candleCount: 0,
         });
 
-        vi.mocked(fetchBirdeyeCandles).mockResolvedValue(mockCandles);
+        vi.mocked(mockMarketDataPort.fetchOhlcv).mockResolvedValue(mockCandles);
 
         const result = await fetchService.fetchWorkItem(workItem);
 
         expect(result.success).toBe(true);
-        expect(fetchBirdeyeCandles).toHaveBeenCalledWith(
-          TEST_MINT,
-          TEST_INTERVAL,
-          expect.any(Number),
-          expect.any(Number),
-          chain
-        );
+        expect(mockMarketDataPort.fetchOhlcv).toHaveBeenCalledWith({
+          tokenAddress: TEST_MINT,
+          chain,
+          interval: TEST_INTERVAL,
+          from: expect.any(Number),
+          to: expect.any(Number),
+        });
       }
     });
   });

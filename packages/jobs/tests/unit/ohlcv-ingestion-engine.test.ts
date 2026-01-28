@@ -15,18 +15,16 @@
 // IMPORTANT: Mocks must be defined BEFORE imports to prevent module resolution issues
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DateTime } from 'luxon';
-import {
-  OhlcvIngestionEngine,
-  resetBirdeyeClientInstance,
-} from '../../src/ohlcv-ingestion-engine.js';
+import { OhlcvIngestionEngine } from '../../src/ohlcv-ingestion-engine.js';
 import {
   fetchBirdeyeCandles,
   getBirdeyeClient,
   fetchMultiChainMetadata,
+  resetBirdeyeClient,
 } from '@quantbot/infra/api-clients';
-import { getStorageEngine, initClickHouse } from '@quantbot/infra/storage';
+import { getStorageEngine, initClickHouse } from '@quantbot/storage';
 import { isEvmAddress } from '@quantbot/infra/utils';
-import type { Candle } from '@quantbot/core';
+import type { Candle, MarketDataPort } from '@quantbot/core';
 
 // Mock dependencies
 const mockStorageEngine = {
@@ -81,51 +79,49 @@ vi.mock('@quantbot/infra/api-clients', () => {
     getBirdeyeClient: () => mockBirdeyeClient,
     fetchBirdeyeCandles: vi.fn(),
     fetchMultiChainMetadata: vi.fn(),
+    resetBirdeyeClient: vi.fn(),
   };
 });
 
-// Also mock the infra path (consolidation shim)
-vi.mock('@quantbot/infra/api-clients', () => {
-  const mockBirdeyeClient = {
-    fetchOHLCVData: vi.fn(),
-    getTokenMetadata: vi.fn(),
-    fetchHistoricalPriceAtUnixTime: vi.fn(),
-  };
-  return {
-    birdeyeClient: mockBirdeyeClient,
-    getBirdeyeClient: () => mockBirdeyeClient,
-    fetchBirdeyeCandles: vi.fn(),
-    fetchMultiChainMetadata: vi.fn(),
-  };
-});
-
-// Mock both storage paths (consolidation shim and new path)
-vi.mock('@quantbot/infra/storage', () => createStorageMocks());
-vi.mock('@quantbot/infra/storage', () => createStorageMocks());
+// Mock storage
+vi.mock('@quantbot/storage', () => createStorageMocks());
 
 // storeCandles removed - using OhlcvRepository.upsertCandles() instead
 
-vi.mock('@quantbot/infra/utils', () => ({
-  logger: {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  },
-  isEvmAddress: vi.fn(),
-}));
+vi.mock('@quantbot/infra/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@quantbot/infra/utils')>();
+  return {
+    ...actual,
+    logger: {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    },
+    isEvmAddress: vi.fn(),
+    findWorkspaceRoot: vi.fn(() => process.cwd()),
+  };
+});
 
 describe('OhlcvIngestionEngine', () => {
   let engine: OhlcvIngestionEngine;
+  let mockMarketDataPort: MarketDataPort;
   const TEST_MINT = '7pXs123456789012345678901234567890pump'; // Full address, case-preserved
   const TEST_CHAIN = 'solana' as const;
   const TEST_ALERT_TIME = DateTime.utc().minus({ days: 30 });
 
   beforeEach(() => {
     // Reset cached birdeye client instance to ensure mocks are applied
-    resetBirdeyeClientInstance();
+    resetBirdeyeClient();
+
+    mockMarketDataPort = {
+      fetchOhlcv: vi.fn(),
+      fetchMetadata: vi.fn(),
+      fetchHistoricalPriceAtTime: vi.fn(),
+    };
 
     engine = new OhlcvIngestionEngine();
+    engine.setMarketDataPort(mockMarketDataPort);
     vi.clearAllMocks();
     vi.mocked(initClickHouse).mockResolvedValue(undefined);
 
@@ -133,10 +129,17 @@ describe('OhlcvIngestionEngine', () => {
     const birdeyeClient = getBirdeyeClient();
     vi.mocked(birdeyeClient.getTokenMetadata).mockResolvedValue({ name: 'Test', symbol: 'TEST' });
     vi.mocked(birdeyeClient.fetchOHLCVData).mockResolvedValue({ items: [] } as any);
-    // Mock historical price to return data (so probe doesn't early-exit)
-    vi.mocked(birdeyeClient.fetchHistoricalPriceAtUnixTime).mockResolvedValue({
+    // Mock historical price via MarketDataPort (so probe doesn't early-exit)
+    vi.mocked(mockMarketDataPort.fetchHistoricalPriceAtTime).mockResolvedValue({
       value: 1.0,
       unixTime: Math.floor(TEST_ALERT_TIME.toSeconds()),
+    } as any);
+
+    // Mock metadata fetch to return truthy value (so tokenStored is true)
+    vi.mocked(mockMarketDataPort.fetchMetadata).mockResolvedValue({
+      name: 'Test Token',
+      symbol: 'TEST',
+      decimals: 9,
     } as any);
 
     // Default mocks for ingestion functions - default to Solana addresses
@@ -148,8 +151,8 @@ describe('OhlcvIngestionEngine', () => {
       primaryMetadata: undefined,
     });
 
-    // Default mock for fetchBirdeyeCandles - return empty by default, tests can override
-    vi.mocked(fetchBirdeyeCandles).mockResolvedValue([]);
+    // Default mock for fetchOhlcv - return empty by default, tests can override
+    vi.mocked(mockMarketDataPort.fetchOhlcv).mockResolvedValue([]);
 
     // Ensure cache returns empty so it proceeds to fetch
     vi.mocked(mockStorageEngine.getCandles).mockResolvedValue([]);
@@ -160,7 +163,9 @@ describe('OhlcvIngestionEngine', () => {
   });
 
   afterEach(() => {
-    engine.clearCache();
+    if (engine && typeof engine.clearCache === 'function') {
+      engine.clearCache();
+    }
   });
 
   describe('initialize', () => {
@@ -197,11 +202,15 @@ describe('OhlcvIngestionEngine', () => {
       ];
 
       // Override default empty mock with actual candles
-      vi.mocked(fetchBirdeyeCandles).mockResolvedValue(mockCandles);
+      // Mock: API returns candles for all intervals (engine fetches 1m, 5m, 15s, 1H)
+      vi.mocked(mockMarketDataPort.fetchOhlcv)
+        .mockResolvedValueOnce(mockCandles) // 1m candles
+        .mockResolvedValueOnce([]) // 5m candles (empty for this test)
+        .mockResolvedValueOnce([]) // 15s candles (empty for this test)
+        .mockResolvedValueOnce([]); // 1H candles (empty for this test)
 
       // Ensure historical price returns data so probe doesn't early-exit
-      const birdeyeClient = getBirdeyeClient();
-      vi.mocked(birdeyeClient.fetchHistoricalPriceAtUnixTime).mockResolvedValue({
+      vi.mocked(mockMarketDataPort.fetchHistoricalPriceAtTime).mockResolvedValue({
         value: 1.0,
         unixTime: Math.floor(TEST_ALERT_TIME.toSeconds()),
       } as any);
@@ -212,7 +221,7 @@ describe('OhlcvIngestionEngine', () => {
       });
 
       expect(result['1m'].length).toBeGreaterThan(0);
-      expect(fetchBirdeyeCandles).toHaveBeenCalled();
+      expect(mockMarketDataPort.fetchOhlcv).toHaveBeenCalled();
       // Note: storeCandles is no longer used - OhlcvRepository.upsertCandles is used instead
     });
 
@@ -232,13 +241,15 @@ describe('OhlcvIngestionEngine', () => {
       ];
 
       // Override default empty mock with actual candles
-      vi.mocked(fetchBirdeyeCandles).mockResolvedValue(mockCandles);
+      // Mock: API returns candles for all intervals (engine fetches 1m, 5m, 15s, 1H)
+      vi.mocked(mockMarketDataPort.fetchOhlcv)
+        .mockResolvedValueOnce(mockCandles) // 1m candles
+        .mockResolvedValueOnce([]) // 5m candles (empty for this test)
+        .mockResolvedValueOnce([]) // 15s candles (empty for this test)
+        .mockResolvedValueOnce([]); // 1H candles (empty for this test)
 
       // Ensure historical price returns data so probe doesn't early-exit
-      // Reset instance first to ensure mock is applied
-      resetBirdeyeClientInstance();
-      const birdeyeClient = getBirdeyeClient();
-      vi.mocked(birdeyeClient.fetchHistoricalPriceAtUnixTime).mockResolvedValue({
+      vi.mocked(mockMarketDataPort.fetchHistoricalPriceAtTime).mockResolvedValue({
         value: 1.0,
         unixTime: Math.floor(TEST_ALERT_TIME.toSeconds()),
       } as any);
@@ -249,12 +260,12 @@ describe('OhlcvIngestionEngine', () => {
       });
 
       // Verify mint address was passed correctly (case preserved)
-      expect(fetchBirdeyeCandles).toHaveBeenCalledWith(
-        expect.stringContaining('7pXs'),
-        '1m',
-        expect.any(Number),
-        expect.any(Number),
-        TEST_CHAIN
+      expect(mockMarketDataPort.fetchOhlcv).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tokenAddress: expect.stringContaining('7pXs'),
+          chain: TEST_CHAIN,
+          interval: '1m',
+        })
       );
     });
 
@@ -273,7 +284,7 @@ describe('OhlcvIngestionEngine', () => {
       ];
 
       vi.mocked(mockStorageEngine.getCandles).mockResolvedValue(mockCandles);
-      vi.mocked(fetchBirdeyeCandles).mockResolvedValue([]);
+      vi.mocked(mockMarketDataPort.fetchOhlcv).mockResolvedValue([]);
 
       // First call - should check cache
       await engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME, {
@@ -289,16 +300,13 @@ describe('OhlcvIngestionEngine', () => {
       await engine.initialize();
 
       // Ensure historical price returns data so probe doesn't early-exit
-      // Reset instance first to ensure mock is applied
-      resetBirdeyeClientInstance();
-      const birdeyeClient = getBirdeyeClient();
-      vi.mocked(birdeyeClient.fetchHistoricalPriceAtUnixTime).mockResolvedValue({
+      vi.mocked(mockMarketDataPort.fetchHistoricalPriceAtTime).mockResolvedValue({
         value: 1.0,
         unixTime: Math.floor(TEST_ALERT_TIME.toSeconds()),
       } as any);
 
-      // Mock fetchBirdeyeCandles to throw error
-      vi.mocked(fetchBirdeyeCandles).mockRejectedValue(new Error('API error'));
+      // Mock fetchOhlcv to throw error (on first call - 1m probe)
+      vi.mocked(mockMarketDataPort.fetchOhlcv).mockRejectedValue(new Error('API error'));
 
       await expect(
         engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME, {

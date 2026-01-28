@@ -92,8 +92,8 @@ async function readParquetMetadata(filePath: string): Promise<{
     const schemaResult = await client.query(schemaQuery);
 
     // Check if timestamp column exists
-    const hasTimestamp = schemaResult.columns.some((col) =>
-      col.name.toLowerCase().includes('timestamp') || col.name.toLowerCase() === 'ts'
+    const hasTimestamp = schemaResult.columns.some(
+      (col) => col.name.toLowerCase().includes('timestamp') || col.name.toLowerCase() === 'ts'
     );
     const timestampCol = schemaResult.columns.find(
       (col) => col.name.toLowerCase().includes('timestamp') || col.name.toLowerCase() === 'ts'
@@ -204,9 +204,7 @@ function createManifest(
   const totalRows = files.reduce((sum, f) => sum + (f.rowCount || 0), 0);
   const totalBytes = files.reduce((sum, f) => sum + f.byteSize, 0);
 
-  const specHash = createHash('sha256')
-    .update(JSON.stringify({ run, spec, layout }))
-    .digest('hex');
+  const specHash = createHash('sha256').update(JSON.stringify({ run, spec, layout })).digest('hex');
 
   return {
     version: 1,
@@ -228,12 +226,13 @@ function createManifest(
       totalFiles: files.length,
       totalRows,
       totalBytes,
-      timeRangeObserved: files[0]?.minTimestamp && files[files.length - 1]?.maxTimestamp
-        ? {
-            startIso: files[0].minTimestamp,
-            endIso: files[files.length - 1].maxTimestamp!,
-          }
-        : undefined,
+      timeRangeObserved:
+        files[0]?.minTimestamp && files[files.length - 1]?.maxTimestamp
+          ? {
+              startIso: files[0].minTimestamp,
+              endIso: files[files.length - 1].maxTimestamp!,
+            }
+          : undefined,
     },
     integrity: {
       specHash,
@@ -267,9 +266,7 @@ async function migrateParquetFiles(args: MigrationArgs): Promise<void> {
   console.log(`Found ${parquetFiles.length} Parquet files`);
 
   // Limit files if specified (for testing)
-  const filesToProcess = args.maxFiles
-    ? parquetFiles.slice(0, args.maxFiles)
-    : parquetFiles;
+  const filesToProcess = args.maxFiles ? parquetFiles.slice(0, args.maxFiles) : parquetFiles;
 
   // Process files in batches
   const batchSize = 10;
@@ -277,7 +274,9 @@ async function migrateParquetFiles(args: MigrationArgs): Promise<void> {
 
   for (let i = 0; i < filesToProcess.length; i += batchSize) {
     const batch = filesToProcess.slice(i, i + batchSize);
-    console.log(`Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(filesToProcess.length / batchSize)}`);
+    console.log(
+      `Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(filesToProcess.length / batchSize)}`
+    );
 
     for (const filePath of batch) {
       try {
@@ -424,4 +423,3 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 }
 
 export { migrateParquetFiles };
-

@@ -74,4 +74,3 @@ export interface ActiveCA {
   caller?: string;
   created_at?: string;
 }
-

@@ -38,8 +38,8 @@ export async function runPhase2BacktestOptimization(
   // Load optimal ranges from Phase 1 if available
   let tpMin = 1.5;
   let tpMax = 3.5;
-  let slMin = 0.30;
-  let slMax = 0.60;
+  let slMin = 0.3;
+  let slMax = 0.6;
 
   if (phase1Result && phase1Result.optimalRanges.length > 0) {
     // Use ranges from Phase 1 (aggregate across callers)
@@ -116,16 +116,11 @@ export async function runPhase2BacktestOptimization(
     // Execute Python script (it writes Parquet files directly)
     // Note: runScript expects JSON output, but this script outputs to files
     // So we use expectJsonOutput: false and check for file outputs
-    await pythonEngine.runScript(
-      scriptPath,
-      pythonArgs,
-      z.any(),
-      {
-        timeout: 60 * 60 * 1000, // 1 hour timeout
-        cwd: findWorkspaceRoot(),
-        expectJsonOutput: false,
-      }
-    );
+    await pythonEngine.runScript(scriptPath, pythonArgs, z.any(), {
+      timeout: 60 * 60 * 1000, // 1 hour timeout
+      cwd: findWorkspaceRoot(),
+      expectJsonOutput: false,
+    });
 
     // Read results from JSON output
     const jsonOutputPath = join(outputDir, 'results.json');
@@ -261,4 +256,3 @@ function getModeParams(
       };
   }
 }
-

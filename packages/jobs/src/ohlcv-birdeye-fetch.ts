@@ -108,10 +108,7 @@ export class OhlcvBirdeyeFetch {
   private minCoverageToSkip: number;
   private failureCount: number = 0;
 
-  constructor(
-    marketDataPort: MarketDataPort,
-    options: OhlcvBirdeyeFetchOptions = {}
-  ) {
+  constructor(marketDataPort: MarketDataPort, options: OhlcvBirdeyeFetchOptions = {}) {
     this.marketDataPort = marketDataPort;
     this.rateLimitMs = options.rateLimitMs ?? 100;
     this.parallelWorkers = options.parallelWorkers ?? 1;
@@ -199,6 +196,14 @@ export class OhlcvBirdeyeFetch {
             endTime: workItem.endTime.toISO(),
             minCoverageToSkip: this.minCoverageToSkip,
           });
+          return {
+            workItem,
+            success: true,
+            candles: [],
+            candlesFetched: 0,
+            skipped: true,
+            durationMs: Date.now() - startTime,
+          };
         } else if (coverage.hasData && !hasMinimumCandles) {
           logger.debug('Not skipping - insufficient candles (below 5000 minimum)', {
             mint: workItem.mint,

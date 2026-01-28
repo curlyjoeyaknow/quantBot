@@ -14,10 +14,18 @@ import {
   // New: Deduplication and audit services
   IngestionRunRepository,
   OhlcvDedupService,
+  ArtifactStoreAdapter,
   // PostgreSQL repositories removed - use DuckDB equivalents
   // CallsRepository, TokensRepository, AlertsRepository, SimulationRunsRepository
 } from '@quantbot/storage';
-import type { ExperimentRepository, RawDataRepository, CanonicalRepository, FeatureStore, MarketDataPort } from '@quantbot/core';
+import type {
+  ExperimentRepository,
+  RawDataRepository,
+  CanonicalRepository,
+  FeatureStore,
+  MarketDataPort,
+  ArtifactStorePort,
+} from '@quantbot/core';
 import { OhlcvIngestionService } from '@quantbot/ingestion';
 import { MarketDataIngestionService } from '@quantbot/jobs';
 // TelegramAlertIngestionService temporarily commented out - needs repository refactoring
@@ -44,9 +52,7 @@ import {
   RawDataDuckDBAdapter,
   CanonicalDuckDBAdapter,
 } from '@quantbot/storage';
-import {
-  LakeExporterService,
-} from '@quantbot/infra/storage';
+import { LakeExporterService } from '@quantbot/infra/storage';
 import type { ArtifactRepository } from '@quantbot/core';
 import { ensureInitialized } from './initialization-manager.js';
 import { getBirdeyeClient } from '@quantbot/infra/api-clients';
@@ -85,6 +91,7 @@ export interface CommandServices {
   rawDataRepository(): RawDataRepository; // Raw immutable data (Telegram exports, API responses)
   canonicalRepository(): CanonicalRepository; // Canonical events (unified market data)
   featureStore(): FeatureStore; // Feature store (computation and caching)
+  artifactStore(): ArtifactStorePort; // Artifact store (Parquet + SQLite manifest)
   // Note: marketDataPort is async - use ctx.getMarketDataPort() instead
   marketDataPort(): never; // Market data port (for fetching OHLCV, metadata, etc.) - use getMarketDataPort() instead
   // Add more services as needed
@@ -271,10 +278,18 @@ export class CommandContext {
           maxSize: 1000,
         });
       },
+      artifactStore: () => {
+        // Artifact Store - Parquet + SQLite manifest
+        const manifestDb = process.env.ARTIFACT_MANIFEST_DB || '/home/memez/opn/manifest/manifest.sqlite';
+        const artifactsRoot = process.env.ARTIFACTS_ROOT || '/home/memez/opn/artifacts';
+        return new ArtifactStoreAdapter(manifestDb, artifactsRoot, pythonEngine);
+      },
       // Note: marketDataPort is async and should be accessed via getMarketDataPort()
       // Keeping in interface for type safety but implementation is async
       marketDataPort: () => {
-        throw new Error('Use ctx.getMarketDataPort() instead - MarketDataPort requires async initialization');
+        throw new Error(
+          'Use ctx.getMarketDataPort() instead - MarketDataPort requires async initialization'
+        );
       },
     };
   }

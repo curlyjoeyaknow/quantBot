@@ -70,7 +70,8 @@ async function migrateRawToCanonical(args: MigrationArgs): Promise<void> {
   for (const record of rawRecords) {
     try {
       // Parse raw content
-      const content = typeof record.content === 'string' ? JSON.parse(record.content) : record.content;
+      const content =
+        typeof record.content === 'string' ? JSON.parse(record.content) : record.content;
 
       // Transform based on source type
       if (record.sourceType === 'telegram_export') {
@@ -146,4 +147,3 @@ async function main() {
 if (require.main === module) {
   main();
 }
-

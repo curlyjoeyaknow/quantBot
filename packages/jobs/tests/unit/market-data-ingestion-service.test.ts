@@ -5,26 +5,31 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MarketDataIngestionService } from '../../src/market-data-ingestion-service.js';
 import { BirdeyeClient } from '@quantbot/infra/api-clients';
-import { getClickHouseClient } from '@quantbot/infra/storage';
+import { getClickHouseClient } from '@quantbot/storage';
 
 // Mock dependencies
 vi.mock('@quantbot/infra/api-clients', () => ({
   BirdeyeClient: vi.fn(),
 }));
 
-vi.mock('@quantbot/infra/storage', () => ({
+vi.mock('@quantbot/storage', () => ({
   getClickHouseClient: vi.fn(),
 }));
 
-vi.mock('@quantbot/infra/utils', () => ({
-  logger: {
-    info: vi.fn(),
-    debug: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  },
-  getClickHouseDatabaseName: () => 'quantbot',
-}));
+vi.mock('@quantbot/infra/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@quantbot/infra/utils')>();
+  return {
+    ...actual,
+    logger: {
+      info: vi.fn(),
+      debug: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    },
+    getClickHouseDatabaseName: () => 'quantbot',
+    findWorkspaceRoot: vi.fn(() => process.cwd()),
+  };
+});
 
 describe('MarketDataIngestionService', () => {
   let mockBirdeyeClient: {

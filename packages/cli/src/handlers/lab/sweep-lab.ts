@@ -33,9 +33,7 @@ import { runLabHandler, type LabRunResult } from './run-lab.js';
 import { loadOverlaySetsFromFile, type OverlaySet } from '../../commands/calls/_overlays.js';
 import { loadConfig } from '../../core/config-loader.js';
 import { ResultsWriter } from '../../core/results-writer.js';
-import {
-  loadCompletedIds,
-} from '../../core/scenario-generator.js';
+import { loadCompletedIds } from '../../core/scenario-generator.js';
 import { join } from 'path';
 import { ValidationError, ConfigurationError } from '@quantbot/infra/utils';
 import type { ExitOverlay } from '@quantbot/backtest';
@@ -185,9 +183,7 @@ function aggregatePerOverlay(perCallRows: PerCallRow[]): PerOverlayRow[] {
   for (const [key, rows] of byOverlay.entries()) {
     const firstRow = rows[0];
     const successfulRows = rows.filter((r) => r.ok && r.netReturnPct !== undefined);
-    const netReturns = successfulRows
-      .map((r) => r.netReturnPct!)
-      .sort((a, b) => a - b);
+    const netReturns = successfulRows.map((r) => r.netReturnPct!).sort((a, b) => a - b);
     const wins = successfulRows.filter((r) => (r.netReturnPct || 0) > 0).length;
 
     perOverlayRows.push({
@@ -196,15 +192,19 @@ function aggregatePerOverlay(perCallRows: PerCallRow[]): PerOverlayRow[] {
       lagMs: firstRow.lagMs,
       interval: firstRow.interval,
       overlaySetId: firstRow.overlaySetId,
-      overlay: firstRow.overlay.kind === 'combo' ? JSON.stringify(firstRow.overlay) : firstRow.overlay.kind,
+      overlay:
+        firstRow.overlay.kind === 'combo'
+          ? JSON.stringify(firstRow.overlay)
+          : firstRow.overlay.kind,
       calls: rows.length,
       callsSucceeded: successfulRows.length,
       callsFailed: rows.length - successfulRows.length,
-      medianNetReturnPct:
-        netReturns.length > 0 ? netReturns[Math.floor(netReturns.length / 2)] : 0,
+      medianNetReturnPct: netReturns.length > 0 ? netReturns[Math.floor(netReturns.length / 2)] : 0,
       winRate: successfulRows.length > 0 ? wins / successfulRows.length : 0,
       avgNetReturnPct:
-        netReturns.length > 0 ? netReturns.reduce((a, b) => a + b, 0) / netReturns.length : undefined,
+        netReturns.length > 0
+          ? netReturns.reduce((a, b) => a + b, 0) / netReturns.length
+          : undefined,
       minNetReturnPct: netReturns.length > 0 ? netReturns[0] : undefined,
       maxNetReturnPct: netReturns.length > 0 ? netReturns[netReturns.length - 1] : undefined,
     });
@@ -346,34 +346,34 @@ export async function sweepLabHandler(args: LabSweepArgs, ctx: CommandContext) {
         // Run lab handler
         const result = await runLabHandler(labRunArgs, ctx);
 
-      // Convert results to per-call rows
-      const rows = resultToPerCallRows(
-        result,
-        sweepId,
-        scenario.scenarioId,
-        scenario.lagMs,
-        scenario.interval,
-        scenario.overlaySet.id
-      );
-      perCallRows.push(...rows);
+        // Convert results to per-call rows
+        const rows = resultToPerCallRows(
+          result,
+          sweepId,
+          scenario.scenarioId,
+          scenario.lagMs,
+          scenario.interval,
+          scenario.overlaySet.id
+        );
+        perCallRows.push(...rows);
 
-      // Write per-call rows incrementally
-      for (const row of rows) {
-        await writer.writePerCall(row);
+        // Write per-call rows incrementally
+        for (const row of rows) {
+          await writer.writePerCall(row);
+        }
+
+        // Mark scenario as completed
+        writer.addCompletedScenario(scenario.scenarioId);
+
+        console.log(
+          `${progress} Completed ${scenario.scenarioId}: ${result.callsSucceeded}/${result.callsSimulated} calls succeeded`
+        );
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        errors.push({ scenarioId: scenario.scenarioId, error: errorMsg });
+        await writer.writeError({ scenarioId: scenario.scenarioId, error: errorMsg });
+        console.error(`${progress} Failed ${scenario.scenarioId}: ${errorMsg}`);
       }
-
-      // Mark scenario as completed
-      writer.addCompletedScenario(scenario.scenarioId);
-
-      console.log(
-        `${progress} Completed ${scenario.scenarioId}: ${result.callsSucceeded}/${result.callsSimulated} calls succeeded`
-      );
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      errors.push({ scenarioId: scenario.scenarioId, error: errorMsg });
-      await writer.writeError({ scenarioId: scenario.scenarioId, error: errorMsg });
-      console.error(`${progress} Failed ${scenario.scenarioId}: ${errorMsg}`);
-    }
     }
   }
 
@@ -525,7 +525,9 @@ async function processParquetSweep(
             },
             caller: {
               displayName: String(callerName || 'unknown'),
-              fromId: String(callerName || 'unknown').toLowerCase().replace(/\s+/g, '-'),
+              fromId: String(callerName || 'unknown')
+                .toLowerCase()
+                .replace(/\s+/g, '-'),
             },
             source: {
               callerMessageId: 0,
@@ -601,7 +603,11 @@ async function processParquetSweep(
             const workflowResult = await evaluateCallsWorkflow(request, workflowCtx);
 
             // Convert workflow results to per-call rows
-            for (let overlayIndex = 0; overlayIndex < scenario.overlaySet.overlays.length; overlayIndex++) {
+            for (
+              let overlayIndex = 0;
+              overlayIndex < scenario.overlaySet.overlays.length;
+              overlayIndex++
+            ) {
               const overlay = scenario.overlaySet.overlays[overlayIndex];
               if (!overlay) continue;
 
@@ -646,4 +652,3 @@ async function processParquetSweep(
     );
   }
 }
-

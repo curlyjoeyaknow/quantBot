@@ -161,22 +161,33 @@ describe('ClickHouse Slice Exporter - Compression', () => {
 
     const layout: ParquetLayoutSpec = {
       baseUri: 'file://./test',
-      subdirTemplate: 'data/bars',
+      subdirTemplate: '{dataset}/chain={chain}/dt={yyyy}-{mm}-{dd}/run_id={runId}',
       compression: 'zstd',
+      partitionKeys: ['dataset', 'chain', 'dt', 'runId'],
     };
+
+    // Allow DuckDB operations to succeed so we can verify compression is set
+    // The export will still fail later (e.g., when reading parquet file), but compression should be set
+    mockExecute.mockImplementation(async (sql: string) => {
+      // Allow compression setting and table creation to succeed
+      if (
+        sql.includes('SET parquet_compression') ||
+        sql.includes('CREATE TABLE') ||
+        sql.includes('COPY')
+      ) {
+        return undefined;
+      }
+      throw new Error(`Unexpected SQL: ${sql}`);
+    });
 
     try {
       await adapter.exportSlice({ run, spec, layout });
     } catch {
-      // Expected to fail due to mocks, but we can check the compression setting
+      // Expected to fail, but compression should have been set
     }
 
     // Verify compression was set
-    // The export may fail due to mocks, but we should still see the compression setting
-    // if the export got far enough to create the DuckDB client
     const executeCalls = mockExecute.mock.calls;
-
-    // Check if any execute call contains the compression setting
     const compressionCall = executeCalls.find((call) => {
       const sql = call[0];
       return typeof sql === 'string' && sql.includes("SET parquet_compression = 'zstd'");
@@ -202,14 +213,27 @@ describe('ClickHouse Slice Exporter - Compression', () => {
 
     const layout: ParquetLayoutSpec = {
       baseUri: 'file://./test',
-      subdirTemplate: 'data/bars',
+      subdirTemplate: '{dataset}/chain={chain}/dt={yyyy}-{mm}-{dd}/run_id={runId}',
       compression: 'snappy',
+      partitionKeys: ['dataset', 'chain', 'dt', 'runId'],
     };
+
+    // Allow DuckDB operations to succeed so we can verify compression is set
+    mockExecute.mockImplementation(async (sql: string) => {
+      if (
+        sql.includes('SET parquet_compression') ||
+        sql.includes('CREATE TABLE') ||
+        sql.includes('COPY')
+      ) {
+        return undefined;
+      }
+      throw new Error(`Unexpected SQL: ${sql}`);
+    });
 
     try {
       await adapter.exportSlice({ run, spec, layout });
     } catch {
-      // Expected to fail due to mocks
+      // Expected to fail, but compression should have been set
     }
 
     // Verify compression was set
@@ -238,14 +262,27 @@ describe('ClickHouse Slice Exporter - Compression', () => {
 
     const layout: ParquetLayoutSpec = {
       baseUri: 'file://./test',
-      subdirTemplate: 'data/bars',
+      subdirTemplate: '{dataset}/chain={chain}/dt={yyyy}-{mm}-{dd}/run_id={runId}',
       compression: 'gzip',
+      partitionKeys: ['dataset', 'chain', 'dt', 'runId'],
     };
+
+    // Allow DuckDB operations to succeed so we can verify compression is set
+    mockExecute.mockImplementation(async (sql: string) => {
+      if (
+        sql.includes('SET parquet_compression') ||
+        sql.includes('CREATE TABLE') ||
+        sql.includes('COPY')
+      ) {
+        return undefined;
+      }
+      throw new Error(`Unexpected SQL: ${sql}`);
+    });
 
     try {
       await adapter.exportSlice({ run, spec, layout });
     } catch {
-      // Expected to fail due to mocks
+      // Expected to fail, but compression should have been set
     }
 
     // Verify compression was set

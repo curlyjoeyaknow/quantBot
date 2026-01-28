@@ -22,7 +22,10 @@ import { DuckDBClient as StorageDuckDBClient } from '@quantbot/storage';
 /**
  * Generate overlay sets from TP/SL parameter grid
  */
-function generateOverlaySets(tpMults: number[], slMults: number[]): Array<{
+function generateOverlaySets(
+  tpMults: number[],
+  slMults: number[]
+): Array<{
   id: string;
   overlays: ExitOverlay[];
 }> {
@@ -161,10 +164,10 @@ async function loadCallsFromDuckDB(
   caller?: string
 ): Promise<CallSignal[]> {
   const db = new StorageDuckDBClient(duckdbPath);
-  
+
   const fromMs = new Date(dateFrom).getTime();
   const toMs = new Date(dateTo).getTime();
-  
+
   let query = `
     SELECT 
       call_id,
@@ -175,16 +178,16 @@ async function loadCallsFromDuckDB(
     FROM alerts
     WHERE ts_ms >= ${fromMs} AND ts_ms < ${toMs}
   `;
-  
+
   if (caller) {
     query += ` AND caller = '${caller.replace(/'/g, "''")}'`;
   }
-  
+
   query += ' ORDER BY ts_ms';
-  
+
   const result = await db.query(query);
   await db.close();
-  
+
   // DuckDBQueryResult has a rows property - convert to CallSignal format
   const rows = (result as { rows?: unknown[] }).rows || [];
   return rows.map((rowRaw: unknown) => {
@@ -196,7 +199,8 @@ async function loadCallsFromDuckDB(
       tsMs: row.ts_ms as number,
       token: {
         address: row.mint as string,
-        chain: chain === 'solana' ? 'sol' : (chain as 'bsc' | 'eth' | 'base' | 'arb' | 'op' | 'unknown'),
+        chain:
+          chain === 'solana' ? 'sol' : (chain as 'bsc' | 'eth' | 'base' | 'arb' | 'op' | 'unknown'),
       },
       caller: {
         fromId: callerName,
@@ -241,7 +245,7 @@ export async function runPhase1LabSweepDiscovery(
 
   // Load calls from DuckDB
   const allCalls = await loadCallsFromDuckDB(duckdbPath, dateFrom, dateTo);
-  
+
   // Group calls by caller
   const callsByCaller = new Map<string, CallSignal[]>();
   for (const call of allCalls) {
@@ -259,7 +263,7 @@ export async function runPhase1LabSweepDiscovery(
   // Run sweeps for each caller
   for (const callerName of callersToProcess) {
     const calls = callsByCaller.get(callerName) || [];
-    
+
     if (calls.length === 0) {
       logger.warn('No calls found for caller', { caller: callerName });
       continue;
@@ -314,7 +318,9 @@ export async function runPhase1LabSweepDiscovery(
             const result = await evaluateCallsWorkflow(request, workflowCtx);
 
             // Extract metrics from result
-            const successfulResults = result.results.filter((r) => r.diagnostics.tradeable && !r.diagnostics.skippedReason);
+            const successfulResults = result.results.filter(
+              (r) => r.diagnostics.tradeable && !r.diagnostics.skippedReason
+            );
             if (successfulResults.length === 0) continue;
 
             const returns = successfulResults.map((r) => r.pnl.netReturnPct);
@@ -397,9 +403,7 @@ export async function runPhase1LabSweepDiscovery(
     summary: {
       totalCallers: callersToProcess.length,
       callersWithRanges: allResults.length,
-      excludedCallers: callersToProcess.filter(
-        (c) => !allResults.some((r) => r.caller === c)
-      ),
+      excludedCallers: callersToProcess.filter((c) => !allResults.some((r) => r.caller === c)),
     },
   };
 
@@ -425,10 +429,7 @@ export async function runPhase1LabSweepDiscovery(
 /**
  * Write Phase 1 results to Parquet
  */
-async function writeResultsToParquet(
-  result: Phase1Result,
-  parquetPath: string
-): Promise<void> {
+async function writeResultsToParquet(result: Phase1Result, parquetPath: string): Promise<void> {
   // Use DuckDB to write Parquet
   const db = new DuckDBClient(':memory:');
   await db.execute('INSTALL parquet');
@@ -485,4 +486,3 @@ async function writeResultsToParquet(
 
   logger.debug('Wrote Phase 1 results to Parquet', { parquetPath });
 }
-

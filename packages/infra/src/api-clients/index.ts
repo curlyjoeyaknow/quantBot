@@ -23,3 +23,6 @@ export { MultiChainMetadataCache, getMetadataCache } from './multi-chain-metadat
 
 // Birdeye OHLCV fetching (with automatic chunking)
 export { fetchBirdeyeCandles, fetchBirdeyeCandlesDirect } from './birdeye-ohlcv.js';
+
+// Testing utilities
+export { resetBirdeyeClient } from './birdeye-client.js';

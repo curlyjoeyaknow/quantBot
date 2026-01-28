@@ -1,0 +1,2 @@
+[console_scripts]
+artifacts = artifact_store.bin.artifacts_cli:main

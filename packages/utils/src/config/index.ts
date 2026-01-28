@@ -77,7 +77,7 @@ export function getClickHouseConfig(): ClickHouseConfig {
       ? Number(CLICKHOUSE_HTTP_PORT)
       : CLICKHOUSE_PORT
         ? Number(CLICKHOUSE_PORT)
-        : 8123,
+        : 18123, // Default to 18123 (Docker HTTP port)
     user: CLICKHOUSE_USER || 'default',
     password: CLICKHOUSE_PASSWORD || '',
     database: CLICKHOUSE_DATABASE || 'quantbot',

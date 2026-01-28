@@ -140,12 +140,7 @@ export class CanonicalDuckDBAdapter implements CanonicalRepository {
   async isAvailable(): Promise<boolean> {
     try {
       // Try to initialize schema to check availability
-      await this.client.execute(
-        this.scriptPath,
-        'init',
-        {},
-        z.object({ success: z.boolean() })
-      );
+      await this.client.execute(this.scriptPath, 'init', {}, z.object({ success: z.boolean() }));
       return true;
     } catch (error) {
       logger.warn('CanonicalDuckDBAdapter is not available', { error: error as Error });
@@ -153,4 +148,3 @@ export class CanonicalDuckDBAdapter implements CanonicalRepository {
     }
   }
 }
-

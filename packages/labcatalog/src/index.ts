@@ -1,12 +1,12 @@
 /**
  * @quantbot/labcatalog
  *
- * This file acts as a backward compatibility shim.
- * All exports are now from @quantbot/lab/catalog.
- *
- * The labcatalog package has been merged into @quantbot/lab.
- * All functionality is available via @quantbot/lab/catalog.
+ * Lab catalog for managing structured artifacts and run metadata.
  */
 
-// Re-export all from @quantbot/lab/catalog
-export * from '@quantbot/lab/catalog';
+// Export all catalog functionality
+export * from './catalog.js';
+export * from './manifest.js';
+export * from './content-address.js';
+export * from './layout.js';
+export * from './adapters.js';

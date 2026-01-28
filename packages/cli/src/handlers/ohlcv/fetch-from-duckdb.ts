@@ -294,7 +294,7 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, ctx: Com
         // Fetch candles via MarketDataPort (single attempt, no retry loop)
         const marketDataPort = await ctx.getMarketDataPort();
         const fetchStart = Date.now();
-        
+
         // Map interval to MarketDataPort format
         const marketDataInterval: '15s' | '1m' | '5m' | '1H' =
           args.interval === '1s' || args.interval === '15s'
@@ -302,7 +302,7 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, ctx: Com
             : args.interval === '5m'
               ? '5m'
               : '1m'; // Default to 1m for other intervals
-        
+
         const candles = await marketDataPort.fetchOhlcv({
           tokenAddress: createTokenAddress(mint),
           chain,

@@ -316,6 +316,9 @@ importers:
       duckdb:
         specifier: ^1.4.3
         version: 1.4.3(encoding@0.1.13)
+      execa:
+        specifier: ^9.4.0
+        version: 9.4.1
       type-fest:
         specifier: ^5.3.1
         version: 5.3.1
@@ -703,6 +706,9 @@ importers:
       '@quantbot/utils':
         specifier: workspace:*
         version: link:../utils
+      '@quantbot/workflows':
+        specifier: workspace:*
+        version: link:../workflows
       luxon:
         specifier: ^3.4.4
         version: 3.7.2
