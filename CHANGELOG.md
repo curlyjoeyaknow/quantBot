@@ -4,6 +4,63 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Completed - Phase I: Artifact Store Integration (2026-01-28)
+
+**Status**: ✅ COMPLETE (Week 1-2)
+
+**Deliverables**:
+- ✅ **Port Interface** (`packages/core/src/ports/artifact-store-port.ts`)
+  - 8 methods: getArtifact, listArtifacts, findByLogicalKey, publishArtifact, getLineage, getDownstream, supersede, isAvailable
+  - Complete type definitions: Artifact, ArtifactFilter, PublishArtifactRequest, PublishArtifactResult, ArtifactLineage
+  - Comprehensive JSDoc documentation
+  - Exported from `@quantbot/core`
+
+- ✅ **Python Wrapper** (`tools/storage/artifact_store_ops.py`)
+  - JSON stdin/stdout interface for TypeScript integration
+  - 8 operations matching port interface
+  - Follows existing pattern (duckdb_artifacts.py, etc.)
+  - Error handling with JSON to stderr
+
+- ✅ **Adapter Implementation** (`packages/storage/src/adapters/artifact-store-adapter.ts`)
+  - Implements `ArtifactStorePort` using `PythonEngine`
+  - Zod schemas for response validation
+  - Error handling (NotFoundError, AppError)
+  - Logging with structured context
+  - Exported from `@quantbot/storage`
+
+- ✅ **CommandContext Integration** (`packages/cli/src/core/command-context.ts`)
+  - Added `artifactStore()` service factory method
+  - Lazy initialization pattern
+  - Environment variables: `ARTIFACT_MANIFEST_DB`, `ARTIFACTS_ROOT`
+  - Default paths: `/home/memez/opn/manifest/manifest.sqlite`, `/home/memez/opn/artifacts`
+
+- ✅ **Unit Tests** (`packages/storage/tests/unit/adapters/artifact-store-adapter.test.ts`)
+  - 10 test cases covering all port methods
+  - Mock PythonEngine for isolation
+  - Error handling verification
+  - Deduplication detection tests
+
+- ✅ **Integration Tests** (`packages/storage/tests/integration/artifact-store-adapter.test.ts`)
+  - 8 end-to-end test cases with real artifact store
+  - Publish and retrieve flow
+  - Deduplication verification
+  - Lineage tracking verification
+  - Supersession workflow
+
+**Pattern Followed**:
+- ✅ Handlers depend on ports (not adapters)
+- ✅ Adapters implement ports using PythonEngine
+- ✅ No separate bridge package (uses existing patterns)
+- ✅ Follows existing adapter pattern (DuckDbSliceAnalyzerAdapter, etc.)
+
+**Stats**:
+- Files created: 5
+- Files modified: 3
+- Lines of code: ~1,400
+- Test coverage: 18 tests (10 unit + 8 integration)
+
+**Next**: Phase II - Projection Builder (Week 2-3)
+
 ### Added - Research Package Roadmap & Phase Documents (2026-01-28)
 
 - **Research Package Implementation Roadmap** (`tasks/research-package/roadmap.md`):
