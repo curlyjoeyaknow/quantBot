@@ -87,3 +87,10 @@ export type {
   PublishArtifactResult,
   ArtifactLineage,
 } from './artifact-store-port.js';
+export type {
+  ProjectionBuilderPort,
+  ProjectionRequest,
+  ProjectionResult,
+  ProjectionTable,
+  ProjectionIndex,
+} from './projection-builder-port.js';

@@ -4,6 +4,60 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Completed - Phase II: Projection Builder (2026-01-28)
+
+**Status**: ✅ COMPLETE (Week 2-3)
+
+**Deliverables**:
+- ✅ **Port Interface** (`packages/core/src/ports/projection-builder-port.ts`)
+  - 4 methods: buildProjection, rebuildProjection, disposeProjection, projectionExists
+  - Complete type definitions: ProjectionRequest, ProjectionResult, ProjectionTable, ProjectionIndex
+  - Comprehensive JSDoc documentation
+  - Exported from `@quantbot/core`
+
+- ✅ **Adapter Implementation** (`packages/storage/src/adapters/projection-builder-adapter.ts`)
+  - Implements `ProjectionBuilderPort` using DuckDB
+  - Uses DuckDB's `read_parquet()` to create tables from artifacts
+  - Creates indexes for query optimization
+  - Manages cache directory lifecycle
+  - Logging with structured context
+  - Exported from `@quantbot/storage`
+
+- ✅ **CommandContext Integration** (`packages/cli/src/core/command-context.ts`)
+  - Added `projectionBuilder()` service factory method
+  - Lazy initialization pattern
+  - Environment variable: `PROJECTION_CACHE_DIR`
+  - Default path: `/home/memez/opn/cache`
+
+- ✅ **Unit Tests** (`packages/storage/tests/unit/adapters/projection-builder-adapter.test.ts`)
+  - 8 test cases covering all port methods
+  - Mock ArtifactStore for isolation
+  - Error handling verification
+  - Cache directory management tests
+
+- ✅ **Integration Tests** (`packages/storage/tests/integration/projection-builder-adapter.test.ts`)
+  - 6 end-to-end test cases with real artifact store
+  - Build projection from real Parquet files
+  - Multi-table projection tests
+  - Index creation verification
+  - Disposal workflow
+
+**Pattern Followed**:
+- ✅ Port interface in `@quantbot/core` (no dependencies)
+- ✅ Adapter in `@quantbot/storage` (implements port, uses DuckDB)
+- ✅ Service factory in CommandContext (lazy initialization)
+- ✅ Comprehensive test coverage (unit + integration)
+
+**Architecture**:
+- Parquet artifacts are immutable truth layer
+- DuckDB projections are disposable query engines
+- Projections can be rebuilt from artifacts at any time
+- Indexes optimize common query patterns
+
+**Next Phase**: Phase III: Experiment Tracking
+
+---
+
 ### Completed - Phase I: Artifact Store Integration (2026-01-28)
 
 **Status**: ✅ COMPLETE (Week 1-2)

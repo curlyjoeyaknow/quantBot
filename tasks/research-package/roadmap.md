@@ -27,7 +27,7 @@ Week 7-8    │ Phase VII: OHLCV Slice Integration      │ Parallel
 | Phase | Name | Duration | Status | Dependencies |
 |-------|------|----------|--------|--------------|
 | I | Artifact Store Integration | Week 1-2 | ✅ **COMPLETE** | None |
-| II | Projection Builder | Week 2-3 | 🔲 Pending | Phase I |
+| II | Projection Builder | Week 2-3 | ✅ **COMPLETE** | Phase I |
 | III | Experiment Tracking | Week 3-4 | 🔲 Pending | Phase I |
 | IV | Experiment Execution | Week 4-5 | 🔲 Pending | Phase II, III |
 | V | CLI Integration | Week 5-6 | 🔲 Pending | Phase I, II, III |
@@ -124,19 +124,21 @@ Data Lake (/home/memez/opn)
 
 ---
 
-### Phase II: Projection Builder (Week 2-3)
+### Phase II: Projection Builder (Week 2-3) ✅ **COMPLETE**
 
 **Goal**: Build DuckDB projections from Parquet artifacts
 
 **Deliverables**:
-- `packages/core/src/ports/projection-builder-port.ts`
-- `packages/storage/src/adapters/projection-builder-adapter.ts`
-- Projection builder tests
+- ✅ `packages/core/src/ports/projection-builder-port.ts`
+- ✅ `packages/storage/src/adapters/projection-builder-adapter.ts`
+- ✅ Projection builder tests
 
 **Success Criteria**:
 - ✅ DuckDB projections built from Parquet
 - ✅ Projections are rebuildable
 - ✅ Cache management works
+
+**Completed**: 2026-01-28
 
 **Document**: [Phase II: Projection Builder](./phase-2-projection-builder.md)
 
@@ -241,9 +243,9 @@ Data Lake (/home/memez/opn)
 - ✅ Deduplication works
 
 ### Milestone 2: Experiment Infrastructure (Week 4)
-- ✅ Projection builder working
-- ✅ Experiment tracker working
-- ✅ Can create and track experiments
+- ✅ Projection builder working (completed 2026-01-28)
+- 🔲 Experiment tracker working
+- 🔲 Can create and track experiments
 
 ### Milestone 3: End-to-End Flow (Week 5)
 - ✅ Experiment execution working

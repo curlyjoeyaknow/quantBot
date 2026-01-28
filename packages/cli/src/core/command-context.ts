@@ -15,6 +15,7 @@ import {
   IngestionRunRepository,
   OhlcvDedupService,
   ArtifactStoreAdapter,
+  ProjectionBuilderAdapter,
   // PostgreSQL repositories removed - use DuckDB equivalents
   // CallsRepository, TokensRepository, AlertsRepository, SimulationRunsRepository
 } from '@quantbot/storage';
@@ -25,6 +26,7 @@ import type {
   FeatureStore,
   MarketDataPort,
   ArtifactStorePort,
+  ProjectionBuilderPort,
 } from '@quantbot/core';
 import { OhlcvIngestionService } from '@quantbot/ingestion';
 import { MarketDataIngestionService } from '@quantbot/jobs';
@@ -92,6 +94,7 @@ export interface CommandServices {
   canonicalRepository(): CanonicalRepository; // Canonical events (unified market data)
   featureStore(): FeatureStore; // Feature store (computation and caching)
   artifactStore(): ArtifactStorePort; // Artifact store (Parquet + SQLite manifest)
+  projectionBuilder(): ProjectionBuilderPort; // Projection builder (DuckDB from Parquet)
   // Note: marketDataPort is async - use ctx.getMarketDataPort() instead
   marketDataPort(): never; // Market data port (for fetching OHLCV, metadata, etc.) - use getMarketDataPort() instead
   // Add more services as needed
@@ -283,6 +286,12 @@ export class CommandContext {
         const manifestDb = process.env.ARTIFACT_MANIFEST_DB || '/home/memez/opn/manifest/manifest.sqlite';
         const artifactsRoot = process.env.ARTIFACTS_ROOT || '/home/memez/opn/artifacts';
         return new ArtifactStoreAdapter(manifestDb, artifactsRoot, pythonEngine);
+      },
+      projectionBuilder: () => {
+        // Projection Builder - DuckDB from Parquet
+        const artifactStore = this.services.artifactStore();
+        const cacheDir = process.env.PROJECTION_CACHE_DIR || '/home/memez/opn/cache';
+        return new ProjectionBuilderAdapter(artifactStore, cacheDir);
       },
       // Note: marketDataPort is async and should be accessed via getMarketDataPort()
       // Keeping in interface for type safety but implementation is async
