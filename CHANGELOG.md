@@ -4,11 +4,95 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Completed - Phase III: Experiment Tracking (2026-01-28)
+
+**Status**: ✅ COMPLETE (Week 3-4)
+
+**Deliverables**:
+
+- ✅ **Port Interface** (`packages/core/src/ports/experiment-tracker-port.ts`)
+  - 6 methods: createExperiment, getExperiment, listExperiments, updateStatus, storeResults, findByInputArtifacts
+  - Complete type definitions: Experiment, ExperimentDefinition, ExperimentStatus, ExperimentFilter, ExperimentResults
+  - Comprehensive JSDoc documentation with examples
+  - Exported from `@quantbot/core`
+
+- ✅ **DuckDB Schema** (`tools/storage/experiment_tracker_schema.sql`)
+  - Experiments table with artifact lineage tracking
+  - Input artifacts stored as JSON arrays (alerts, ohlcv, strategies)
+  - Output artifacts (trades, metrics, curves, diagnostics)
+  - Provenance tracking (git commit, dirty flag, engine version)
+  - Execution metadata (start/completion timestamps, duration, errors)
+  - Indexes for status, created_at, git_commit, name queries
+
+- ✅ **Python Wrapper** (`tools/storage/experiment_tracker_ops.py`)
+  - JSON stdin/stdout interface for TypeScript integration
+  - 6 operations: create_experiment, get_experiment, list_experiments, update_status, store_results, find_by_input_artifacts
+  - Automatic schema initialization
+  - Status lifecycle management (pending → running → completed/failed/cancelled)
+  - Automatic timestamp and duration tracking
+  - Artifact lineage queries using DuckDB JSON functions
+
+- ✅ **Adapter Implementation** (`packages/storage/src/adapters/experiment-tracker-adapter.ts`)
+  - Implements `ExperimentTrackerPort` using DuckDB
+  - Uses PythonEngine for subprocess execution
+  - Zod schemas for validation
+  - Error handling with NotFoundError and AppError
+  - Logging with structured context
+  - Exported from `@quantbot/storage`
+
+- ✅ **CommandContext Integration** (`packages/cli/src/core/command-context.ts`)
+  - Added `experimentTracker()` service factory method
+  - Lazy initialization pattern
+  - Environment variable: `EXPERIMENT_DB`
+  - Default path: `/home/memez/opn/data/experiments.duckdb`
+
+- ✅ **Unit Tests** (`packages/storage/tests/unit/adapters/experiment-tracker-adapter.test.ts`)
+  - 10 test cases covering all port methods
+  - Mock PythonEngine for isolation
+  - CRUD operations verification
+  - Status update tests (pending → running → completed/failed)
+  - Results storage tests (full and partial)
+  - Artifact lineage query tests
+  - Error handling verification
+
+- ✅ **Integration Tests** (`packages/storage/tests/integration/experiment-tracker-adapter.test.ts`)
+  - 15 end-to-end test cases with real DuckDB
+  - Full experiment lifecycle (create → run → store results → complete)
+  - Failed experiment tracking
+  - List experiments with filters (status, git commit, limit)
+  - Find by input artifacts (alerts, ohlcv, strategies)
+  - Partial results storage
+  - Error handling with real database
+
+**Pattern Followed**:
+
+- ✅ Port interface in `@quantbot/core` (no dependencies)
+- ✅ Adapter in `@quantbot/storage` (implements port, uses PythonEngine + DuckDB)
+- ✅ Python wrapper in `tools/storage` (JSON stdin/stdout)
+- ✅ Service factory in CommandContext (lazy initialization)
+- ✅ Unit tests with mocks (isolation)
+- ✅ Integration tests with real dependencies (end-to-end)
+
+**Key Features**:
+
+- **Artifact Lineage**: Experiments declare frozen artifact sets (alerts, ohlcv, strategies)
+- **Status Lifecycle**: pending → running → completed/failed/cancelled
+- **Provenance Tracking**: Git commit, dirty flag, engine version, timestamps
+- **Output Artifacts**: Trades, metrics, curves, diagnostics artifact IDs
+- **Execution Metadata**: Start/completion timestamps, duration, error messages
+- **Lineage Queries**: Find experiments by input artifact IDs
+- **Filtering**: By status, git commit, date range, limit
+
+**Next Phase**: Phase IV (Experiment Execution) can now begin.
+
+---
+
 ### Completed - Phase II: Projection Builder (2026-01-28)
 
 **Status**: ✅ COMPLETE (Week 2-3)
 
 **Deliverables**:
+
 - ✅ **Port Interface** (`packages/core/src/ports/projection-builder-port.ts`)
   - 4 methods: buildProjection, rebuildProjection, disposeProjection, projectionExists
   - Complete type definitions: ProjectionRequest, ProjectionResult, ProjectionTable, ProjectionIndex
@@ -43,12 +127,14 @@ All notable changes to this project will be documented in this file.
   - Disposal workflow
 
 **Pattern Followed**:
+
 - ✅ Port interface in `@quantbot/core` (no dependencies)
 - ✅ Adapter in `@quantbot/storage` (implements port, uses DuckDB)
 - ✅ Service factory in CommandContext (lazy initialization)
 - ✅ Comprehensive test coverage (unit + integration)
 
 **Architecture**:
+
 - Parquet artifacts are immutable truth layer
 - DuckDB projections are disposable query engines
 - Projections can be rebuilt from artifacts at any time
@@ -63,6 +149,7 @@ All notable changes to this project will be documented in this file.
 **Status**: ✅ COMPLETE (Week 1-2)
 
 **Deliverables**:
+
 - ✅ **Port Interface** (`packages/core/src/ports/artifact-store-port.ts`)
   - 8 methods: getArtifact, listArtifacts, findByLogicalKey, publishArtifact, getLineage, getDownstream, supersede, isAvailable
   - Complete type definitions: Artifact, ArtifactFilter, PublishArtifactRequest, PublishArtifactResult, ArtifactLineage
@@ -102,12 +189,14 @@ All notable changes to this project will be documented in this file.
   - Supersession workflow
 
 **Pattern Followed**:
+
 - ✅ Handlers depend on ports (not adapters)
 - ✅ Adapters implement ports using PythonEngine
 - ✅ No separate bridge package (uses existing patterns)
 - ✅ Follows existing adapter pattern (DuckDbSliceAnalyzerAdapter, etc.)
 
 **Stats**:
+
 - Files created: 5
 - Files modified: 3
 - Lines of code: ~1,400

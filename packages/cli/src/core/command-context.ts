@@ -16,6 +16,7 @@ import {
   OhlcvDedupService,
   ArtifactStoreAdapter,
   ProjectionBuilderAdapter,
+  ExperimentTrackerAdapter,
   // PostgreSQL repositories removed - use DuckDB equivalents
   // CallsRepository, TokensRepository, AlertsRepository, SimulationRunsRepository
 } from '@quantbot/storage';
@@ -27,6 +28,7 @@ import type {
   MarketDataPort,
   ArtifactStorePort,
   ProjectionBuilderPort,
+  ExperimentTrackerPort,
 } from '@quantbot/core';
 import { OhlcvIngestionService } from '@quantbot/ingestion';
 import { MarketDataIngestionService } from '@quantbot/jobs';
@@ -95,6 +97,7 @@ export interface CommandServices {
   featureStore(): FeatureStore; // Feature store (computation and caching)
   artifactStore(): ArtifactStorePort; // Artifact store (Parquet + SQLite manifest)
   projectionBuilder(): ProjectionBuilderPort; // Projection builder (DuckDB from Parquet)
+  experimentTracker(): ExperimentTrackerPort; // Experiment tracker (DuckDB)
   // Note: marketDataPort is async - use ctx.getMarketDataPort() instead
   marketDataPort(): never; // Market data port (for fetching OHLCV, metadata, etc.) - use getMarketDataPort() instead
   // Add more services as needed
@@ -283,7 +286,8 @@ export class CommandContext {
       },
       artifactStore: () => {
         // Artifact Store - Parquet + SQLite manifest
-        const manifestDb = process.env.ARTIFACT_MANIFEST_DB || '/home/memez/opn/manifest/manifest.sqlite';
+        const manifestDb =
+          process.env.ARTIFACT_MANIFEST_DB || '/home/memez/opn/manifest/manifest.sqlite';
         const artifactsRoot = process.env.ARTIFACTS_ROOT || '/home/memez/opn/artifacts';
         return new ArtifactStoreAdapter(manifestDb, artifactsRoot, pythonEngine);
       },
@@ -292,6 +296,11 @@ export class CommandContext {
         const artifactStore = this.services.artifactStore();
         const cacheDir = process.env.PROJECTION_CACHE_DIR || '/home/memez/opn/cache';
         return new ProjectionBuilderAdapter(artifactStore, cacheDir);
+      },
+      experimentTracker: () => {
+        // Experiment Tracker - DuckDB
+        const dbPath = process.env.EXPERIMENT_DB || '/home/memez/opn/data/experiments.duckdb';
+        return new ExperimentTrackerAdapter(dbPath, pythonEngine);
       },
       // Note: marketDataPort is async and should be accessed via getMarketDataPort()
       // Keeping in interface for type safety but implementation is async

@@ -94,3 +94,11 @@ export type {
   ProjectionTable,
   ProjectionIndex,
 } from './projection-builder-port.js';
+export type {
+  ExperimentTrackerPort,
+  Experiment,
+  ExperimentDefinition,
+  ExperimentStatus,
+  ExperimentFilter,
+  ExperimentResults,
+} from './experiment-tracker-port.js';
