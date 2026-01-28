@@ -4,6 +4,91 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added - Research Package Roadmap & Phase Documents (2026-01-28)
+
+- **Research Package Implementation Roadmap** (`tasks/research-package/roadmap.md`):
+  - 8-week timeline with milestones
+  - Critical path analysis (Phases I-IV sequential)
+  - Phase dependencies and parallel execution opportunities
+  - Success metrics and risk mitigation
+
+- **Individual Phase Documents** (`tasks/research-package/`):
+  - **Phase I** (`phase-1-artifact-store-integration.md`): Port + adapter + Python wrapper (Week 1-2)
+  - **Phase II** (`phase-2-projection-builder.md`): DuckDB projections from Parquet (Week 2-3)
+  - **Phase III** (`phase-3-experiment-tracking.md`): Experiment tracking with lineage (Week 3-4)
+  - **Phase IV** (`phase-4-experiment-execution.md`): Experiment execution handler (Week 4-5)
+  - **Phase V** (`phase-5-cli-integration.md`): CLI commands for artifacts/experiments (Week 5-6)
+  - **Phase VI** (`phase-6-alert-ingestion-integration.md`): Alert ingestion via artifacts (Week 6-7)
+  - **Phase VII** (`phase-7-ohlcv-slice-integration.md`): OHLCV slice export via artifacts (Week 7-8)
+  - **Index** (`README.md`): Navigation and quick reference
+
+### Added - Research Package Architecture (2026-01-28)
+
+- **Research Package PRD Suite**: Comprehensive Product Requirements Documents for transforming QuantBot into a research lab
+  - **Consolidated PRD** (`tasks/prd-research-package-consolidated.md`):
+    - Complete implementation guide using ports/adapters/handlers pattern
+    - Integration with existing `/home/memez/opn` data lake (4,899 artifacts)
+    - Integration with existing `packages/artifact_store` (Python)
+    - 8-week implementation plan (7 phases)
+    - No separate bridge package (uses existing PythonEngine)
+  - **Research Lab Roadmap** (`tasks/prd-research-lab-roadmap.md`):
+    - 10-phase strategic roadmap (Foundations → Knowledge Retention)
+    - Package recommendation: use `@quantbot/simulation` (determinism already correct)
+    - Critical path analysis
+  - **Architecture Document** (`docs/architecture/research-package-architecture.md`):
+    - Visual diagrams (Mermaid + ASCII)
+    - Workflow examples (ingestion, experiment execution, lineage queries)
+    - Testing strategy (unit, integration, end-to-end)
+    - Troubleshooting guide
+  - **Index Document** (`tasks/README-RESEARCH-PACKAGE.md`):
+    - Navigation guide for all documents
+    - Quick start instructions
+    - Key architectural decisions
+  - **Summary Document** (`tasks/RESEARCH-PACKAGE-SUMMARY.md`):
+    - Executive summary
+    - Implementation timeline
+    - Files to create (complete list)
+- **Key Architectural Decisions**:
+  - ✅ Use `@quantbot/simulation` package (determinism already correctly implemented)
+  - ✅ Use ports/adapters pattern (no separate bridge package needed)
+  - ✅ Use existing `PythonEngine` for Python integration
+  - ✅ Use `/home/memez/opn` as data lake (4,899 artifacts already registered)
+  - ✅ Parquet-first, DuckDB-as-projection architecture
+- **Architectural Guarantees**:
+  1. Parquet is truth (all authoritative data in immutable Parquet)
+  2. DuckDB is disposable (can delete and rebuild without data loss)
+  3. Idempotency everywhere (safe to re-run any pipeline step)
+  4. Lineage is complete (every artifact declares its inputs)
+  5. Ports/adapters pattern (handlers depend on ports, adapters implement ports)
+- **Implementation Plan**:
+  - Phase I: Artifact Store Integration (Week 1-2)
+  - Phase II: Projection Builder (Week 2-3)
+  - Phase III: Experiment Tracking (Week 3-4)
+  - Phase IV: Experiment Execution (Week 4-5)
+  - Phase V: CLI Integration (Week 5-6)
+  - Phase VI: Alert Ingestion Integration (Week 6-7)
+  - Phase VII: OHLCV Slice Integration (Week 7-8)
+
+### Fixed - Build System (2026-01-26)
+
+- **Fixed TypeScript build errors across multiple packages**:
+  - Added missing `@quantbot/workflows` dependency to `@quantbot/jobs` package
+  - Fixed `MarketDataPort` type assignment in `OhlcvIngestionEngine`
+  - Created stub `artifacts` module for `@quantbot/backtest` and `@quantbot/simulation` packages
+    - Implemented `createRunDirectory()`, `getGitProvenance()` functions
+    - Added artifact types: `AlertArtifact`, `PathArtifact`, `TradeArtifact`, `SummaryArtifact`
+    - Added `RunDirectory` interface with manifest and artifact management
+  - Fixed package exports in `@quantbot/labcatalog` and `@quantbot/data-observatory`
+    - Changed from re-exporting non-existent `@quantbot/lab` subpaths to exporting own modules
+    - Exported `RunManifest`, `createRunManifest` from `@quantbot/labcatalog`
+    - Exported `DataSnapshotRef` from `@quantbot/data-observatory`
+  - Fixed import paths in `@quantbot/simulation` (changed `@quantbot/lab/catalog` to `@quantbot/labcatalog`)
+  - Created stub artifact handlers for CLI:
+    - `list-artifacts.ts` - List versioned artifacts
+    - `get-artifact.ts` - Retrieve artifact by ID and version
+    - `tag-artifact.ts` - Add tags to artifacts
+  - All packages now build successfully without TypeScript errors
+
 ### Added - Parquet Lake v1 Slice Exporter
 
 - **Parquet Lake v1 Implementation**: Complete implementation of Parquet Lake v1 spec for deterministic, scalable data exports
