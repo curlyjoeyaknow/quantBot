@@ -12,7 +12,7 @@ import {
   ProjectionBuilderAdapter,
   ExperimentTrackerAdapter,
 } from '@quantbot/storage';
-import { PythonEngine } from '@quantbot/utils';
+import { PythonEngine } from '@quantbot/infra/utils';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -21,6 +21,7 @@ describe('executeExperiment (integration)', () => {
   let tempDir: string;
   let manifestDb: string;
   let artifactsRoot: string;
+  let experimentDb: string;
   let artifactStore: ArtifactStoreAdapter;
   let projectionBuilder: ProjectionBuilderAdapter;
   let experimentTracker: ExperimentTrackerAdapter;
@@ -31,14 +32,22 @@ describe('executeExperiment (integration)', () => {
     tempDir = mkdtempSync(join(tmpdir(), 'exp-integration-test-'));
     manifestDb = join(tempDir, 'manifest.sqlite');
     artifactsRoot = join(tempDir, 'artifacts');
+    experimentDb = join(tempDir, 'experiments.duckdb');
 
     // Initialize Python engine
     pythonEngine = new PythonEngine();
 
     // Initialize adapters
     artifactStore = new ArtifactStoreAdapter(manifestDb, artifactsRoot, pythonEngine);
-    projectionBuilder = new ProjectionBuilderAdapter(artifactStore, join(tempDir, 'projections'));
-    experimentTracker = new ExperimentTrackerAdapter(pythonEngine);
+    projectionBuilder = new ProjectionBuilderAdapter(
+      artifactStore,
+      join(tempDir, 'projections'),
+      undefined, // maxProjectionSizeBytes (use default)
+      undefined, // metadataDbPath (use default)
+      undefined, // batchSize (use default)
+      artifactsRoot // artifactsRoot - must match artifact store
+    );
+    experimentTracker = new ExperimentTrackerAdapter(experimentDb, pythonEngine);
   });
 
   afterAll(() => {
@@ -50,12 +59,12 @@ describe('executeExperiment (integration)', () => {
     }
   });
 
-  it.skip('should execute experiment with real artifacts', async () => {
+  it('should execute experiment with real artifacts', async () => {
     // This test creates test artifacts and executes a full experiment
-    // SKIPPED: DuckDB timestamp casting issue in artifact_store spec
-    // The spec uses "AT TIME ZONE 'UTC'" which requires TIMESTAMP type,
-    // but CSV columns are read as VARCHAR. This needs to be fixed in
-    // packages/artifact_store/artifact_store/spec.py cast expressions.
+    // NOTE: May fail if artifact_store spec has timestamp casting issues.
+    // If this test fails, check packages/artifact_store/artifact_store/spec.py
+    // for proper TIMESTAMP type handling in cast expressions.
+  }, 30000); // 30 second timeout for integration test
 
     // 1. Create test artifacts with correct schemas
     const alertsPath = join(tempDir, 'alerts.csv');

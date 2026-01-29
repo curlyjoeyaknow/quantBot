@@ -43,7 +43,9 @@ SPECS: Dict[str, ArtifactTypeSpec] = {
             "alert_message_id",
         ),
         casts={
-            "alert_ts_utc": "strftime(CAST({col} AS TIMESTAMP), '%Y-%m-%dT%H:%M:%fZ')",
+            # Handle both VARCHAR (ISO string) and TIMESTAMP types
+            # Cast to TIMESTAMP (handles ISO strings), then format to UTC ISO string
+            "alert_ts_utc": "strftime(TRY_CAST({col} AS TIMESTAMP), '%Y-%m-%dT%H:%M:%S.%fZ')",
         },
     ),
 
@@ -52,8 +54,9 @@ SPECS: Dict[str, ArtifactTypeSpec] = {
         canonical_cols=("alert_ts", "source", "message_id", "token_mint", "raw_text"),
         sort_keys=("alert_ts", "source", "message_id", "token_mint"),
         casts={
-            # Normalize timestamps to UTC ISO string
-            "alert_ts": "strftime({col} AT TIME ZONE 'UTC', '%Y-%m-%dT%H:%M:%fZ')",
+            # Handle both VARCHAR (ISO string) and TIMESTAMP types
+            # Cast to TIMESTAMP (handles ISO strings), then format to UTC ISO string
+            "alert_ts": "strftime(TRY_CAST({col} AS TIMESTAMP), '%Y-%m-%dT%H:%M:%S.%fZ')",
         },
     ),
     "ohlcv_slice": ArtifactTypeSpec(
@@ -61,7 +64,9 @@ SPECS: Dict[str, ArtifactTypeSpec] = {
         canonical_cols=("ts", "open", "high", "low", "close", "volume"),
         sort_keys=("ts",),
         casts={
-            "ts": "strftime({col} AT TIME ZONE 'UTC', '%Y-%m-%dT%H:%M:%fZ')",
+            # Handle both VARCHAR (ISO string) and TIMESTAMP types
+            # Cast to TIMESTAMP (handles ISO strings), then format to UTC ISO string
+            "ts": "strftime(TRY_CAST({col} AS TIMESTAMP), '%Y-%m-%dT%H:%M:%S.%fZ')",
         },
     ),
     "run_metrics": ArtifactTypeSpec(
@@ -69,7 +74,9 @@ SPECS: Dict[str, ArtifactTypeSpec] = {
         canonical_cols=("run_id", "metric_name", "metric_value", "ts"),
         sort_keys=("run_id", "metric_name", "ts"),
         casts={
-            "ts": "strftime({col} AT TIME ZONE 'UTC', '%Y-%m-%dT%H:%M:%fZ')",
+            # Handle both VARCHAR (ISO string) and TIMESTAMP types
+            # Cast to TIMESTAMP (handles ISO strings), then format to UTC ISO string
+            "ts": "strftime(TRY_CAST({col} AS TIMESTAMP), '%Y-%m-%dT%H:%M:%S.%fZ')",
         },
     ),
 }
@@ -111,7 +118,8 @@ SPECS["alerts_event_v1"] = ArtifactTypeSpec(
     ),
     casts={
         # Normalize timestamps to ISO-8601 strings so hashing order is deterministic.
-        "event_ts_utc": "strftime(CAST({col} AS TIMESTAMP), '%Y-%m-%dT%H:%M:%S.%fZ')",
-        "seen_at_utc": "strftime(CAST({col} AS TIMESTAMP), '%Y-%m-%dT%H:%M:%S.%fZ')",
+        # Handle both VARCHAR (ISO string) and TIMESTAMP types
+        "event_ts_utc": "strftime(TRY_CAST({col} AS TIMESTAMP), '%Y-%m-%dT%H:%M:%S.%fZ')",
+        "seen_at_utc": "strftime(TRY_CAST({col} AS TIMESTAMP), '%Y-%m-%dT%H:%M:%S.%fZ')",
     },
 )
