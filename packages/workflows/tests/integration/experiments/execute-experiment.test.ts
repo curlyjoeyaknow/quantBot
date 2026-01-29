@@ -19,6 +19,8 @@ import { tmpdir } from 'node:os';
 
 describe('executeExperiment (integration)', () => {
   let tempDir: string;
+  let manifestDb: string;
+  let artifactsRoot: string;
   let artifactStore: ArtifactStoreAdapter;
   let projectionBuilder: ProjectionBuilderAdapter;
   let experimentTracker: ExperimentTrackerAdapter;
@@ -27,13 +29,15 @@ describe('executeExperiment (integration)', () => {
   beforeAll(() => {
     // Create temp directory for test artifacts
     tempDir = mkdtempSync(join(tmpdir(), 'exp-integration-test-'));
+    manifestDb = join(tempDir, 'manifest.sqlite');
+    artifactsRoot = join(tempDir, 'artifacts');
 
     // Initialize Python engine
     pythonEngine = new PythonEngine();
 
     // Initialize adapters
-    artifactStore = new ArtifactStoreAdapter(pythonEngine);
-    projectionBuilder = new ProjectionBuilderAdapter(pythonEngine);
+    artifactStore = new ArtifactStoreAdapter(manifestDb, artifactsRoot, pythonEngine);
+    projectionBuilder = new ProjectionBuilderAdapter(artifactStore, join(tempDir, 'projections'));
     experimentTracker = new ExperimentTrackerAdapter(pythonEngine);
   });
 
@@ -47,25 +51,28 @@ describe('executeExperiment (integration)', () => {
   });
 
   it.skip('should execute experiment with real artifacts', async () => {
-    // This test requires real artifacts in the data lake
-    // Skip for now - will be enabled when artifact store is fully integrated
+    // This test creates test artifacts and executes a full experiment
+    // SKIPPED: DuckDB timestamp casting issue in artifact_store spec
+    // The spec uses "AT TIME ZONE 'UTC'" which requires TIMESTAMP type,
+    // but CSV columns are read as VARCHAR. This needs to be fixed in
+    // packages/artifact_store/artifact_store/spec.py cast expressions.
 
-    // 1. Create test artifacts
+    // 1. Create test artifacts with correct schemas
     const alertsPath = join(tempDir, 'alerts.csv');
     writeFileSync(
       alertsPath,
-      'id,mint,timestamp,price\n' +
-        'alert-1,mint-1,1704067200000,1.5\n' +
-        'alert-2,mint-2,1704153600000,2.0\n'
+      'alert_ts_utc,chain,mint,alert_chat_id,alert_message_id,alert_id,caller_name_norm,caller_id,mint_source,bot_name,run_id\n' +
+        '2024-01-01T00:00:00Z,solana,mint1111111111111111111111111111111111111111,123,456,123:456,test_caller,caller_1,alert_text,test_bot,run-1\n' +
+        '2024-01-02T00:00:00Z,solana,mint2222222222222222222222222222222222222222,123,457,123:457,test_caller,caller_1,alert_text,test_bot,run-1\n'
     );
 
     const ohlcvPath = join(tempDir, 'ohlcv.csv');
     writeFileSync(
       ohlcvPath,
-      'timestamp,open,high,low,close,volume\n' +
-        '1704067200000,1.0,1.5,0.9,1.4,1000\n' +
-        '1704067260000,1.4,1.6,1.3,1.5,1100\n' +
-        '1704067320000,1.5,1.7,1.4,1.6,1200\n'
+      'ts,open,high,low,close,volume\n' +
+        '2024-01-01T00:00:00Z,1.0,1.5,0.9,1.4,1000\n' +
+        '2024-01-01T00:01:00Z,1.4,1.6,1.3,1.5,1100\n' +
+        '2024-01-01T00:02:00Z,1.5,1.7,1.4,1.6,1200\n'
     );
 
     // 2. Publish artifacts
@@ -82,8 +89,8 @@ describe('executeExperiment (integration)', () => {
     });
 
     const ohlcvArtifact = await artifactStore.publishArtifact({
-      artifactType: 'ohlcv_slice_v2',
-      schemaVersion: 2,
+      artifactType: 'ohlcv_slice',
+      schemaVersion: 1,
       logicalKey: 'test-ohlcv-integration',
       dataPath: ohlcvPath,
       writerName: 'integration-test',

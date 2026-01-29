@@ -16,14 +16,16 @@ export interface OpenDuckDbOptions {
 }
 
 /**
- * Open a DuckDB connection with busy_timeout configured.
+ * Open a DuckDB connection.
  *
  * Rule: Only ONE writer process should open the DB in write mode.
  * Everyone else should use READ_ONLY connections or query Parquet.
  *
+ * Note: DuckDB handles locking automatically (no SQLite-style busy_timeout needed).
+ *
  * @param dbPath - Path to DuckDB file
  * @param options - Connection options
- * @returns DuckDB connection with busy_timeout set to 10s
+ * @returns DuckDB connection
  */
 export async function openDuckDb(
   dbPath: string,
@@ -37,14 +39,7 @@ export async function openDuckDb(
   const db = new duckdb.Database(dbPath);
   const conn = db.connect();
 
-  // Set busy_timeout to handle transient locks (10 seconds)
-  // This allows connections to wait for locks to clear instead of failing immediately
-  await new Promise<void>((resolve, reject) => {
-    conn.run('PRAGMA busy_timeout=10000', (err: any) => {
-      if (err) reject(err);
-      else resolve();
-    });
-  });
+  // DuckDB handles locking automatically - no need for busy_timeout (SQLite-specific pragma)
 
   const run = (sql: string, params?: any[]) =>
     new Promise<void>((resolve, reject) => {
