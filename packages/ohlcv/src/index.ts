@@ -17,7 +17,10 @@ export { getCoverage, storeCandles } from './ohlcv-storage.js';
 
 // Export OHLCV slice export handler and utilities
 export { exportOhlcvSliceHandler } from './handlers/export-ohlcv-slice.js';
-export type { ExportOhlcvSliceArgs, ExportOhlcvSliceResult } from './handlers/export-ohlcv-slice.js';
+export type {
+  ExportOhlcvSliceArgs,
+  ExportOhlcvSliceResult,
+} from './handlers/export-ohlcv-slice.js';
 export { validateCoverage, intervalToMs, getCoverageStatus } from './coverage/validator.js';
 export type { CoverageMetrics, Gap } from './coverage/validator.js';
 export { buildOhlcvQuery, validateQueryParams } from './clickhouse/query-builder.js';

@@ -150,4 +150,3 @@ describe('exportOhlcvSlice (integration)', () => {
     expect(result2.artifactId).toBe(result1.artifactId);
   });
 });
-

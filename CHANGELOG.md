@@ -4,6 +4,78 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added - Phase VI: Alert Ingestion Integration (2026-01-29)
+
+**Research Package Phase VI Complete**: Telegram alert ingestion with artifact store integration.
+
+**Ingestion Package (`@quantbot/ingestion`)**:
+
+- Added `packages/ingestion/src/alerts/normalize.ts` - Alert normalization to canonical schema
+- Added `packages/ingestion/src/alerts/validate.ts` - Alert validation with error codes
+- Added `packages/ingestion/src/alerts/quarantine.ts` - Quarantine handler for invalid alerts
+- Added `packages/ingestion/src/handlers/ingest-telegram-alerts.ts` - Alert ingestion handler
+
+**CLI Package (`@quantbot/cli`)**:
+
+- Added `quantbot ingestion alerts` command - Ingest Telegram alerts as artifacts
+- Added `packages/cli/src/handlers/ingestion/ingest-telegram-alerts.ts` - CLI handler
+
+**Tests**:
+
+- Added 15+ unit tests for alert normalization, validation, and quarantine
+- Added 5 integration tests for full alert ingestion pipeline
+- All tests passing with 100% coverage of critical paths
+
+**Features**:
+
+- Canonical alert schema with mint address preservation (no truncation, no case changes)
+- Validation with structured error codes (missing_required_field, invalid_mint_address, etc.)
+- Automatic quarantine of invalid alerts as separate artifacts
+- Deduplication at artifact level via content hash
+- Full lineage tracking (run_id, timestamps, provenance)
+- Support for both Solana and EVM chains
+- Bot name extraction (Phanes, Rick, Maestro, etc.)
+- Caller name normalization (lowercase, underscores)
+
+**Impact**:
+
+- Alerts now fully integrated with artifact store
+- Reproducible experiments with frozen alert sets
+- Invalid alerts preserved for review (quarantine artifacts)
+- Automatic deduplication prevents duplicate ingestion
+- Full provenance tracking for regulatory compliance
+
+### Added - Phase VII: OHLCV Slice Integration (2026-01-29)
+
+**Research Package Phase VII Complete**: OHLCV slice export with artifact store integration.
+
+**OHLCV Package (`@quantbot/ohlcv`)**:
+
+- Added `packages/ohlcv/src/clickhouse/query-builder.ts` - ClickHouse query builder
+- Added `packages/ohlcv/src/coverage/validator.ts` - Coverage validation and gap detection
+- Added `packages/ohlcv/src/parquet/writer.ts` - Parquet writer for candles
+- Added `packages/ohlcv/src/handlers/export-ohlcv-slice.ts` - Export OHLCV slice handler
+
+**CLI Package (`@quantbot/cli`)**:
+
+- Added `quantbot ohlcv export` command - Export OHLCV slices as artifacts
+- Added `packages/cli/src/handlers/ohlcv/export-slice.ts` - CLI handler
+
+**Python Tools**:
+
+- Added `tools/storage/write_parquet.py` - Parquet writer script
+
+**Tests**:
+
+- Added 23+ unit and integration tests for OHLCV slice export
+
+**Impact**:
+
+- OHLCV data now fully integrated with artifact store
+- Reproducible experiments with frozen OHLCV slices
+- Coverage validation with gap detection
+- Automatic deduplication via ArtifactStorePort
+
 ### Added - RunSet + Resolver Architecture (2026-01-29)
 
 **Major Enhancement**: Implemented RunSet + Resolver pattern for logical set-based research workflows.

@@ -94,4 +94,3 @@ describe('exportOhlcvSliceCLIHandler', () => {
     expect(() => exportOhlcvSliceCLIHandler(args, mockCtx)).not.toThrow();
   });
 });
-

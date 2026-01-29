@@ -3,11 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import {
-  validateCoverage,
-  intervalToMs,
-  getCoverageStatus,
-} from '../../src/coverage/validator.js';
+import { validateCoverage, intervalToMs, getCoverageStatus } from '../../src/coverage/validator.js';
 import type { Candle } from '@quantbot/core';
 
 describe('validateCoverage', () => {
@@ -134,4 +130,3 @@ describe('getCoverageStatus', () => {
     expect(getCoverageStatus(0)).toBe('poor');
   });
 });
-

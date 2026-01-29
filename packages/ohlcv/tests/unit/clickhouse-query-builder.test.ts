@@ -151,4 +151,3 @@ describe('validateQueryParams', () => {
     ).toThrow("'from' date must be before 'to' date");
   });
 });
-

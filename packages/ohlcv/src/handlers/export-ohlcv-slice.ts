@@ -12,7 +12,7 @@ import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
 import { validateCoverage, type CoverageMetrics } from '../coverage/validator.js';
 import { writeCandlesToParquet } from '../parquet/writer.js';
-import { buildOhlcvQuery, validateQueryParams } from '../clickhouse/query-builder.js';
+import { validateQueryParams } from '../clickhouse/query-builder.js';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { randomBytes } from 'crypto';
@@ -69,10 +69,16 @@ export async function exportOhlcvSliceHandler(
   const startDateTime = DateTime.fromISO(from, { zone: 'utc' });
   const endDateTime = DateTime.fromISO(to, { zone: 'utc' });
 
-  const candles: Candle[] = await storageEngine.getCandles(token, chain, startDateTime, endDateTime, {
-    interval: resolution,
-    useCache: false,
-  });
+  const candles: Candle[] = await storageEngine.getCandles(
+    token,
+    chain,
+    startDateTime,
+    endDateTime,
+    {
+      interval: resolution,
+      useCache: false,
+    }
+  );
 
   logger.info('Fetched candles from ClickHouse', { count: candles.length });
 
@@ -105,27 +111,21 @@ export async function exportOhlcvSliceHandler(
 
     // Step 4: Publish via ArtifactStorePort
     const logicalKey = buildLogicalKey(token, resolution, from, to);
-    const metadata = {
-      token,
-      resolution,
-      from,
-      to,
-      chain,
-      rowCount: candles.length,
-      coverage: {
-        expected: coverage.expectedCandles,
-        actual: coverage.actualCandles,
-        percent: coverage.coveragePercent,
-        gaps: coverage.gaps.length,
-      },
-    };
 
     const publishResult = await artifactStore.publishArtifact({
       artifactType: 'ohlcv_slice_v2',
-      version: 'v2',
+      schemaVersion: 2,
       logicalKey,
-      filePath: tempFile,
-      metadata,
+      dataPath: tempFile,
+      tags: {
+        token,
+        resolution,
+        chain,
+      },
+      writerName: 'ohlcv-export',
+      writerVersion: '1.0.0',
+      gitCommit: process.env.GIT_COMMIT || 'unknown',
+      gitDirty: false,
     });
 
     logger.info('Published OHLCV slice artifact', {
@@ -171,4 +171,3 @@ export async function exportOhlcvSliceHandler(
 function buildLogicalKey(token: string, resolution: string, from: string, to: string): string {
   return `token=${token}/res=${resolution}/from=${from}/to=${to}`;
 }
-

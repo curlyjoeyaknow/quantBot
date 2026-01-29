@@ -15,11 +15,7 @@ import { exportOhlcvSliceHandler, type ExportOhlcvSliceArgs } from '@quantbot/oh
  * @param ctx - Command context
  * @returns Export result
  */
-export async function exportOhlcvSliceCLIHandler(
-  args: ExportOhlcvSliceArgs,
-  ctx: CommandContext
-) {
+export async function exportOhlcvSliceCLIHandler(args: ExportOhlcvSliceArgs, ctx: CommandContext) {
   const artifactStore = ctx.services.artifactStore();
   return await exportOhlcvSliceHandler(args, artifactStore);
 }
-

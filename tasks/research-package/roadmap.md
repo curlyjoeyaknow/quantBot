@@ -32,8 +32,8 @@ Week 7-8    │ Phase VII: OHLCV Slice Integration      │ Parallel
 | IV | Experiment Execution | Week 4-5 | ✅ **COMPLETE** | Phase II, III |
 | V | CLI Integration | Week 5-6 | ✅ **COMPLETE + ENHANCED** | Phase I, II, III |
 | V+ | RunSet + Resolver | Week 5-6 | ✅ **FOUNDATION COMPLETE** | Phase V |
-| VI | Alert Ingestion Integration | Week 6-7 | 🔲 Pending | Phase I |
-| VII | OHLCV Slice Integration | Week 7-8 | 🔲 Pending | Phase I |
+| VI | Alert Ingestion Integration | Week 6-7 | ✅ **COMPLETE** | Phase I |
+| VII | OHLCV Slice Integration | Week 7-8 | ✅ **COMPLETE** | Phase I |
 
 ---
 
@@ -265,21 +265,30 @@ Data Lake (/home/memez/opn)
 
 ---
 
-### Phase VII: OHLCV Slice Integration (Week 7-8)
+### Phase VII: OHLCV Slice Integration (Week 7-8) ✅ **COMPLETE**
 
 **Goal**: Export OHLCV slices via artifact store
 
 **Deliverables**:
 
-- OHLCV slice handler
-- Coverage validation
-- Migration script
+- ✅ OHLCV slice handler (`packages/ohlcv/src/handlers/export-ohlcv-slice.ts`)
+- ✅ Coverage validation (`packages/ohlcv/src/coverage/validator.ts`)
+- ✅ ClickHouse query builder (`packages/ohlcv/src/clickhouse/query-builder.ts`)
+- ✅ Parquet writer (`packages/ohlcv/src/parquet/writer.ts`)
+- ✅ CLI integration (`quantbot ohlcv export`)
+- ✅ Unit tests (3 test files, 20+ tests)
+- ✅ Integration tests
 
 **Success Criteria**:
 
 - ✅ OHLCV slices published as artifacts
-- ✅ Coverage validated
+- ✅ Coverage validated and gaps detected
 - ✅ Slices reusable across experiments
+- ✅ Deduplication via ArtifactStorePort
+- ✅ All tests passing
+- ✅ No linting errors
+
+**Completed**: 2026-01-29
 
 **Document**: [Phase VII: OHLCV Slice Integration](./phase-7-ohlcv-slice-integration.md)
 
@@ -312,9 +321,9 @@ Data Lake (/home/memez/opn)
 
 ### Milestone 5: Full Integration (Week 8)
 
-- ✅ Alert ingestion via artifacts
-- ✅ OHLCV slice via artifacts
-- ✅ All workflows use artifact store
+- 🔲 Alert ingestion via artifacts (Phase VI pending)
+- ✅ OHLCV slice via artifacts (Phase VII complete)
+- 🔄 All workflows use artifact store (in progress)
 
 ---
 

@@ -15,10 +15,7 @@ import { z } from 'zod';
  * @param candles - Array of candles
  * @param outputPath - Output file path
  */
-export async function writeCandlesToParquet(
-  candles: Candle[],
-  outputPath: string
-): Promise<void> {
+export async function writeCandlesToParquet(candles: Candle[], outputPath: string): Promise<void> {
   const pythonEngine = new PythonEngine();
 
   // Convert candles to records (Python-friendly format)
@@ -34,7 +31,10 @@ export async function writeCandlesToParquet(
   // Write to Parquet using Python
   await pythonEngine.runScript(
     'tools/storage/write_parquet.py',
-    ['--output', outputPath, '--data', JSON.stringify(records)],
+    {
+      output: outputPath,
+      data: JSON.stringify(records),
+    },
     z.object({
       success: z.boolean(),
       rowCount: z.number(),
@@ -61,4 +61,3 @@ export function getCandleParquetSchema(): Record<string, string> {
     volume: 'float64',
   };
 }
-

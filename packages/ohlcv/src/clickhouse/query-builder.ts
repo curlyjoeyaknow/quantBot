@@ -19,7 +19,7 @@ export interface OhlcvQueryParams {
  * @returns SQL query string
  */
 export function buildOhlcvQuery(params: OhlcvQueryParams): string {
-  const { tokenAddress, chain, interval, dateRange } = params;
+  const { tokenAddress, interval, dateRange } = params;
 
   // Determine table name based on interval
   const tableName = getTableName(interval);
@@ -114,4 +114,3 @@ export function validateQueryParams(params: OhlcvQueryParams): void {
     throw new Error("'from' date must be before 'to' date");
   }
 }
-
