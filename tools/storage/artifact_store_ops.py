@@ -309,8 +309,11 @@ def get_downstream(manifest_db: str, artifact_id: str) -> List[Dict[str, Any]]:
 def supersede_artifact(manifest_db: str, new_artifact_id: str, old_artifact_id: str) -> Dict[str, Any]:
     """Supersede old artifact with new one"""
     con = connect_manifest(Path(manifest_db))
-    manifest_supersede(con, new_artifact_id=new_artifact_id, old_artifact_id=old_artifact_id)
-    con.close()
+    try:
+        manifest_supersede(con, new_artifact_id=new_artifact_id, old_artifact_id=old_artifact_id)
+        con.commit()  # Ensure transaction is committed
+    finally:
+        con.close()
     
     return {'success': True}
 

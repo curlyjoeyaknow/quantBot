@@ -9,20 +9,23 @@ describe('ArtifactStoreAdapter (integration)', () => {
   const testDir = join(tmpdir(), `artifact-store-test-${Date.now()}`);
   const manifestDb = join(testDir, 'manifest.sqlite');
   const artifactsRoot = join(testDir, 'artifacts');
-  const testDataPath = join(testDir, 'test-data.csv');
 
   let adapter: ArtifactStoreAdapter;
+
+  // Helper to create unique test data for each test
+  function createTestData(uniqueId: string): string {
+    const testDataPath = join(testDir, `test-data-${uniqueId}.csv`);
+    writeFileSync(
+      testDataPath,
+      `alert_ts_utc,chain,mint,alert_id\n2025-05-01T00:00:00Z,solana,ABC123-${uniqueId},alert-${uniqueId}\n`
+    );
+    return testDataPath;
+  }
 
   beforeAll(() => {
     // Create test directories
     mkdirSync(testDir, { recursive: true });
     mkdirSync(artifactsRoot, { recursive: true });
-
-    // Create test CSV file
-    writeFileSync(
-      testDataPath,
-      'alert_ts_utc,chain,mint,alert_id\n2025-05-01T00:00:00Z,solana,ABC123,alert-1\n'
-    );
 
     // Create adapter with PythonEngine (required for artifact operations)
     const pythonEngine = new PythonEngine();
@@ -39,6 +42,7 @@ describe('ArtifactStoreAdapter (integration)', () => {
   it('should check availability', async () => {
     // Database is created on first publish, so we need to publish an artifact first
     // or check availability after database is created
+    const testDataPath = createTestData('availability');
     await adapter.publishArtifact({
       artifactType: 'test_artifact',
       schemaVersion: 1,
@@ -55,8 +59,9 @@ describe('ArtifactStoreAdapter (integration)', () => {
   });
 
   it('should publish and retrieve artifact', async () => {
-    // Use unique logical key to avoid deduplication from previous tests
+    // Use unique logical key and data to avoid deduplication from previous tests
     const uniqueKey = `test/integration/key1-${Date.now()}`;
+    const testDataPath = createTestData(`integration-${Date.now()}`);
     // Publish artifact
     const publishResult = await adapter.publishArtifact({
       artifactType: 'test_artifact',
@@ -84,8 +89,9 @@ describe('ArtifactStoreAdapter (integration)', () => {
   });
 
   it('should deduplicate identical artifacts', async () => {
-    // Use unique logical key to avoid deduplication from previous tests
+    // Use unique logical key and shared data file for deduplication test
     const uniqueKey = `test/dedup/key1-${Date.now()}`;
+    const testDataPath = createTestData(`dedup-${Date.now()}`);
     // Publish first artifact
     const result1 = await adapter.publishArtifact({
       artifactType: 'test_artifact',
@@ -107,7 +113,7 @@ describe('ArtifactStoreAdapter (integration)', () => {
       artifactType: 'test_artifact',
       schemaVersion: 1,
       logicalKey: uniqueKey,
-      dataPath: testDataPath,
+      dataPath: testDataPath, // Same file = same content hash = deduplication
       writerName: 'integration-test',
       writerVersion: '1.0.0',
       gitCommit: 'testcommit123',
@@ -145,8 +151,9 @@ describe('ArtifactStoreAdapter (integration)', () => {
   });
 
   it('should find artifacts by logical key', async () => {
-    // Use unique logical key to avoid deduplication from previous tests
+    // Use unique logical key and data to avoid deduplication from previous tests
     const uniqueKey = `test/find/unique-key-${Date.now()}`;
+    const testDataPath = createTestData(`find-${Date.now()}`);
     // Publish artifact
     const publishResult = await adapter.publishArtifact({
       artifactType: 'test_artifact',
@@ -172,14 +179,16 @@ describe('ArtifactStoreAdapter (integration)', () => {
   });
 
   it('should track lineage', async () => {
-    // Use unique logical keys to avoid deduplication
+    // Use unique logical keys and data to avoid deduplication
     const timestamp = Date.now();
+    const inputDataPath = createTestData(`lineage-input-${timestamp}`);
+    const outputDataPath = createTestData(`lineage-output-${timestamp}`);
     // Publish input artifact
     const input1 = await adapter.publishArtifact({
       artifactType: 'test_artifact',
       schemaVersion: 1,
       logicalKey: `test/lineage/input1-${timestamp}`,
-      dataPath: testDataPath,
+      dataPath: inputDataPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
       gitCommit: 'testcommit123',
@@ -194,7 +203,7 @@ describe('ArtifactStoreAdapter (integration)', () => {
       artifactType: 'test_artifact',
       schemaVersion: 1,
       logicalKey: `test/lineage/output1-${timestamp}`,
-      dataPath: testDataPath,
+      dataPath: outputDataPath,
       inputArtifactIds: [input1Id!],
       writerName: 'integration-test',
       writerVersion: '1.0.0',
@@ -214,14 +223,16 @@ describe('ArtifactStoreAdapter (integration)', () => {
   });
 
   it('should get downstream artifacts', async () => {
-    // Use unique logical keys to avoid deduplication
+    // Use unique logical keys and data to avoid deduplication
     const timestamp = Date.now();
+    const inputDataPath = createTestData(`downstream-input-${timestamp}`);
+    const outputDataPath = createTestData(`downstream-output-${timestamp}`);
     // Publish input artifact
     const input = await adapter.publishArtifact({
       artifactType: 'test_artifact',
       schemaVersion: 1,
       logicalKey: `test/downstream/input1-${timestamp}`,
-      dataPath: testDataPath,
+      dataPath: inputDataPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
       gitCommit: 'testcommit123',
@@ -236,7 +247,7 @@ describe('ArtifactStoreAdapter (integration)', () => {
       artifactType: 'test_artifact',
       schemaVersion: 1,
       logicalKey: `test/downstream/output1-${timestamp}`,
-      dataPath: testDataPath,
+      dataPath: outputDataPath,
       inputArtifactIds: [inputId!],
       writerName: 'integration-test',
       writerVersion: '1.0.0',
@@ -255,14 +266,16 @@ describe('ArtifactStoreAdapter (integration)', () => {
   });
 
   it('should supersede artifacts', async () => {
-    // Use unique logical keys to avoid deduplication
+    // Use unique logical keys and data to avoid deduplication
     const timestamp = Date.now();
+    const oldDataPath = createTestData(`supersede-old-${timestamp}`);
+    const newDataPath = createTestData(`supersede-new-${timestamp}`);
     // Publish old artifact
     const old = await adapter.publishArtifact({
       artifactType: 'test_artifact',
       schemaVersion: 1,
       logicalKey: `test/supersede/old-${timestamp}`,
-      dataPath: testDataPath,
+      dataPath: oldDataPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
       gitCommit: 'testcommit123',
@@ -277,7 +290,7 @@ describe('ArtifactStoreAdapter (integration)', () => {
       artifactType: 'test_artifact',
       schemaVersion: 1,
       logicalKey: `test/supersede/new-${timestamp}`,
-      dataPath: testDataPath,
+      dataPath: newDataPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
       gitCommit: 'testcommit456',

@@ -36,6 +36,7 @@ import { runsListHandler } from '../handlers/ohlcv/runs-list.js';
 import { runsRollbackHandler } from '../handlers/ohlcv/runs-rollback.js';
 import { runsDetailsHandler } from '../handlers/ohlcv/runs-details.js';
 import { validateDuplicatesHandler } from '../handlers/ohlcv/validate-duplicates.js';
+import { exportOhlcvSliceCLIHandler } from '../handlers/ohlcv/export-slice.js';
 
 /**
  * Fetch command schema (re-exported from handler)
@@ -203,6 +204,48 @@ export const validateDuplicatesSchema = z.object({
   minErrorRate: z.number().min(0).max(1).default(0.1),
   minZeroVolumeRate: z.number().min(0).max(1).default(0.5),
   checkConsistency: z.boolean().default(true),
+  format: z.enum(['json', 'table']).default('table'),
+});
+
+/**
+ * Export OHLCV slice command schema
+ */
+export const exportSliceSchema = z.object({
+  token: z.string().refine(
+    (val) => {
+      try {
+        validateMintAddress(val);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { message: 'Invalid mint address (must be 32-44 characters)' }
+  ),
+  resolution: z.enum(['1m', '5m', '15m', '1h']).default('5m'),
+  from: z.string().refine(
+    (val) => {
+      try {
+        parseDate(val);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { message: 'Invalid date format (expected ISO 8601)' }
+  ),
+  to: z.string().refine(
+    (val) => {
+      try {
+        parseDate(val);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { message: 'Invalid date format (expected ISO 8601)' }
+  ),
+  chain: z.enum(['solana', 'evm']).default('solana'),
   format: z.enum(['json', 'table']).default('table'),
 });
 
@@ -758,6 +801,20 @@ const ohlcvModule: PackageCommandModule = {
         'quantbot ohlcv validate-duplicates',
         'quantbot ohlcv validate-duplicates --min-error-rate 0.05',
         'quantbot ohlcv validate-duplicates --min-zero-volume-rate 0.3',
+      ],
+    },
+    {
+      name: 'export',
+      description: 'Export OHLCV slice as artifact (Parquet + manifest)',
+      schema: exportSliceSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof exportSliceSchema>;
+        return await exportOhlcvSliceCLIHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot ohlcv export --token ABC123... --resolution 1m --from 2025-05-01T00:00:00Z --to 2025-05-01T01:00:00Z',
+        'quantbot ohlcv export --token ABC123... --resolution 5m --from 2025-05-01 --to 2025-05-02 --chain solana',
       ],
     },
   ],

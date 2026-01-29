@@ -329,6 +329,24 @@ export function registerIngestionCommands(program: Command): void {
     validate: (opts) => ingestMarketDataSchema.parse(opts),
     onError: die,
   });
+
+  // Telegram alerts ingestion (artifact-based)
+  const telegramAlertsCmd = ingestionCmd
+    .command('alerts')
+    .description('Ingest Telegram alerts as artifacts (Phase VI)')
+    .requiredOption('--export-path <path>', 'Path to Telegram JSON export file')
+    .requiredOption('--date <YYYY-MM-DD>', 'Date for partitioning (YYYY-MM-DD)')
+    .option('--chain <chain>', 'Blockchain (solana or evm)', 'solana')
+    .option('--default-caller-name <name>', 'Default caller name (if not extractable)')
+    .option('--chat-id <id>', 'Chat ID (optional)')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(telegramAlertsCmd, {
+    name: 'alerts',
+    packageName: 'ingestion',
+    validate: (opts) => telegramAlertsSchema.parse(opts),
+    onError: die,
+  });
 }
 
 /**
@@ -442,6 +460,20 @@ const ingestionModule: PackageCommandModule = {
         'quantbot ingestion market-data',
         'quantbot ingestion market-data --chain solana --limit 100',
         'quantbot ingestion market-data --skip-existing',
+      ],
+    },
+    {
+      name: 'alerts',
+      description: 'Ingest Telegram alerts as artifacts (Phase VI)',
+      schema: telegramAlertsSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof telegramAlertsSchema>;
+        return await ingestTelegramAlertsCLIHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot ingestion alerts --export-path data/telegram.json --date 2025-06-01',
+        'quantbot ingestion alerts --export-path data/telegram.json --date 2025-06-01 --chain solana --default-caller-name brook',
       ],
     },
   ],
