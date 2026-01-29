@@ -70,7 +70,7 @@ export async function executeSimulation(input: SimulationInput): Promise<Simulat
       );
 
       // Convert simulation result to trade records
-      const trades = convertResultToTrades(result, alert);
+      const trades = convertResultToTrades(result as unknown as Record<string, unknown>, alert);
       allTrades.push(...trades);
 
       // Accumulate metrics from trades
@@ -117,7 +117,7 @@ async function loadDataFromProjection(
   config: SimulationInput['config']
 ): Promise<{ candles: Candle[]; alerts: Alert[] }> {
   return new Promise((resolve, reject) => {
-    const db = new Database(duckdbPath, { readonly: true });
+    const db = new Database(duckdbPath);
 
     // Load candles
     db.all(
@@ -152,20 +152,20 @@ async function loadDataFromProjection(
               return reject(err2);
             }
 
-            const candles = (candleRows as any[]).map((row) => ({
-              timestamp: row.timestamp,
-              open: row.open,
-              high: row.high,
-              low: row.low,
-              close: row.close,
-              volume: row.volume,
+            const candles = (candleRows as Array<Record<string, unknown>>).map((row) => ({
+              timestamp: row.timestamp as number,
+              open: row.open as number,
+              high: row.high as number,
+              low: row.low as number,
+              close: row.close as number,
+              volume: row.volume as number,
             }));
 
-            const alerts = (alertRows as any[]).map((row) => ({
-              id: row.id,
-              mint: row.mint,
-              timestamp: row.timestamp,
-              price: row.price,
+            const alerts = (alertRows as Array<Record<string, unknown>>).map((row) => ({
+              id: row.id as string,
+              mint: row.mint as string,
+              timestamp: row.timestamp as number,
+              price: row.price as number,
             }));
 
             resolve({ candles, alerts });
@@ -212,38 +212,45 @@ function buildStrategyLegs(config: SimulationInput['config']): StrategyLeg[] {
 /**
  * Convert simulation result to trade records
  */
-function convertResultToTrades(result: any, alert: Alert): Trade[] {
+function convertResultToTrades(result: Record<string, unknown>, alert: Alert): Trade[] {
   const trades: Trade[] = [];
 
   // Extract entry/exit events from simulation result
-  const entryEvents = result.events.filter((e: any) => e.event_type === 'entry');
-  const exitEvents = result.events.filter((e: any) => e.event_type === 'exit');
+  const events = (result.events as Array<Record<string, unknown>>) ?? [];
+  const entryEvents = events.filter((e) => e.event_type === 'entry');
+  const exitEvents = events.filter((e) => e.event_type === 'exit');
 
   // Match entries with exits
   for (let i = 0; i < entryEvents.length; i++) {
     const entry = entryEvents[i];
     const exit = exitEvents[i]; // Assume 1:1 mapping for now
 
-    if (!exit) continue;
+    if (!exit || !entry) continue;
+
+    const exitReason = (exit.reason as string) ?? 'unknown';
+    const validExitReason: 'target' | 'stop_loss' | 'timeout' | 'signal' | 'final' =
+      exitReason === 'target' || exitReason === 'stop_loss' || exitReason === 'timeout' || exitReason === 'signal' || exitReason === 'final'
+        ? exitReason
+        : 'final';
 
     trades.push({
       tradeId: `${alert.id}-${i}`,
       callId: alert.id,
       mint: alert.mint,
-      entryTime: entry.timestamp,
-      entryPrice: entry.price,
-      exitTime: exit.timestamp,
-      exitPrice: exit.price,
-      exitReason: exit.reason || 'unknown',
-      size: entry.quantity,
-      grossPnl: exit.pnl_usd || 0,
-      netPnl: exit.cumulative_pnl_usd || 0,
-      entryCosts: entry.fee_usd || 0,
-      exitCosts: exit.fee_usd || 0,
+      entryTime: (entry.timestamp as number) ?? 0,
+      entryPrice: (entry.price as number) ?? 0,
+      exitTime: (exit.timestamp as number) ?? 0,
+      exitPrice: (exit.price as number) ?? 0,
+      exitReason: validExitReason,
+      size: (entry.quantity as number) ?? 0,
+      grossPnl: (exit.pnl_usd as number) ?? 0,
+      netPnl: (exit.cumulative_pnl_usd as number) ?? 0,
+      entryCosts: (entry.fee_usd as number) ?? 0,
+      exitCosts: (exit.fee_usd as number) ?? 0,
       borrowCosts: 0, // TODO: Extract from result
-      peakMultiple: result.peakMultiple || 1,
-      maxDrawdown: result.maxDrawdown || 0,
-      duration: exit.timestamp - entry.timestamp,
+      peakMultiple: (result.peakMultiple as number) ?? 1,
+      maxDrawdown: (result.maxDrawdown as number) ?? 0,
+      duration: ((exit.timestamp as number) ?? 0) - ((entry.timestamp as number) ?? 0),
     });
   }
 

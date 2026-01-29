@@ -61,7 +61,6 @@ export async function executeExperiment(
   ports: ExperimentExecutionPorts
 ): Promise<Experiment> {
   const { artifactStore, projectionBuilder, experimentTracker } = ports;
-  const startTime = Date.now();
 
   // 1. Create experiment record (pending)
   const experiment = await experimentTracker.createExperiment(definition);
@@ -78,7 +77,7 @@ export async function executeExperiment(
     }
 
     // 4. Build DuckDB projection from artifacts
-    const projectionId = `exp-${experiment.experimentId}-${Date.now()}`;
+    const projectionId = `exp-${experiment.experimentId}-${experiment.provenance.createdAt.replace(/[:.]/g, '-')}`;
     const projection = await projectionBuilder.buildProjection({
       projectionId,
       artifacts: {
@@ -100,8 +99,11 @@ export async function executeExperiment(
       const simulationInput: SimulationInput = {
         duckdbPath: projection.duckdbPath,
         config: {
-          strategy: experiment.config.strategy as any,
-          dateRange: experiment.config.dateRange,
+          strategy: {
+            name: 'default',
+            ...(experiment.config.strategy as Record<string, unknown>),
+          },
+          dateRange: experiment.config.dateRange as { from: string; to: string },
           params: experiment.config.params,
         },
         seed: generateSeed(experiment.experimentId),
@@ -148,9 +150,8 @@ export async function executeExperiment(
       // Cleanup projection on error
       try {
         await projectionBuilder.disposeProjection(projectionId);
-      } catch (cleanupError) {
-        // Log cleanup error but don't mask original error
-        console.error('Failed to cleanup projection:', cleanupError);
+      } catch {
+        // Ignore cleanup errors - don't mask original error
       }
       throw error;
     }
