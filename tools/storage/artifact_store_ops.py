@@ -84,6 +84,37 @@ def get_artifact(manifest_db: str, artifact_id: str) -> Dict[str, Any]:
     return row_to_dict(row)
 
 
+def get_artifacts_batch(manifest_db: str, artifact_ids: List[str]) -> List[Dict[str, Any]]:
+    """Get multiple artifacts by IDs (batch operation)"""
+    if not artifact_ids:
+        return []
+    
+    con = connect_manifest(Path(manifest_db))
+    
+    # Use IN clause for batch query
+    placeholders = ','.join('?' * len(artifact_ids))
+    rows = con.execute(
+        f"SELECT * FROM artifacts WHERE artifact_id IN ({placeholders})",
+        artifact_ids
+    ).fetchall()
+    con.close()
+    
+    # Create a map of artifact_id -> artifact for quick lookup
+    artifact_map = {row['artifact_id']: row_to_dict(row) for row in rows}
+    
+    # Return artifacts in the same order as requested, with None for missing ones
+    # (caller can filter out None values if needed)
+    result = []
+    for artifact_id in artifact_ids:
+        if artifact_id in artifact_map:
+            result.append(artifact_map[artifact_id])
+        else:
+            # Include None to maintain order and indicate missing artifact
+            result.append(None)
+    
+    return result
+
+
 def list_artifacts(manifest_db: str, filter_dict: Dict[str, Any]) -> List[Dict[str, Any]]:
     """List artifacts with filters"""
     con = connect_manifest(Path(manifest_db))
@@ -335,6 +366,8 @@ def main() -> None:
         
         if operation == 'get_artifact':
             result = get_artifact(input_data['manifest_db'], input_data['artifact_id'])
+        elif operation == 'get_artifacts_batch':
+            result = get_artifacts_batch(input_data['manifest_db'], input_data['artifact_ids'])
         elif operation == 'list_artifacts':
             result = list_artifacts(input_data['manifest_db'], input_data.get('filter', {}))
         elif operation == 'find_by_logical_key':

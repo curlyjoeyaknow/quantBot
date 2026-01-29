@@ -18,7 +18,29 @@ vi.mock('@quantbot/data/jobs', () => ({
   })),
 }));
 
-// Mock ClickHouse to avoid connection errors
+// Mock ClickHouse and storage to avoid connection errors
+vi.mock('@quantbot/storage', () => ({
+  initClickHouse: vi.fn().mockResolvedValue(undefined),
+  getStorageEngine: vi.fn(() => ({
+    storeCandles: vi.fn(),
+    getCandles: vi.fn(),
+  })),
+  OhlcvRepository: vi.fn(() => ({
+    upsertCandles: vi.fn().mockResolvedValue({
+      inserted: 0,
+      rejected: 0,
+      warnings: 0,
+      rejectionDetails: [],
+    }),
+  })),
+  IngestionRunRepository: vi.fn(() => ({
+    startRun: vi.fn().mockResolvedValue(undefined),
+    completeRun: vi.fn().mockResolvedValue(undefined),
+    failRun: vi.fn().mockResolvedValue(undefined),
+    updateRunStats: vi.fn(),
+  })),
+}));
+
 vi.mock('@quantbot/infra/storage', () => ({
   getClickHouseClient: vi.fn(() => ({
     query: vi.fn(),

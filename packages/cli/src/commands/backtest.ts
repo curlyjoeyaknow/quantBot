@@ -38,6 +38,14 @@ import {
   type CatalogSyncArgs,
   catalogQuerySchema,
   type CatalogQueryArgs,
+  backtestResultsShowSchema,
+  type BacktestResultsShowArgs,
+  backtestResultsCompareSchema,
+  type BacktestResultsCompareArgs,
+  backtestResultsExportSchema,
+  type BacktestResultsExportArgs,
+  backtestReproduceSchema,
+  type BacktestReproduceArgs,
 } from '../command-defs/backtest.js';
 import { join, resolve as pathResolve } from 'path';
 import { existsSync } from 'fs';
@@ -143,6 +151,72 @@ export function registerBacktestCommands(program: Command): void {
     name: 'list',
     packageName: 'backtest',
     validate: (opts) => backtestListSchema.parse(opts),
+    onError: die,
+  });
+
+  // Results show command (backtest results show)
+  const resultsShowCmd = backtestCmd
+    .command('results-show')
+    .description('Show detailed results for a backtest run')
+    .requiredOption('--run-id <id>', 'Backtest run ID')
+    .option('--format <format>', 'Output format (json, table, csv)', 'table');
+
+  defineCommand(resultsShowCmd, {
+    name: 'results-show',
+    packageName: 'backtest',
+    validate: (opts) => backtestResultsShowSchema.parse(opts),
+    onError: die,
+  });
+
+  // Results compare command (backtest results-compare)
+  const resultsCompareCmd = backtestCmd
+    .command('results-compare')
+    .description('Compare two backtest runs')
+    .requiredOption('--run-id-1 <id>', 'First run ID')
+    .requiredOption('--run-id-2 <id>', 'Second run ID')
+    .option('--format <format>', 'Output format (json, table, csv)', 'table');
+
+  defineCommand(resultsCompareCmd, {
+    name: 'results-compare',
+    packageName: 'backtest',
+    coerce: (raw) => ({
+      ...raw,
+      runId1: raw.runId1 || raw['run-id-1'],
+      runId2: raw.runId2 || raw['run-id-2'],
+    }),
+    validate: (opts) => backtestResultsCompareSchema.parse(opts),
+    onError: die,
+  });
+
+  // Results export command (backtest results-export)
+  const resultsExportCmd = backtestCmd
+    .command('results-export')
+    .description('Export backtest results to files')
+    .requiredOption('--run-id <id>', 'Backtest run ID')
+    .requiredOption('--output <path>', 'Output file path')
+    .option('--format <format>', 'Export format (csv, json, parquet)', 'csv')
+    .option('--include-trades', 'Include trade records in export')
+    .option('--include-metrics', 'Include metrics in export', true);
+
+  defineCommand(resultsExportCmd, {
+    name: 'results-export',
+    packageName: 'backtest',
+    validate: (opts) => backtestResultsExportSchema.parse(opts),
+    onError: die,
+  });
+
+  // Reproduce command
+  const reproduceCmd = backtestCmd
+    .command('reproduce')
+    .description('Reproduce a previous backtest run')
+    .requiredOption('--run-id <id>', 'Backtest run ID to reproduce')
+    .option('--validate', 'Validate reproduction by comparing results')
+    .option('--format <format>', 'Output format (json, table, csv)', 'table');
+
+  defineCommand(reproduceCmd, {
+    name: 'reproduce',
+    packageName: 'backtest',
+    validate: (opts) => backtestReproduceSchema.parse(opts),
     onError: die,
   });
 
@@ -1540,6 +1614,74 @@ const backtestModule: PackageCommandModule = {
         'quantbot backtest catalog-query --run-type path-only --status completed',
         'quantbot backtest catalog-query --git-branch main --limit 20',
         'quantbot backtest catalog-query --run-id <uuid> --artifact-type paths',
+      ],
+    },
+    {
+      name: 'results-show',
+      description: 'Show detailed results for a backtest run',
+      schema: backtestResultsShowSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const { resultsShowHandler } = await import('../handlers/backtest/results-show.js');
+        const { CommandContext } = await import('../core/command-context.js');
+        return resultsShowHandler(
+          args as BacktestResultsShowArgs,
+          ctx as InstanceType<typeof CommandContext>
+        );
+      },
+      examples: [
+        'quantbot backtest results show --run-id <run-id>',
+        'quantbot backtest results show --run-id <run-id> --format json',
+      ],
+    },
+    {
+      name: 'results-compare',
+      description: 'Compare two backtest runs',
+      schema: backtestResultsCompareSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const { resultsCompareHandler } = await import('../handlers/backtest/results-compare.js');
+        const { CommandContext } = await import('../core/command-context.js');
+        return resultsCompareHandler(
+          args as BacktestResultsCompareArgs,
+          ctx as InstanceType<typeof CommandContext>
+        );
+      },
+      examples: [
+        'quantbot backtest results compare --run-id-1 <id1> --run-id-2 <id2>',
+      ],
+    },
+    {
+      name: 'results-export',
+      description: 'Export backtest results to files',
+      schema: backtestResultsExportSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const { resultsExportHandler } = await import('../handlers/backtest/results-export.js');
+        const { CommandContext } = await import('../core/command-context.js');
+        return resultsExportHandler(
+          args as BacktestResultsExportArgs,
+          ctx as InstanceType<typeof CommandContext>
+        );
+      },
+      examples: [
+        'quantbot backtest results export --run-id <run-id> --output results.csv --format csv',
+        'quantbot backtest results export --run-id <run-id> --output results.parquet --format parquet',
+        'quantbot backtest results export --run-id <run-id> --output results.json --format json --include-trades',
+      ],
+    },
+    {
+      name: 'reproduce',
+      description: 'Reproduce a previous backtest run',
+      schema: backtestReproduceSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const { resultsReproduceHandler } = await import('../handlers/backtest/results-reproduce.js');
+        const { CommandContext } = await import('../core/command-context.js');
+        return resultsReproduceHandler(
+          args as BacktestReproduceArgs,
+          ctx as InstanceType<typeof CommandContext>
+        );
+      },
+      examples: [
+        'quantbot backtest reproduce --run-id <run-id>',
+        'quantbot backtest reproduce --run-id <run-id> --validate',
       ],
     },
   ],

@@ -137,7 +137,7 @@ describe('ExperimentTrackerAdapter (integration)', () => {
             params: {},
           },
           provenance: {
-            gitCommit: 'commit-1',
+            gitCommit: 'commit1abc123',
             gitDirty: false,
             engineVersion: '1.0.0',
             createdAt: new Date().toISOString(),
@@ -153,7 +153,7 @@ describe('ExperimentTrackerAdapter (integration)', () => {
             params: {},
           },
           provenance: {
-            gitCommit: 'commit-2',
+            gitCommit: 'commit2abc456',
             gitDirty: false,
             engineVersion: '1.0.0',
             createdAt: new Date().toISOString(),
@@ -169,7 +169,7 @@ describe('ExperimentTrackerAdapter (integration)', () => {
             params: {},
           },
           provenance: {
-            gitCommit: 'commit-1',
+            gitCommit: 'commit1abc123',
             gitDirty: false,
             engineVersion: '1.0.0',
             createdAt: new Date().toISOString(),
@@ -202,7 +202,7 @@ describe('ExperimentTrackerAdapter (integration)', () => {
     });
 
     it('should filter by git commit', async () => {
-      const experiments = await adapter.listExperiments({ gitCommit: 'commit-1' });
+      const experiments = await adapter.listExperiments({ gitCommit: 'commit1abc123' });
 
       const commit1Experiments = experiments.filter((e) => e.experimentId.startsWith('exp-list-'));
       expect(commit1Experiments.length).toBe(2);

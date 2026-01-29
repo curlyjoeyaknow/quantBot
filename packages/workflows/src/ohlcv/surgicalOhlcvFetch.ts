@@ -208,8 +208,23 @@ async function getCoverageData(
   const workspaceRoot = findWorkspaceRoot();
   const scriptPath = join(workspaceRoot, 'tools/analysis/ohlcv_caller_coverage.py');
 
+  // Set PYTHONPATH to include workspace root for tools.shared imports
+  const existingPythonPath = process.env.PYTHONPATH || '';
+  const pythonPath = existingPythonPath ? `${workspaceRoot}:${existingPythonPath}` : workspaceRoot;
+
+  // Pass through ClickHouse environment variables
+  const env: Record<string, string> = {
+    PYTHONPATH: pythonPath,
+  };
+  if (process.env.CLICKHOUSE_HOST) env.CLICKHOUSE_HOST = process.env.CLICKHOUSE_HOST;
+  if (process.env.CLICKHOUSE_PORT) env.CLICKHOUSE_PORT = process.env.CLICKHOUSE_PORT;
+  if (process.env.CLICKHOUSE_DATABASE) env.CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE;
+  if (process.env.CLICKHOUSE_USER) env.CLICKHOUSE_USER = process.env.CLICKHOUSE_USER;
+  if (process.env.CLICKHOUSE_PASSWORD) env.CLICKHOUSE_PASSWORD = process.env.CLICKHOUSE_PASSWORD;
+
   const result = await pythonEngine.runScript(scriptPath, args, resultSchema, {
     timeout: coverageTimeoutMs,
+    env,
   });
 
   return result as CoverageData;

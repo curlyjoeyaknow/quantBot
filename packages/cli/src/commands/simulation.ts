@@ -300,7 +300,7 @@ export function registerSimulationCommands(program: Command): void {
     packageName: 'simulation',
     coerce: (raw) => ({
       ...raw,
-      port: raw.port ? coerceNumber(raw.port, 'port') : 8123,
+      port: raw.port ? coerceNumber(raw.port, 'port') : 18123, // Default to 18123 (Docker HTTP port)
       events: raw.events ? coerceJson<unknown[]>(raw.events, 'events') : undefined,
     }),
     validate: (opts) => clickHouseQuerySchema.parse(opts),

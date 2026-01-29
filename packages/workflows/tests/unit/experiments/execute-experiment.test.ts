@@ -15,6 +15,7 @@ import type {
   ProjectionResult,
   ExperimentResults,
 } from '@quantbot/core';
+import type { SimulationService } from '@quantbot/simulation';
 
 // Mock the simulation executor module
 vi.mock('../../../src/experiments/simulation-executor.js', () => ({
@@ -37,6 +38,7 @@ describe('executeExperiment', () => {
   let mockArtifactStore: ArtifactStorePort;
   let mockProjectionBuilder: ProjectionBuilderPort;
   let mockExperimentTracker: ExperimentTrackerPort;
+  let mockSimulationService: SimulationService;
   let ports: ExperimentExecutionPorts;
   let testDefinition: ExperimentDefinition;
 
@@ -141,10 +143,23 @@ describe('executeExperiment', () => {
       findByInputArtifacts: vi.fn(),
     };
 
+    // Create mock simulation service
+    mockSimulationService = {
+      runSimulation: vi.fn().mockResolvedValue({
+        results: [],
+        summary: {
+          total_runs: 0,
+          successful: 0,
+          failed: 0,
+        },
+      }),
+    } as unknown as SimulationService;
+
     ports = {
       artifactStore: mockArtifactStore,
       projectionBuilder: mockProjectionBuilder,
       experimentTracker: mockExperimentTracker,
+      simulationService: mockSimulationService,
     };
 
     testDefinition = {

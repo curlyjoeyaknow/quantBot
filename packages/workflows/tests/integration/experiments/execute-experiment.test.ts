@@ -4,7 +4,6 @@
  * Tests end-to-end experiment execution with real adapters.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { executeExperiment } from '../../../src/experiments/index.js';
 import type { ExperimentDefinition } from '@quantbot/core';
 import {
@@ -12,12 +11,15 @@ import {
   ProjectionBuilderAdapter,
   ExperimentTrackerAdapter,
 } from '@quantbot/storage';
-import { PythonEngine } from '@quantbot/infra/utils';
+import { PythonEngine } from '@quantbot/utils';
+import { SimulationService } from '@quantbot/simulation';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 describe('executeExperiment (integration)', () => {
+  // Increase timeout for integration tests (60 seconds)
+  // These tests create real artifacts and execute full experiments
   let tempDir: string;
   let manifestDb: string;
   let artifactsRoot: string;
@@ -26,6 +28,7 @@ describe('executeExperiment (integration)', () => {
   let projectionBuilder: ProjectionBuilderAdapter;
   let experimentTracker: ExperimentTrackerAdapter;
   let pythonEngine: PythonEngine;
+  let simulationService: SimulationService;
 
   beforeAll(() => {
     // Create temp directory for test artifacts
@@ -48,6 +51,7 @@ describe('executeExperiment (integration)', () => {
       artifactsRoot // artifactsRoot - must match artifact store
     );
     experimentTracker = new ExperimentTrackerAdapter(experimentDb, pythonEngine);
+    simulationService = new SimulationService(pythonEngine);
   });
 
   afterAll(() => {
@@ -64,7 +68,6 @@ describe('executeExperiment (integration)', () => {
     // NOTE: May fail if artifact_store spec has timestamp casting issues.
     // If this test fails, check packages/artifact_store/artifact_store/spec.py
     // for proper TIMESTAMP type handling in cast expressions.
-  }, 30000); // 30 second timeout for integration test
 
     // 1. Create test artifacts with correct schemas
     const alertsPath = join(tempDir, 'alerts.csv');
@@ -92,7 +95,7 @@ describe('executeExperiment (integration)', () => {
       dataPath: alertsPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
-      gitCommit: 'test-commit',
+        gitCommit: 'testcommit123',
       gitDirty: false,
       params: {},
     });
@@ -104,7 +107,7 @@ describe('executeExperiment (integration)', () => {
       dataPath: ohlcvPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
-      gitCommit: 'test-commit',
+        gitCommit: 'testcommit123',
       gitDirty: false,
       params: {},
     });
@@ -113,8 +116,9 @@ describe('executeExperiment (integration)', () => {
     expect(ohlcvArtifact.success).toBe(true);
 
     // 3. Create experiment definition
+    const experimentTimestamp = new Date().getTime();
     const definition: ExperimentDefinition = {
-      experimentId: `exp-integration-${Date.now()}`,
+      experimentId: `exp-integration-${experimentTimestamp}`,
       name: 'Integration Test Experiment',
       description: 'Test experiment for integration testing',
       inputs: {
@@ -135,7 +139,7 @@ describe('executeExperiment (integration)', () => {
         params: {},
       },
       provenance: {
-        gitCommit: 'test-commit',
+        gitCommit: 'testcommit123',
         gitDirty: false,
         engineVersion: '1.0.0',
         createdAt: new Date().toISOString(),
@@ -147,6 +151,7 @@ describe('executeExperiment (integration)', () => {
       artifactStore,
       projectionBuilder,
       experimentTracker,
+      simulationService,
     });
 
     // 5. Verify results
@@ -163,12 +168,13 @@ describe('executeExperiment (integration)', () => {
       expect(lineage.inputs.map((a) => a.artifactId)).toContain(alertsArtifact.artifactId);
       expect(lineage.inputs.map((a) => a.artifactId)).toContain(ohlcvArtifact.artifactId);
     }
-  });
+  }, 60000);
 
   it('should handle experiment with no candles gracefully', async () => {
     // Test with empty date range (no candles)
+    const experimentTimestamp = new Date().getTime();
     const definition: ExperimentDefinition = {
-      experimentId: `exp-empty-${Date.now()}`,
+      experimentId: `exp-empty-${experimentTimestamp}`,
       name: 'Empty Experiment',
       inputs: {
         alerts: [],
@@ -185,7 +191,7 @@ describe('executeExperiment (integration)', () => {
         params: {},
       },
       provenance: {
-        gitCommit: 'test-commit',
+        gitCommit: 'testcommit123',
         gitDirty: false,
         engineVersion: '1.0.0',
         createdAt: new Date().toISOString(),
@@ -198,7 +204,8 @@ describe('executeExperiment (integration)', () => {
         artifactStore,
         projectionBuilder,
         experimentTracker,
+        simulationService,
       })
     ).rejects.toThrow();
-  });
+  }, 60000);
 });

@@ -41,15 +41,18 @@ describe('ArtifactStoreAdapter', () => {
       const result = await adapter.getArtifact('test-123');
 
       expect(result).toEqual(mockArtifact);
-      expect(mockPythonEngine.runScriptWithStdin).toHaveBeenCalledWith(
-        expect.stringContaining('artifact_store_ops.py'),
-        expect.objectContaining({
-          operation: 'get_artifact',
-          manifest_db: manifestDb,
-          artifact_id: 'test-123',
-        }),
-        expect.any(Object)
-      );
+      expect(mockPythonEngine.runScriptWithStdin).toHaveBeenCalled();
+      const calls = vi.mocked(mockPythonEngine.runScriptWithStdin).mock.calls;
+      expect(calls.length).toBeGreaterThan(0);
+      const [scriptPath, input, schema, options] = calls[0];
+      expect(scriptPath).toMatch(/artifact_store_ops\.py$/);
+      expect(input).toMatchObject({
+        operation: 'get_artifact',
+        manifest_db: manifestDb,
+        artifact_id: 'test-123',
+      });
+      expect(schema).toBeDefined();
+      expect(options).toBeDefined();
     });
 
     it('should throw NotFoundError when artifact not found', async () => {
@@ -105,19 +108,22 @@ describe('ArtifactStoreAdapter', () => {
       });
 
       expect(result).toEqual(mockArtifacts);
-      expect(mockPythonEngine.runScriptWithStdin).toHaveBeenCalledWith(
-        expect.stringContaining('artifact_store_ops.py'),
-        expect.objectContaining({
-          operation: 'list_artifacts',
-          manifest_db: manifestDb,
-          filter: {
-            artifactType: 'alerts_v1',
-            status: 'active',
-            limit: 10,
-          },
-        }),
-        expect.any(Object)
-      );
+      expect(mockPythonEngine.runScriptWithStdin).toHaveBeenCalled();
+      const calls = vi.mocked(mockPythonEngine.runScriptWithStdin).mock.calls;
+      expect(calls.length).toBeGreaterThan(0);
+      const [scriptPath, input, schema, options] = calls[0];
+      expect(scriptPath).toMatch(/artifact_store_ops\.py$/);
+      expect(input).toMatchObject({
+        operation: 'list_artifacts',
+        manifest_db: manifestDb,
+        filter: {
+          artifactType: 'alerts_v1',
+          status: 'active',
+          limit: 10,
+        },
+      });
+      expect(schema).toBeDefined();
+      expect(options).toBeDefined();
     });
   });
 
@@ -146,16 +152,19 @@ describe('ArtifactStoreAdapter', () => {
       const result = await adapter.findByLogicalKey('alerts_v1', 'day=2025-05-01/chain=solana');
 
       expect(result).toEqual(mockArtifacts);
-      expect(mockPythonEngine.runScriptWithStdin).toHaveBeenCalledWith(
-        expect.stringContaining('artifact_store_ops.py'),
-        expect.objectContaining({
-          operation: 'find_by_logical_key',
-          manifest_db: manifestDb,
-          artifact_type: 'alerts_v1',
-          logical_key: 'day=2025-05-01/chain=solana',
-        }),
-        expect.any(Object)
-      );
+      expect(mockPythonEngine.runScriptWithStdin).toHaveBeenCalled();
+      const calls = vi.mocked(mockPythonEngine.runScriptWithStdin).mock.calls;
+      expect(calls.length).toBeGreaterThan(0);
+      const [scriptPath, input, schema, options] = calls[0];
+      expect(scriptPath).toMatch(/artifact_store_ops\.py$/);
+      expect(input).toMatchObject({
+        operation: 'find_by_logical_key',
+        manifest_db: manifestDb,
+        artifact_type: 'alerts_v1',
+        logical_key: 'day=2025-05-01/chain=solana',
+      });
+      expect(schema).toBeDefined();
+      expect(options).toBeDefined();
     });
   });
 
@@ -282,16 +291,19 @@ describe('ArtifactStoreAdapter', () => {
 
       await adapter.supersede('new-123', 'old-123');
 
-      expect(mockPythonEngine.runScriptWithStdin).toHaveBeenCalledWith(
-        expect.stringContaining('artifact_store_ops.py'),
-        expect.objectContaining({
-          operation: 'supersede',
-          manifest_db: manifestDb,
-          new_artifact_id: 'new-123',
-          old_artifact_id: 'old-123',
-        }),
-        expect.any(Object)
-      );
+      expect(mockPythonEngine.runScriptWithStdin).toHaveBeenCalled();
+      const calls = vi.mocked(mockPythonEngine.runScriptWithStdin).mock.calls;
+      expect(calls.length).toBeGreaterThan(0);
+      const [scriptPath, input, schema, options] = calls[0];
+      expect(scriptPath).toMatch(/artifact_store_ops\.py$/);
+      expect(input).toMatchObject({
+        operation: 'supersede',
+        manifest_db: manifestDb,
+        new_artifact_id: 'new-123',
+        old_artifact_id: 'old-123',
+      });
+      expect(schema).toBeDefined();
+      expect(options).toBeDefined();
     });
   });
 

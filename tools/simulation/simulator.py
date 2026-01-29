@@ -9,12 +9,18 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, asdict
 import logging
-
-from .sql_functions import setup_simulation_schema
-
-# Import canonical contracts
 import sys
 from pathlib import Path
+
+# Handle both relative and absolute imports
+try:
+    from .sql_functions import setup_simulation_schema
+except ImportError:
+    # Fallback for when run as script (not as package)
+    sys.path.insert(0, str(Path(__file__).parent))
+    from sql_functions import setup_simulation_schema
+
+# Import canonical contracts
 sys.path.insert(0, str(Path(__file__).parent.parent / 'telegram' / 'simulation'))
 from contracts import SimInput, SimResult, SimEvent, SimMetrics
 

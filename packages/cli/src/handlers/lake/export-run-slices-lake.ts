@@ -22,7 +22,11 @@ export async function exportRunSlicesLakeHandler(args: ExportRunSlicesArgs, ctx:
 
   // Get ClickHouse config from environment
   const chHost = process.env.CLICKHOUSE_HOST || 'localhost';
-  const chPort = parseInt(process.env.CLICKHOUSE_PORT || '8123', 10);
+  // Prefer CLICKHOUSE_HTTP_PORT (explicit HTTP) over CLICKHOUSE_PORT (may be native TCP)
+  const chPort = parseInt(
+    process.env.CLICKHOUSE_HTTP_PORT || process.env.CLICKHOUSE_PORT || '18123',
+    10
+  );
   const chDatabase = process.env.CLICKHOUSE_DATABASE || 'quantbot';
   const chUser = process.env.CLICKHOUSE_USER || 'default';
   const chPassword = process.env.CLICKHOUSE_PASSWORD || '';

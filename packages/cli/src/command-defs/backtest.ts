@@ -261,3 +261,48 @@ export const catalogQuerySchema = z.object({
 });
 
 export type CatalogQueryArgs = z.infer<typeof catalogQuerySchema>;
+
+/**
+ * Results show schema - Show detailed results for a run
+ */
+export const backtestResultsShowSchema = z.object({
+  runId: z.string().min(1),
+  format: z.enum(['json', 'table', 'csv']).optional().default('table'),
+});
+
+export type BacktestResultsShowArgs = z.infer<typeof backtestResultsShowSchema>;
+
+/**
+ * Results compare schema - Compare two backtest runs
+ */
+export const backtestResultsCompareSchema = z.object({
+  runId1: z.string().min(1),
+  runId2: z.string().min(1),
+  format: z.enum(['json', 'table', 'csv']).optional().default('table'),
+});
+
+export type BacktestResultsCompareArgs = z.infer<typeof backtestResultsCompareSchema>;
+
+/**
+ * Results export schema - Export results to files
+ */
+export const backtestResultsExportSchema = z.object({
+  runId: z.string().min(1),
+  format: z.enum(['csv', 'json', 'parquet']).default('csv'),
+  output: z.string().min(1), // Output file path
+  includeTrades: z.boolean().optional().default(false),
+  includeMetrics: z.boolean().optional().default(true),
+});
+
+export type BacktestResultsExportArgs = z.infer<typeof backtestResultsExportSchema>;
+
+/**
+ * Reproduce schema - Reproduce a previous backtest run
+ */
+export const backtestReproduceSchema = z.object({
+  runId: z.string().min(1),
+  validate: z.boolean().optional().default(false), // Compare results if true
+  format: z.enum(['json', 'table', 'csv']).optional().default('table'),
+});
+
+export type BacktestReproduceArgs = z.infer<typeof backtestReproduceSchema>;

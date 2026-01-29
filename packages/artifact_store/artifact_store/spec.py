@@ -79,6 +79,69 @@ SPECS: Dict[str, ArtifactTypeSpec] = {
             "ts": "strftime(TRY_CAST({col} AS TIMESTAMP), '%Y-%m-%dT%H:%M:%S.%fZ')",
         },
     ),
+    "experiment_trades": ArtifactTypeSpec(
+        artifact_type="experiment_trades",
+        canonical_cols=(
+            "trade_id",
+            "call_id",
+            "mint",
+            "entry_time",
+            "entry_price",
+            "exit_time",
+            "exit_price",
+            "exit_reason",
+            "size",
+            "gross_pnl",
+            "net_pnl",
+            "entry_costs",
+            "exit_costs",
+            "borrow_costs",
+            "peak_multiple",
+            "max_drawdown",
+            "duration",
+        ),
+        sort_keys=("entry_time", "trade_id"),
+        casts={},
+    ),
+    "experiment_metrics": ArtifactTypeSpec(
+        artifact_type="experiment_metrics",
+        canonical_cols=(
+            "total_trades",
+            "winning_trades",
+            "losing_trades",
+            "win_rate",
+            "avg_win",
+            "avg_loss",
+            "profit_factor",
+            "total_pnl",
+            "total_gross_pnl",
+            "total_costs",
+            "avg_duration",
+            "max_drawdown",
+            "sharpe_ratio",
+            "sortino_ratio",
+        ),
+        sort_keys=("total_trades",),  # Single row per experiment, but need at least one sort key
+        casts={},
+    ),
+    "experiment_curves": ArtifactTypeSpec(
+        artifact_type="experiment_curves",
+        canonical_cols=("timestamp", "equity", "cumulative_pnl", "open_positions"),
+        sort_keys=("timestamp",),
+        casts={
+            # Handle BIGINT timestamps (milliseconds)
+            "timestamp": "CAST({col} AS BIGINT)",
+        },
+    ),
+    "experiment_diagnostics": ArtifactTypeSpec(
+        artifact_type="experiment_diagnostics",
+        canonical_cols=("level", "message", "timestamp", "call_id", "context"),
+        sort_keys=("timestamp", "level", "call_id"),
+        casts={
+            # Handle BIGINT timestamps (milliseconds)
+            "timestamp": "CAST({col} AS BIGINT)",
+        },
+    ),
 }
 
 def get_spec(artifact_type: str) -> ArtifactTypeSpec:

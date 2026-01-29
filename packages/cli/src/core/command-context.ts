@@ -30,6 +30,7 @@ import type {
   ArtifactStorePort,
   ProjectionBuilderPort,
   ExperimentTrackerPort,
+  BacktestResultsPort,
 } from '@quantbot/core';
 import { OhlcvIngestionService } from '@quantbot/ingestion';
 import { MarketDataIngestionService } from '@quantbot/jobs';
@@ -60,6 +61,7 @@ import {
   ArtifactDuckDBAdapter,
   RawDataDuckDBAdapter,
   CanonicalDuckDBAdapter,
+  BacktestResultsAdapter,
 } from '@quantbot/storage';
 import { LakeExporterService } from '@quantbot/infra/storage';
 import type { ArtifactRepository } from '@quantbot/core';
@@ -103,6 +105,7 @@ export interface CommandServices {
   artifactStore(): ArtifactStorePort; // Artifact store (Parquet + SQLite manifest)
   projectionBuilder(): ProjectionBuilderPort; // Projection builder (DuckDB from Parquet)
   experimentTracker(): ExperimentTrackerPort; // Experiment tracker (DuckDB)
+  backtestResults(): BacktestResultsPort; // Backtest results (DuckDB + filesystem)
   // Note: marketDataPort is async - use ctx.getMarketDataPort() instead
   marketDataPort(): never; // Market data port (for fetching OHLCV, metadata, etc.) - use getMarketDataPort() instead
   // Add more services as needed
@@ -305,8 +308,14 @@ export class CommandContext {
       },
       experimentTracker: () => {
         // Experiment Tracker - DuckDB
-        const dbPath = process.env.EXPERIMENT_DB || '/home/memez/opn/data/experiments.duckdb';
+        const workspaceRoot = findWorkspaceRoot();
+        const dbPath = process.env.EXPERIMENT_DB || join(workspaceRoot, 'data/experiments.duckdb');
         return new ExperimentTrackerAdapter(dbPath, pythonEngine);
+      },
+      backtestResults: () => {
+        // Backtest Results - DuckDB + filesystem adapter
+        const artifactsBaseDir = process.env.ARTIFACTS_DIR || join(process.cwd(), 'artifacts', 'backtest');
+        return new BacktestResultsAdapter(artifactsBaseDir);
       },
       // Note: marketDataPort is async and should be accessed via getMarketDataPort()
       // Keeping in interface for type safety but implementation is async

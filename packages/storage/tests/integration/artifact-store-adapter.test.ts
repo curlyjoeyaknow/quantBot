@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ArtifactStoreAdapter } from '../../src/adapters/artifact-store-adapter.js';
+import { PythonEngine } from '@quantbot/utils';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -23,8 +24,9 @@ describe('ArtifactStoreAdapter (integration)', () => {
       'alert_ts_utc,chain,mint,alert_id\n2025-05-01T00:00:00Z,solana,ABC123,alert-1\n'
     );
 
-    // Create adapter
-    adapter = new ArtifactStoreAdapter(manifestDb, artifactsRoot);
+    // Create adapter with PythonEngine (required for artifact operations)
+    const pythonEngine = new PythonEngine();
+    adapter = new ArtifactStoreAdapter(manifestDb, artifactsRoot, pythonEngine);
   });
 
   afterAll(() => {
@@ -48,7 +50,7 @@ describe('ArtifactStoreAdapter (integration)', () => {
       dataPath: testDataPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
-      gitCommit: 'test-commit-123',
+      gitCommit: 'testcommit123',
       gitDirty: false,
       tags: { test: 'integration' },
     });
@@ -74,7 +76,7 @@ describe('ArtifactStoreAdapter (integration)', () => {
       dataPath: testDataPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
-      gitCommit: 'test-commit-123',
+      gitCommit: 'testcommit123',
       gitDirty: false,
     });
 
@@ -89,7 +91,7 @@ describe('ArtifactStoreAdapter (integration)', () => {
       dataPath: testDataPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
-      gitCommit: 'test-commit-123',
+      gitCommit: 'testcommit123',
       gitDirty: false,
     });
 
@@ -106,7 +108,7 @@ describe('ArtifactStoreAdapter (integration)', () => {
       dataPath: testDataPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
-      gitCommit: 'test-commit-123',
+      gitCommit: 'testcommit123',
       gitDirty: false,
       tags: { environment: 'test', purpose: 'integration' },
     });
@@ -132,7 +134,7 @@ describe('ArtifactStoreAdapter (integration)', () => {
       dataPath: testDataPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
-      gitCommit: 'test-commit-123',
+      gitCommit: 'testcommit123',
       gitDirty: false,
     });
 
@@ -153,7 +155,7 @@ describe('ArtifactStoreAdapter (integration)', () => {
       dataPath: testDataPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
-      gitCommit: 'test-commit-123',
+      gitCommit: 'testcommit123',
       gitDirty: false,
     });
 
@@ -166,7 +168,7 @@ describe('ArtifactStoreAdapter (integration)', () => {
       inputArtifactIds: [input1.artifactId!],
       writerName: 'integration-test',
       writerVersion: '1.0.0',
-      gitCommit: 'test-commit-123',
+      gitCommit: 'testcommit123',
       gitDirty: false,
     });
 
@@ -187,7 +189,7 @@ describe('ArtifactStoreAdapter (integration)', () => {
       dataPath: testDataPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
-      gitCommit: 'test-commit-123',
+      gitCommit: 'testcommit123',
       gitDirty: false,
     });
 
@@ -200,7 +202,7 @@ describe('ArtifactStoreAdapter (integration)', () => {
       inputArtifactIds: [input.artifactId!],
       writerName: 'integration-test',
       writerVersion: '1.0.0',
-      gitCommit: 'test-commit-123',
+      gitCommit: 'testcommit123',
       gitDirty: false,
     });
 
@@ -220,7 +222,7 @@ describe('ArtifactStoreAdapter (integration)', () => {
       dataPath: testDataPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
-      gitCommit: 'test-commit-123',
+      gitCommit: 'testcommit123',
       gitDirty: false,
     });
 

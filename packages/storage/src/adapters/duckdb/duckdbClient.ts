@@ -73,6 +73,8 @@ export async function openDuckDb(
       // We cast to T[] since we know the structure matches
       // Type assertion needed because DuckDB's callback types don't match our generic Promise interface
       if (params && params.length > 0) {
+        // DuckDB Node.js bindings: all() method accepts parameters as array
+        // The callback signature is (err, rows) where rows is TableData
         (conn.all as any)(sql, params, (err: any, rows: any) => {
           if (err) {
             reject(err);

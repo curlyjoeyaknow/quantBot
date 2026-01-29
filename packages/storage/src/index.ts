@@ -70,6 +70,7 @@ export { ArtifactDuckDBAdapter } from './adapters/artifact-duckdb-adapter.js';
 export { ExperimentDuckDBAdapter } from './adapters/experiment-duckdb-adapter.js';
 export { ProjectionBuilderAdapter } from './adapters/projection-builder-adapter.js';
 export { ExperimentTrackerAdapter } from './adapters/experiment-tracker-adapter.js';
+export { BacktestResultsAdapter } from './adapters/backtest-results-adapter.js';
 
 // Raw data repository adapter
 export { RawDataDuckDBAdapter } from './adapters/raw-data-duckdb-adapter.js';

@@ -14,7 +14,7 @@ import { join } from 'path';
  * Schema for simulation result
  */
 export const SimulationResultSchema = z.object({
-  run_id: z.string().optional(),
+  run_id: z.string().nullish(), // Allow null/undefined (Python may return null)
   final_capital: z.number().optional(),
   total_return_pct: z.number().optional(),
   total_trades: z.number().optional(),
@@ -85,7 +85,11 @@ export class SimulationService {
           timeout: 300000, // 5 minute timeout
           cwd: join(workspaceRoot, 'tools/simulation'),
           env: {
-            PYTHONPATH: join(workspaceRoot, 'tools/simulation'),
+            PYTHONPATH: [
+              join(workspaceRoot, 'tools/simulation'),
+              join(workspaceRoot, 'tools'),
+              workspaceRoot,
+            ].join(':'),
           },
         }
       );

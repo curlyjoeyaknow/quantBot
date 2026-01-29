@@ -33,6 +33,11 @@ describe.skipIf(!shouldRun)('analyzeCoverage integration tests', () => {
   let context: AnalyzeCoverageContext;
 
   beforeAll(() => {
+    // Set dummy Birdeye API key for tests (context creation requires it)
+    if (!process.env.BIRDEYE_API_KEY_1) {
+      process.env.BIRDEYE_API_KEY_1 = 'test-key-1';
+    }
+
     // Create test directory
     if (!existsSync(testDir)) {
       mkdirSync(testDir, { recursive: true });

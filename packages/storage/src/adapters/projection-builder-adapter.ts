@@ -17,6 +17,7 @@
  */
 
 import { logger } from '@quantbot/infra/utils';
+import { createTracer, type Tracer } from '@quantbot/infra/observability';
 import type {
   ProjectionBuilderPort,
   ProjectionRequest,
@@ -29,12 +30,15 @@ import type {
   ProjectionFilter,
 } from '@quantbot/core';
 import { openDuckDb, type DuckDbConnection } from '@quantbot/infra/storage';
-import { existsSync } from 'fs';
+import { existsSync, createReadStream, createWriteStream } from 'fs';
 import { mkdir, unlink, stat, realpath } from 'fs/promises';
 import { join, resolve } from 'path';
 import { tmpdir } from 'os';
 import { z } from 'zod';
+import { createGzip, createGunzip } from 'zlib';
+import { pipeline } from 'stream/promises';
 import { ProjectionMetadataManager } from './projection-metadata-manager.js';
+import { ProjectionCheckpointManager } from './projection-checkpoint-manager.js';
 
 /**
  * Custom error types for better error handling
@@ -295,11 +299,13 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
   private readonly defaultCacheDir: string;
   private readonly maxProjectionSizeBytes: number;
   private readonly metadataManager: ProjectionMetadataManager;
+  private readonly checkpointManager: ProjectionCheckpointManager;
   private readonly batchSize: number;
   private readonly builderVersion: string = '1.0.0';
   private readonly artifactsRoot: string;
   private readonly maxRetries: number;
   private readonly retryBaseDelayMs: number;
+  private readonly enableCheckpoints: boolean;
 
   constructor(
     artifactStore: ArtifactStorePort,
@@ -334,6 +340,11 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
     // Initialize metadata manager
     const metadataPath = metadataDbPath || join(cacheDir, 'projection_manifest.duckdb');
     this.metadataManager = new ProjectionMetadataManager(metadataPath);
+
+    // Initialize checkpoint manager
+    const checkpointDir = join(cacheDir, 'checkpoints');
+    this.checkpointManager = new ProjectionCheckpointManager(checkpointDir);
+    this.enableCheckpoints = process.env.PROJECTION_ENABLE_CHECKPOINTS !== 'false';
   }
 
   /**
@@ -343,14 +354,24 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
    * @throws {ArtifactNotFoundError} If any artifact is not found
    * @throws {ProjectionBuildError} If build fails
    */
-  async buildProjection(request: ProjectionRequest): Promise<ProjectionResult> {
+  async buildProjection(request: ProjectionRequest, traceId?: string): Promise<ProjectionResult> {
     const startTime = Date.now();
+    
+    // Create tracer for distributed tracing
+    const tracer = createTracer(traceId);
+    const buildSpan = tracer.startSpan('buildProjection', 'projection-builder', {
+      projectionId: request.projectionId,
+      version: request.version || 'auto',
+      artifactCount: (request.artifacts.alerts?.length || 0) + (request.artifacts.ohlcv?.length || 0),
+    });
 
     // Validate request with detailed error messages
     let validatedRequest: z.infer<typeof ProjectionRequestSchema>;
     try {
       validatedRequest = ProjectionRequestSchema.parse(request);
+      tracer.log(buildSpan.spanId, 'Request validated', { projectionId: validatedRequest.projectionId });
     } catch (error) {
+      tracer.endSpan(buildSpan.spanId, error instanceof Error ? error : new Error(String(error)));
       if (error instanceof z.ZodError) {
         const errorMessages = error.issues.map((issue) => {
           const path = issue.path.length > 0 ? issue.path.join('.') : 'root';
@@ -367,33 +388,53 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
       const cacheDir = validatedRequest.cacheDir || this.defaultCacheDir;
       const duckdbPath = join(cacheDir, `${validatedRequest.projectionId}-${version}.duckdb`);
 
+      tracer.log(buildSpan.spanId, 'Starting projection build', {
+        projectionId: validatedRequest.projectionId,
+        version,
+        duckdbPath,
+      });
+
       logger.info('Building projection', {
         projectionId: validatedRequest.projectionId,
         version,
         duckdbPath,
+        traceId: buildSpan.traceId,
         artifactCount:
           (validatedRequest.artifacts.alerts?.length || 0) +
           (validatedRequest.artifacts.ohlcv?.length || 0),
       });
 
       // Ensure cache directory exists
+      const dirSpan = tracer.startSpan('ensureCacheDirectory', 'projection-builder', { cacheDir });
       await this.ensureCacheDirectory(cacheDir);
+      tracer.endSpan(dirSpan.spanId);
 
       // Delete existing projection if it exists (for same version)
       // Note: Different versions can coexist
+      const deleteSpan = tracer.startSpan('deleteExistingProjection', 'projection-builder', { projectionId: validatedRequest.projectionId, version });
       await this.deleteExistingProjection(duckdbPath, validatedRequest.projectionId, version);
+      tracer.endSpan(deleteSpan.spanId);
 
       // Open native DuckDB connection
+      const connSpan = tracer.startSpan('openDuckDb', 'projection-builder', { duckdbPath });
       const conn = await openDuckDb(duckdbPath);
+      tracer.endSpan(connSpan.spanId);
 
       // Build tables with proper error recovery
+      const tablesSpan = tracer.startSpan('buildTables', 'projection-builder', {
+        tableCount: (validatedRequest.artifacts.alerts ? 1 : 0) + (validatedRequest.artifacts.ohlcv ? 1 : 0),
+      });
       const { tables, totalRows, artifactCount } = await this.buildTables(
         conn,
-        validatedRequest
+        validatedRequest,
+        tracer
       );
+      tracer.endSpan(tablesSpan.spanId);
 
       // Verify projection was created successfully
+      const verifySpan = tracer.startSpan('verifyProjection', 'projection-builder');
       await this.verifyProjection(conn, duckdbPath, validatedRequest.projectionId);
+      tracer.endSpan(verifySpan.spanId);
 
       // Native connections close automatically when out of scope
       // No explicit close() needed
@@ -474,11 +515,14 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
         projectionId: validatedRequest.projectionId,
         version,
         duckdbPath,
+        traceId: buildSpan.traceId,
         tables: tables.map((t) => ({ name: t.name, rowCount: t.rowCount })),
         totalRows,
         artifactCount,
         executionTimeMs,
       });
+
+      tracer.endSpan(buildSpan.spanId);
 
       return {
         projectionId: validatedRequest.projectionId,
@@ -489,6 +533,9 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
         totalRows,
       };
     } catch (error) {
+      // End span with error
+      tracer.endSpan(buildSpan.spanId, error instanceof Error ? error : new Error(String(error)));
+
       // Re-throw known error types
       if (
         error instanceof ProjectionBuilderError ||
@@ -572,7 +619,8 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
    */
   private async buildTables(
     conn: DuckDbConnection,
-    request: z.infer<typeof ProjectionRequestSchema>
+    request: z.infer<typeof ProjectionRequestSchema>,
+    tracer?: Tracer
   ): Promise<{ tables: ProjectionTable[]; totalRows: number; artifactCount: number }> {
     const tables: ProjectionTable[] = [];
     let totalRows = 0;
@@ -581,6 +629,10 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
     // Build alerts table
     if (request.artifacts.alerts && request.artifacts.alerts.length > 0) {
       const tableName = request.tables.alerts || 'alerts';
+      const alertSpan = tracer?.startSpan('buildAlertsTable', 'projection-builder', {
+        tableName,
+        artifactCount: request.artifacts.alerts.length,
+      });
       const table = await this.buildTable(
         conn,
         tableName,
@@ -588,6 +640,9 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
         request.projectionId,
         request.indexes?.filter((idx) => idx.table === tableName)
       );
+      if (alertSpan) {
+        tracer?.endSpan(alertSpan.spanId);
+      }
       tables.push(table);
       totalRows += table.rowCount;
       artifactCount += request.artifacts.alerts.length;
@@ -596,6 +651,10 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
     // Build OHLCV table
     if (request.artifacts.ohlcv && request.artifacts.ohlcv.length > 0) {
       const tableName = request.tables.ohlcv || 'ohlcv';
+      const ohlcvSpan = tracer?.startSpan('buildOhlcvTable', 'projection-builder', {
+        tableName,
+        artifactCount: request.artifacts.ohlcv.length,
+      });
       const table = await this.buildTable(
         conn,
         tableName,
@@ -603,6 +662,9 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
         request.projectionId,
         request.indexes?.filter((idx) => idx.table === tableName)
       );
+      if (ohlcvSpan) {
+        tracer?.endSpan(ohlcvSpan.spanId);
+      }
       tables.push(table);
       totalRows += table.rowCount;
       artifactCount += request.artifacts.ohlcv.length;
@@ -1433,5 +1495,159 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
       checksumValid,
       warnings,
     };
+  }
+
+  /**
+   * Resume a failed projection build from checkpoint
+   */
+  async resumeBuild(checkpointId: string): Promise<ProjectionResult> {
+    logger.info('Resuming projection build from checkpoint', { checkpointId });
+
+    const checkpoint = await this.checkpointManager.getCheckpoint(checkpointId);
+    if (!checkpoint) {
+      throw new ProjectionBuildError(
+        `Checkpoint not found: ${checkpointId}`,
+        checkpointId
+      );
+    }
+
+    // Check if projection already exists (build may have completed)
+    const exists = await this.projectionExists(checkpoint.projectionId, checkpoint.cacheDir);
+    if (exists) {
+      logger.info('Projection already exists, returning existing result', {
+        projectionId: checkpoint.projectionId,
+        checkpointId,
+      });
+      const metadata = await this.metadataManager.getMetadata(checkpoint.projectionId, checkpoint.version);
+      if (metadata) {
+        // Reconstruct result from metadata
+        const conn = await openDuckDb(metadata.duckdbPath);
+        const tables: ProjectionTable[] = [];
+        for (const tableName of metadata.tableNames) {
+          const { rowCount, columns } = await this.getTableMetadata(conn, tableName, checkpoint.projectionId);
+          const indexResult = await conn.all<{ name: string }>(
+            `SELECT name FROM duckdb_indexes() WHERE table_name = '${tableName}'`
+          );
+          tables.push({
+            name: tableName,
+            rowCount,
+            columns,
+            indexes: indexResult.map((r) => r.name),
+          });
+        }
+        return {
+          projectionId: metadata.projectionId,
+          version: metadata.version,
+          duckdbPath: metadata.duckdbPath,
+          tables,
+          artifactCount: metadata.artifactIds.length,
+          totalRows: metadata.totalRows,
+        };
+      }
+    }
+
+    // Resume build from checkpoint
+    // Create a new request with only remaining artifacts
+    const remainingRequest: ProjectionRequest = {
+      projectionId: checkpoint.request.projectionId,
+      version: checkpoint.version,
+      artifacts: {
+        alerts: checkpoint.request.artifacts.alerts?.filter(
+          (id) => !checkpoint.completedArtifacts.alerts.includes(id)
+        ),
+        ohlcv: checkpoint.request.artifacts.ohlcv?.filter(
+          (id) => !checkpoint.completedArtifacts.ohlcv.includes(id)
+        ),
+      },
+      tables: checkpoint.request.tables,
+      indexes: checkpoint.request.indexes,
+      cacheDir: checkpoint.cacheDir,
+    };
+
+    // Build remaining artifacts
+    const result = await this.buildProjection(remainingRequest);
+
+    // Cleanup checkpoint after successful resume
+    await this.checkpointManager.deleteCheckpoint(checkpointId);
+
+    return result;
+  }
+
+  /**
+   * Compress a projection (reduces disk usage)
+   */
+  async compressProjection(projectionId: string, version?: string): Promise<string> {
+    logger.info('Compressing projection', { projectionId, version });
+
+    const metadata = await this.metadataManager.getMetadata(projectionId, version);
+    if (!metadata) {
+      throw new ProjectionBuildError(
+        `Projection not found: ${projectionId}${version ? ` (version: ${version})` : ''}`,
+        projectionId
+      );
+    }
+
+    if (!existsSync(metadata.duckdbPath)) {
+      throw new ProjectionBuildError(
+        `Projection file not found: ${metadata.duckdbPath}`,
+        projectionId
+      );
+    }
+
+    const compressedPath = `${metadata.duckdbPath}.gz`;
+
+    // Compress using gzip
+    const inputStream = createReadStream(metadata.duckdbPath);
+    const outputStream = createWriteStream(compressedPath);
+    const gzipStream = createGzip();
+
+    await pipeline(inputStream, gzipStream, outputStream);
+
+    // Get compressed size
+    const compressedStats = await stat(compressedPath);
+    const originalStats = await stat(metadata.duckdbPath);
+    const compressionRatio = ((1 - compressedStats.size / originalStats.size) * 100).toFixed(2);
+
+    logger.info('Projection compressed successfully', {
+      projectionId,
+      version: metadata.version,
+      originalSize: originalStats.size,
+      compressedSize: compressedStats.size,
+      compressionRatio: `${compressionRatio}%`,
+      compressedPath,
+    });
+
+    return compressedPath;
+  }
+
+  /**
+   * Decompress a compressed projection
+   */
+  async decompressProjection(compressedPath: string): Promise<string> {
+    logger.info('Decompressing projection', { compressedPath });
+
+    if (!existsSync(compressedPath)) {
+      throw new ProjectionBuildError(
+        `Compressed file not found: ${compressedPath}`,
+        'unknown'
+      );
+    }
+
+    // Remove .gz extension to get original path
+    const duckdbPath = compressedPath.replace(/\.gz$/, '');
+
+    // Decompress using gunzip
+    const inputStream = createReadStream(compressedPath);
+    const outputStream = createWriteStream(duckdbPath);
+    const gunzipStream = createGunzip();
+
+    await pipeline(inputStream, gunzipStream, outputStream);
+
+    logger.info('Projection decompressed successfully', {
+      compressedPath,
+      duckdbPath,
+    });
+
+    return duckdbPath;
   }
 }

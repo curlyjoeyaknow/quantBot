@@ -45,9 +45,15 @@ import subprocess
 import signal
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# Add workspace root to Python path for tools.shared imports
+workspace_root = Path(__file__).resolve().parents[2]
+if str(workspace_root) not in sys.path:
+    sys.path.insert(0, str(workspace_root))
 from threading import Lock
 
 # Suppress deprecation warnings for cleaner JSON output

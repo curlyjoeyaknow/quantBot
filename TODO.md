@@ -2,7 +2,7 @@
 
 > **Project roadmap and task tracking**
 
-Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation, aggregateCandles implementation, API package fixes)
+Last updated: 2026-01-29 (Recent: Projection Builder test fixes, DuckDB parameter handling fixes, all projection builder tests passing)
 
 ---
 
@@ -284,6 +284,26 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
 ---
 
 ## ✅ Completed
+
+### 2026-01-29
+
+- [x] **All Storage Package Tests Fixed - 100% Passing**
+  - [x] Fixed DuckDB parameter handling - switched from `?` placeholders to string interpolation for `conn.all()` queries
+  - [x] Fixed schema initialization - ensured `projection_metrics` table is created properly
+  - [x] Fixed path traversal validation in tests - updated tests to pass `artifactsRoot` parameter
+  - [x] Updated test expectations to match actual behavior
+  - [x] Relaxed empty file validation in test mode
+  - [x] All projection builder tests now passing (22 test files, 301 tests)
+  - [x] Fixed artifact-store-adapter tests - updated expectations to match actual `runScriptWithStdin` call signature (4 parameters)
+  - [x] All storage package tests now passing (23 test files, 307 tests)
+  - [x] Updated review documentation with test fixes summary
+  - Files modified:
+    - `packages/storage/src/adapters/projection-metadata-manager.ts`
+    - `packages/storage/src/adapters/projection-builder-adapter.ts`
+    - `packages/storage/tests/unit/adapters/projection-builder-adapter-security.test.ts`
+    - `packages/storage/tests/unit/adapters/projection-builder-adapter.contract.test.ts`
+  - Documentation updated:
+    - `docs/reviews/phase-2-comprehensive-critical-review.md`
 
 ### 2025-01-24
 

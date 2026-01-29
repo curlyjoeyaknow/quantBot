@@ -93,6 +93,10 @@ export type {
   ProjectionResult,
   ProjectionTable,
   ProjectionIndex,
+  ProjectionMetadata,
+  ProjectionLineage,
+  ProjectionMetrics,
+  ProjectionFilter,
 } from './projection-builder-port.js';
 export type {
   ExperimentTrackerPort,
@@ -102,3 +106,12 @@ export type {
   ExperimentFilter,
   ExperimentResults,
 } from './experiment-tracker-port.js';
+export type {
+  BacktestResultsPort,
+  RunSummary,
+  CallerPathRow,
+  TradeResultRow,
+  RunSummaryQuery,
+  ExportFormat,
+  ExportOptions,
+} from './backtest-results-port.js';

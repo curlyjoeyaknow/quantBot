@@ -17,7 +17,7 @@ const CLICKHOUSE_PORT = process.env.CLICKHOUSE_HTTP_PORT
   ? parseInt(process.env.CLICKHOUSE_HTTP_PORT)
   : process.env.CLICKHOUSE_PORT
     ? parseInt(process.env.CLICKHOUSE_PORT)
-    : 8123;
+    : 18123; // Default to 18123 (Docker HTTP port)
 const CLICKHOUSE_USER = process.env.CLICKHOUSE_USER || 'default';
 const CLICKHOUSE_PASSWORD = process.env.CLICKHOUSE_PASSWORD || '';
 const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
