@@ -29,24 +29,27 @@ export interface ProjectionBuilderPort {
    * Rebuild an existing projection
    * Useful for refreshing data or applying schema changes
    *
-   * @param projectionId - Projection identifier
+   * @param projectionId - Projection identifier (must match request.projectionId)
+   * @param request - Original projection request (used to rebuild with same configuration)
    */
-  rebuildProjection(projectionId: string): Promise<void>;
+  rebuildProjection(projectionId: string, request: ProjectionRequest): Promise<void>;
 
   /**
    * Dispose a projection (delete DuckDB file)
    *
    * @param projectionId - Projection identifier
+   * @param cacheDir - Optional cache directory (if not provided, uses default)
    */
-  disposeProjection(projectionId: string): Promise<void>;
+  disposeProjection(projectionId: string, cacheDir?: string): Promise<void>;
 
   /**
    * Check if a projection exists
    *
    * @param projectionId - Projection identifier
+   * @param cacheDir - Optional cache directory (if not provided, uses default)
    * @returns True if projection exists
    */
-  projectionExists(projectionId: string): Promise<boolean>;
+  projectionExists(projectionId: string, cacheDir?: string): Promise<boolean>;
 }
 
 /**

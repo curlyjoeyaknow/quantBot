@@ -12,21 +12,27 @@ import { PythonEngine } from '@quantbot/utils';
 import { logger, findWorkspaceRoot, NotFoundError, AppError } from '@quantbot/infra/utils';
 
 // Zod schemas for validation
-const ArtifactSchema = z.object({
-  artifactId: z.string(),
-  artifactType: z.string(),
-  schemaVersion: z.number(),
-  logicalKey: z.string(),
-  status: z.enum(['active', 'superseded', 'tombstoned']),
-  pathParquet: z.string(),
-  pathSidecar: z.string(),
-  fileHash: z.string(),
-  contentHash: z.string(),
-  rowCount: z.number(),
-  minTs: z.string().nullable(),
-  maxTs: z.string().nullable(),
-  createdAt: z.string(),
-});
+const ArtifactSchema = z
+  .object({
+    artifactId: z.string(),
+    artifactType: z.string(),
+    schemaVersion: z.number(),
+    logicalKey: z.string(),
+    status: z.enum(['active', 'superseded', 'tombstoned']),
+    pathParquet: z.string(),
+    pathSidecar: z.string(),
+    fileHash: z.string(),
+    contentHash: z.string(),
+    rowCount: z.number(),
+    minTs: z.string().nullable(),
+    maxTs: z.string().nullable(),
+    createdAt: z.string(),
+  })
+  .transform((data) => ({
+    ...data,
+    minTs: data.minTs ?? undefined,
+    maxTs: data.maxTs ?? undefined,
+  }));
 
 const PublishArtifactResultSchema = z.object({
   success: z.boolean(),

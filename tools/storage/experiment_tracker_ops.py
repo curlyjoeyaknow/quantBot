@@ -26,9 +26,8 @@ def ensure_schema(db_path: str) -> None:
     
     schema_sql = schema_path.read_text()
     
-    con = duckdb.connect(db_path)
-    con.execute(schema_sql)
-    con.close()
+    with duckdb.connect(db_path) as con:
+        con.execute(schema_sql)
 
 
 def row_to_dict(row: Any) -> Dict[str, Any]:
@@ -90,106 +89,99 @@ def create_experiment(db_path: str, definition: Dict[str, Any]) -> Dict[str, Any
     """Create a new experiment"""
     ensure_schema(db_path)
     
-    con = duckdb.connect(db_path)
-    
-    # Extract fields
-    experiment_id = definition['experimentId']
-    name = definition['name']
-    description = definition.get('description')
-    
-    inputs = definition['inputs']
-    input_alerts = json.dumps(inputs['alerts'])
-    input_ohlcv = json.dumps(inputs['ohlcv'])
-    input_strategies = json.dumps(inputs.get('strategies')) if inputs.get('strategies') else None
-    
-    config = json.dumps(definition['config'])
-    
-    provenance = definition['provenance']
-    git_commit = provenance['gitCommit']
-    git_dirty = provenance['gitDirty']
-    engine_version = provenance['engineVersion']
-    created_at = provenance['createdAt']
-    
-    # Insert experiment
-    con.execute("""
-        INSERT INTO experiments (
-            experiment_id, name, description, status,
+    with duckdb.connect(db_path) as con:
+        # Extract fields
+        experiment_id = definition['experimentId']
+        name = definition['name']
+        description = definition.get('description')
+        
+        inputs = definition['inputs']
+        input_alerts = json.dumps(inputs['alerts'])
+        input_ohlcv = json.dumps(inputs['ohlcv'])
+        input_strategies = json.dumps(inputs.get('strategies')) if inputs.get('strategies') else None
+        
+        config = json.dumps(definition['config'])
+        
+        provenance = definition['provenance']
+        git_commit = provenance['gitCommit']
+        git_dirty = provenance['gitDirty']
+        engine_version = provenance['engineVersion']
+        created_at = provenance['createdAt']
+        
+        # Insert experiment
+        con.execute("""
+            INSERT INTO experiments (
+                experiment_id, name, description, status,
+                input_alerts, input_ohlcv, input_strategies,
+                config,
+                git_commit, git_dirty, engine_version, created_at
+            ) VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            experiment_id, name, description,
             input_alerts, input_ohlcv, input_strategies,
             config,
             git_commit, git_dirty, engine_version, created_at
-        ) VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        experiment_id, name, description,
-        input_alerts, input_ohlcv, input_strategies,
-        config,
-        git_commit, git_dirty, engine_version, created_at
-    ))
-    
-    # Fetch created experiment
-    row = con.execute(
-        "SELECT * FROM experiments WHERE experiment_id = ?",
-        (experiment_id,)
-    ).fetchone()
-    
-    con.close()
-    
-    return row_to_dict(row)
+        ))
+        
+        # Fetch created experiment
+        row = con.execute(
+            "SELECT * FROM experiments WHERE experiment_id = ?",
+            (experiment_id,)
+        ).fetchone()
+        
+        return row_to_dict(row)
 
 
 def get_experiment(db_path: str, experiment_id: str) -> Dict[str, Any]:
     """Get experiment by ID"""
     ensure_schema(db_path)
     
-    con = duckdb.connect(db_path)
-    row = con.execute(
-        "SELECT * FROM experiments WHERE experiment_id = ?",
-        (experiment_id,)
-    ).fetchone()
-    con.close()
-    
-    if row is None:
-        raise ValueError(f"Experiment not found: {experiment_id}")
-    
-    return row_to_dict(row)
+    with duckdb.connect(db_path) as con:
+        row = con.execute(
+            "SELECT * FROM experiments WHERE experiment_id = ?",
+            (experiment_id,)
+        ).fetchone()
+        
+        if row is None:
+            raise ValueError(f"Experiment not found: {experiment_id}")
+        
+        return row_to_dict(row)
 
 
 def list_experiments(db_path: str, filter_dict: Dict[str, Any]) -> List[Dict[str, Any]]:
     """List experiments with filters"""
     ensure_schema(db_path)
     
-    con = duckdb.connect(db_path)
-    
-    # Build WHERE clause from filter
-    where_clauses = []
-    params = []
-    
-    if filter_dict.get('status'):
-        where_clauses.append("status = ?")
-        params.append(filter_dict['status'])
-    
-    if filter_dict.get('gitCommit'):
-        where_clauses.append("git_commit = ?")
-        params.append(filter_dict['gitCommit'])
-    
-    if filter_dict.get('minCreatedAt'):
-        where_clauses.append("created_at >= ?")
-        params.append(filter_dict['minCreatedAt'])
-    
-    if filter_dict.get('maxCreatedAt'):
-        where_clauses.append("created_at <= ?")
-        params.append(filter_dict['maxCreatedAt'])
-    
-    where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
-    limit = filter_dict.get('limit', 100)
-    
-    rows = con.execute(
-        f"SELECT * FROM experiments WHERE {where_sql} ORDER BY created_at DESC LIMIT ?",
-        (*params, limit)
-    ).fetchall()
-    
-    con.close()
-    
-    return [row_to_dict(row) for row in rows]
+    with duckdb.connect(db_path) as con:
+        # Build WHERE clause from filter
+        where_clauses = []
+        params = []
+        
+        if filter_dict.get('status'):
+            where_clauses.append("status = ?")
+            params.append(filter_dict['status'])
+        
+        if filter_dict.get('gitCommit'):
+            where_clauses.append("git_commit = ?")
+            params.append(filter_dict['gitCommit'])
+        
+        if filter_dict.get('minCreatedAt'):
+            where_clauses.append("created_at >= ?")
+            params.append(filter_dict['minCreatedAt'])
+        
+        if filter_dict.get('maxCreatedAt'):
+            where_clauses.append("created_at <= ?")
+            params.append(filter_dict['maxCreatedAt'])
+        
+        where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
+        limit = filter_dict.get('limit', 100)
+        
+        rows = con.execute(
+            f"SELECT * FROM experiments WHERE {where_sql} ORDER BY created_at DESC LIMIT ?",
+            (*params, limit)
+        ).fetchall()
+        
+        return [row_to_dict(row) for row in rows]
 
 
 def update_status(db_path: str, experiment_id: str, status: str) -> Dict[str, bool]:
@@ -201,107 +193,100 @@ def update_status(db_path: str, experiment_id: str, status: str) -> Dict[str, bo
     if status not in valid_statuses:
         raise ValueError(f"Invalid status: {status}. Must be one of {valid_statuses}")
     
-    con = duckdb.connect(db_path)
-    
-    # Update status and set started_at if transitioning to 'running'
-    if status == 'running':
-        con.execute("""
-            UPDATE experiments 
-            SET status = ?, started_at = CURRENT_TIMESTAMP
-            WHERE experiment_id = ? AND started_at IS NULL
-        """, (status, experiment_id))
-    elif status in ['completed', 'failed', 'cancelled']:
-        # Set completed_at and calculate duration
-        con.execute("""
-            UPDATE experiments 
-            SET status = ?, 
-                completed_at = CURRENT_TIMESTAMP,
-                duration_ms = CASE 
-                    WHEN started_at IS NOT NULL 
-                    THEN CAST((EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - started_at)) * 1000) AS INTEGER)
-                    ELSE NULL 
-                END
-            WHERE experiment_id = ?
-        """, (status, experiment_id))
-    else:
-        con.execute(
-            "UPDATE experiments SET status = ? WHERE experiment_id = ?",
-            (status, experiment_id)
-        )
-    
-    con.close()
-    
-    return {'success': True}
+    with duckdb.connect(db_path) as con:
+        # Update status and set started_at if transitioning to 'running'
+        if status == 'running':
+            con.execute("""
+                UPDATE experiments 
+                SET status = ?, started_at = CURRENT_TIMESTAMP
+                WHERE experiment_id = ? AND started_at IS NULL
+            """, (status, experiment_id))
+        elif status in ['completed', 'failed', 'cancelled']:
+            # Set completed_at and calculate duration
+            con.execute("""
+                UPDATE experiments 
+                SET status = ?, 
+                    completed_at = CURRENT_TIMESTAMP,
+                    duration_ms = CASE 
+                        WHEN started_at IS NOT NULL 
+                        THEN CAST((EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - started_at)) * 1000) AS INTEGER)
+                        ELSE NULL 
+                    END
+                WHERE experiment_id = ?
+            """, (status, experiment_id))
+        else:
+            con.execute(
+                "UPDATE experiments SET status = ? WHERE experiment_id = ?",
+                (status, experiment_id)
+            )
+        
+        return {'success': True}
 
 
 def store_results(db_path: str, experiment_id: str, results: Dict[str, Any]) -> Dict[str, bool]:
     """Store experiment results (output artifact IDs)"""
     ensure_schema(db_path)
     
-    con = duckdb.connect(db_path)
-    
-    # Build UPDATE statement dynamically based on provided results
-    updates = []
-    params = []
-    
-    if results.get('tradesArtifactId'):
-        updates.append("output_trades = ?")
-        params.append(results['tradesArtifactId'])
-    
-    if results.get('metricsArtifactId'):
-        updates.append("output_metrics = ?")
-        params.append(results['metricsArtifactId'])
-    
-    if results.get('curvesArtifactId'):
-        updates.append("output_curves = ?")
-        params.append(results['curvesArtifactId'])
-    
-    if results.get('diagnosticsArtifactId'):
-        updates.append("output_diagnostics = ?")
-        params.append(results['diagnosticsArtifactId'])
-    
-    if not updates:
-        con.close()
+    with duckdb.connect(db_path) as con:
+        # Build UPDATE statement dynamically based on provided results
+        updates = []
+        params = []
+        
+        if results.get('tradesArtifactId'):
+            updates.append("output_trades = ?")
+            params.append(results['tradesArtifactId'])
+        
+        if results.get('metricsArtifactId'):
+            updates.append("output_metrics = ?")
+            params.append(results['metricsArtifactId'])
+        
+        if results.get('curvesArtifactId'):
+            updates.append("output_curves = ?")
+            params.append(results['curvesArtifactId'])
+        
+        if results.get('diagnosticsArtifactId'):
+            updates.append("output_diagnostics = ?")
+            params.append(results['diagnosticsArtifactId'])
+        
+        if not updates:
+            return {'success': True}
+        
+        update_sql = ", ".join(updates)
+        params.append(experiment_id)
+        
+        con.execute(
+            f"UPDATE experiments SET {update_sql} WHERE experiment_id = ?",
+            params
+        )
+        
         return {'success': True}
-    
-    update_sql = ", ".join(updates)
-    params.append(experiment_id)
-    
-    con.execute(
-        f"UPDATE experiments SET {update_sql} WHERE experiment_id = ?",
-        params
-    )
-    
-    con.close()
-    
-    return {'success': True}
 
 
 def find_by_input_artifacts(db_path: str, artifact_ids: List[str]) -> List[Dict[str, Any]]:
     """Find experiments by input artifact IDs"""
     ensure_schema(db_path)
     
-    con = duckdb.connect(db_path)
-    
-    # Search in all input artifact columns using JSON contains
-    # DuckDB JSON functions: json_contains checks if array contains value
-    conditions = []
-    for artifact_id in artifact_ids:
-        conditions.append(f"""
-            (list_contains(json_extract(input_alerts, '$'), '{artifact_id}')
-             OR list_contains(json_extract(input_ohlcv, '$'), '{artifact_id}')
-             OR (input_strategies IS NOT NULL AND list_contains(json_extract(input_strategies, '$'), '{artifact_id}')))
-        """)
-    
-    where_clause = " OR ".join(conditions)
-    
-    rows = con.execute(
-        f"SELECT * FROM experiments WHERE {where_clause} ORDER BY created_at DESC"
-    ).fetchall()
-    
-    con.close()
-    
-    return [row_to_dict(row) for row in rows]
+    with duckdb.connect(db_path) as con:
+        # Search in all input artifact columns using LIKE for JSON array matching
+        # This is simpler and more reliable than JSON functions for this use case
+        # We search for the artifact ID as it appears in the JSON array: "artifact-id"
+        conditions = []
+        for artifact_id in artifact_ids:
+            # Escape single quotes and wildcards for SQL LIKE
+            safe_id = artifact_id.replace("'", "''").replace("%", "\\%").replace("_", "\\_")
+            conditions.append(f"""
+                (input_alerts LIKE '%"{safe_id}"%' ESCAPE '\\'
+                 OR input_ohlcv LIKE '%"{safe_id}"%' ESCAPE '\\'
+                 OR (input_strategies IS NOT NULL AND input_strategies LIKE '%"{safe_id}"%' ESCAPE '\\'))
+            """)
+        
+        where_clause = " OR ".join(conditions)
+        
+        rows = con.execute(
+            f"SELECT * FROM experiments WHERE {where_clause} ORDER BY created_at DESC"
+        ).fetchall()
+        
+        return [row_to_dict(row) for row in rows]
 
 
 def main():

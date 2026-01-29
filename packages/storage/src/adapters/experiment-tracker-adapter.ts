@@ -19,12 +19,12 @@ const ExperimentInputsSchema = z.object({
 });
 
 const ExperimentConfigSchema = z.object({
-  strategy: z.record(z.unknown()),
+  strategy: z.record(z.string(), z.unknown()),
   dateRange: z.object({
     from: z.string(),
     to: z.string(),
   }),
-  params: z.record(z.unknown()),
+  params: z.record(z.string(), z.unknown()),
 });
 
 const ExperimentProvenanceSchema = z.object({

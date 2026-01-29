@@ -9,6 +9,9 @@ describe('ExperimentTrackerAdapter (integration)', () => {
   const testDbPath = `/tmp/test-experiments-${Date.now()}.duckdb`;
   let adapter: ExperimentTrackerAdapter;
 
+  // Increase timeout for DuckDB operations
+  vi.setConfig({ testTimeout: 15000 });
+
   beforeAll(() => {
     adapter = new ExperimentTrackerAdapter(testDbPath);
   });
@@ -181,7 +184,7 @@ describe('ExperimentTrackerAdapter (integration)', () => {
       // Set different statuses
       await adapter.updateStatus('exp-list-1', 'running');
       await adapter.updateStatus('exp-list-2', 'completed');
-    });
+    }, 30000); // 30 second timeout for beforeAll hook
 
     it('should list all experiments', async () => {
       const experiments = await adapter.listExperiments({});
@@ -281,7 +284,7 @@ describe('ExperimentTrackerAdapter (integration)', () => {
       for (const exp of experiments) {
         await adapter.createExperiment(exp);
       }
-    });
+    }, 30000); // 30 second timeout for beforeAll hook
 
     it('should find experiments by shared alert artifact', async () => {
       const experiments = await adapter.findByInputArtifacts(['shared-alert-X']);

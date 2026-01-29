@@ -24,8 +24,69 @@ import type {
   ArtifactStorePort,
 } from '@quantbot/core';
 import { DuckDBClient } from '../duckdb/duckdb-client.js';
-import { existsSync, mkdirSync, unlinkSync } from 'fs';
+import { existsSync } from 'fs';
+import { mkdir, unlink } from 'fs/promises';
 import { join } from 'path';
+import { tmpdir } from 'os';
+import { z } from 'zod';
+
+/**
+ * Zod schema for ProjectionRequest validation
+ */
+const ProjectionRequestSchema = z.object({
+  projectionId: z.string().min(1).max(255),
+  artifacts: z.object({
+    alerts: z.array(z.string().min(1)).optional(),
+    ohlcv: z.array(z.string().min(1)).optional(),
+  }),
+  tables: z.object({
+    alerts: z.string().min(1).max(255).optional(),
+    ohlcv: z.string().min(1).max(255).optional(),
+  }),
+  cacheDir: z.string().optional(),
+  indexes: z
+    .array(
+      z.object({
+        table: z.string().min(1).max(255),
+        columns: z.array(z.string().min(1).max(255)).min(1),
+      })
+    )
+    .optional(),
+});
+
+/**
+ * Sanitize SQL identifier (table name, index name)
+ * Only allows alphanumeric characters and underscores
+ */
+function sanitizeSqlIdentifier(identifier: string): string {
+  // Replace any non-alphanumeric/underscore characters with underscore
+  const sanitized = identifier.replace(/[^a-zA-Z0-9_]/g, '_');
+  // Ensure it doesn't start with a number (SQL requirement)
+  if (/^\d/.test(sanitized)) {
+    return `_${sanitized}`;
+  }
+  return sanitized || 'unnamed';
+}
+
+/**
+ * Escape file path for use in SQL string literal
+ * Escapes single quotes, backslashes, and newlines
+ */
+function escapeSqlString(path: string): string {
+  return path
+    .replace(/\\/g, '\\\\') // Escape backslashes
+    .replace(/'/g, "''") // Escape single quotes (SQL standard)
+    .replace(/\n/g, '\\n') // Escape newlines
+    .replace(/\r/g, '\\r') // Escape carriage returns
+    .replace(/\t/g, '\\t'); // Escape tabs
+}
+
+/**
+ * Sanitize column names for index creation
+ */
+function sanitizeColumnNames(columns: string[]): string[] {
+  return columns.map((col) => sanitizeSqlIdentifier(col));
+}
 
 /**
  * Projection Builder Adapter
@@ -36,7 +97,10 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
   private readonly artifactStore: ArtifactStorePort;
   private readonly defaultCacheDir: string;
 
-  constructor(artifactStore: ArtifactStorePort, cacheDir: string = '/home/memez/opn/cache') {
+  constructor(
+    artifactStore: ArtifactStorePort,
+    cacheDir: string = process.env.PROJECTION_CACHE_DIR || join(tmpdir(), 'quantbot-projections')
+  ) {
     this.artifactStore = artifactStore;
     this.defaultCacheDir = cacheDir;
   }
@@ -45,26 +109,45 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
    * Build a new projection from artifacts
    */
   async buildProjection(request: ProjectionRequest): Promise<ProjectionResult> {
+    // Validate request
+    const validatedRequest = ProjectionRequestSchema.parse(request);
+
+    // Ensure at least one artifact type is provided
+    const hasAlerts = validatedRequest.artifacts.alerts && validatedRequest.artifacts.alerts.length > 0;
+    const hasOhlcv = validatedRequest.artifacts.ohlcv && validatedRequest.artifacts.ohlcv.length > 0;
+    if (!hasAlerts && !hasOhlcv) {
+      throw new Error('ProjectionRequest must include at least one artifact (alerts or ohlcv)');
+    }
+
     const startTime = Date.now();
-    const cacheDir = request.cacheDir || this.defaultCacheDir;
-    const duckdbPath = join(cacheDir, `${request.projectionId}.duckdb`);
+    const cacheDir = validatedRequest.cacheDir || this.defaultCacheDir;
+    const duckdbPath = join(cacheDir, `${validatedRequest.projectionId}.duckdb`);
 
     logger.info('Building projection', {
-      projectionId: request.projectionId,
+      projectionId: validatedRequest.projectionId,
       duckdbPath,
       artifactCount:
-        (request.artifacts.alerts?.length || 0) + (request.artifacts.ohlcv?.length || 0),
+        (validatedRequest.artifacts.alerts?.length || 0) + (validatedRequest.artifacts.ohlcv?.length || 0),
     });
 
     try {
-      // Ensure cache directory exists
+      // Ensure cache directory exists (async)
       if (!existsSync(cacheDir)) {
-        mkdirSync(cacheDir, { recursive: true });
+        await mkdir(cacheDir, { recursive: true });
       }
 
-      // Delete existing projection if it exists
+      // Delete existing projection if it exists (async)
       if (existsSync(duckdbPath)) {
-        unlinkSync(duckdbPath);
+        try {
+          await unlink(duckdbPath);
+        } catch (error) {
+          logger.warn('Failed to delete existing projection, continuing', {
+            projectionId: validatedRequest.projectionId,
+            duckdbPath,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          // Continue - DuckDB will overwrite if file exists
+        }
       }
 
       // Create DuckDB client
@@ -76,31 +159,31 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
       let artifactCount = 0;
 
       // Build alerts table
-      if (request.artifacts.alerts && request.artifacts.alerts.length > 0) {
-        const tableName = request.tables.alerts || 'alerts';
+      if (validatedRequest.artifacts.alerts && validatedRequest.artifacts.alerts.length > 0) {
+        const tableName = validatedRequest.tables.alerts || 'alerts';
         const table = await this.buildTable(
           client,
           tableName,
-          request.artifacts.alerts,
-          request.indexes?.filter((idx) => idx.table === tableName)
+          validatedRequest.artifacts.alerts,
+          validatedRequest.indexes?.filter((idx) => idx.table === tableName)
         );
         tables.push(table);
         totalRows += table.rowCount;
-        artifactCount += request.artifacts.alerts.length;
+        artifactCount += validatedRequest.artifacts.alerts.length;
       }
 
       // Build OHLCV table
-      if (request.artifacts.ohlcv && request.artifacts.ohlcv.length > 0) {
-        const tableName = request.tables.ohlcv || 'ohlcv';
+      if (validatedRequest.artifacts.ohlcv && validatedRequest.artifacts.ohlcv.length > 0) {
+        const tableName = validatedRequest.tables.ohlcv || 'ohlcv';
         const table = await this.buildTable(
           client,
           tableName,
-          request.artifacts.ohlcv,
-          request.indexes?.filter((idx) => idx.table === tableName)
+          validatedRequest.artifacts.ohlcv,
+          validatedRequest.indexes?.filter((idx) => idx.table === tableName)
         );
         tables.push(table);
         totalRows += table.rowCount;
-        artifactCount += request.artifacts.ohlcv.length;
+        artifactCount += validatedRequest.artifacts.ohlcv.length;
       }
 
       // Close connection
@@ -109,7 +192,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
       const executionTimeMs = Date.now() - startTime;
 
       logger.info('Projection built successfully', {
-        projectionId: request.projectionId,
+        projectionId: validatedRequest.projectionId,
         duckdbPath,
         tables: tables.map((t) => ({ name: t.name, rowCount: t.rowCount })),
         totalRows,
@@ -118,7 +201,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
       });
 
       return {
-        projectionId: request.projectionId,
+        projectionId: validatedRequest.projectionId,
         duckdbPath,
         tables,
         artifactCount,
@@ -127,9 +210,19 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       logger.error('Failed to build projection', {
-        projectionId: request.projectionId,
+        projectionId: validatedRequest?.projectionId || 'unknown',
         error: message,
       });
+      
+      // Re-throw Zod validation errors with better messages
+      if (error instanceof z.ZodError) {
+        const errorMessages = error.issues.map((issue) => {
+          const path = issue.path.length > 0 ? issue.path.join('.') : 'root';
+          return `${path}: ${issue.message}`;
+        });
+        throw new Error(`Invalid ProjectionRequest: ${errorMessages.join(', ')}`);
+      }
+      
       throw new Error(`Failed to build projection: ${message}`);
     }
   }
@@ -143,8 +236,18 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
     artifactIds: string[],
     indexes?: Array<{ table: string; columns: string[] }>
   ): Promise<ProjectionTable> {
+    // Sanitize table name to prevent SQL injection
+    const sanitizedTableName = sanitizeSqlIdentifier(tableName);
+    
+    if (sanitizedTableName !== tableName) {
+      logger.warn('Table name sanitized', {
+        original: tableName,
+        sanitized: sanitizedTableName,
+      });
+    }
+
     logger.info('Building table', {
-      tableName,
+      tableName: sanitizedTableName,
       artifactCount: artifactIds.length,
     });
 
@@ -158,43 +261,55 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
       parquetPaths.push(artifact.pathParquet);
     }
 
-    // Create table from Parquet files
-    const pathsArray = parquetPaths.map((p) => `'${p}'`).join(', ');
+    // Escape file paths for SQL string literals
+    const escapedPaths = parquetPaths.map((p) => `'${escapeSqlString(p)}'`);
+    const pathsArray = escapedPaths.join(', ');
+    
+    // Create table from Parquet files (sanitized table name)
     const createTableSql = `
-      CREATE TABLE ${tableName} AS
+      CREATE TABLE ${sanitizedTableName} AS
       SELECT * FROM read_parquet([${pathsArray}])
     `;
 
     await client.execute(createTableSql);
 
-    // Get row count
-    const countResult = await client.query(`SELECT COUNT(*) as cnt FROM ${tableName}`);
+    // Get row count (use sanitized table name)
+    const countResult = await client.query(`SELECT COUNT(*) as cnt FROM ${sanitizedTableName}`);
     const rowCount = Number(countResult.rows[0][0]);
 
-    // Get column names
-    const columnsResult = await client.query(`DESCRIBE ${tableName}`);
+    // Get column names (use sanitized table name)
+    const columnsResult = await client.query(`DESCRIBE ${sanitizedTableName}`);
     const columns = columnsResult.rows.map((row) => String(row[0]));
 
-    // Create indexes
+    // Create indexes (sanitize index names and column names)
     const indexNames: string[] = [];
     if (indexes && indexes.length > 0) {
       for (const index of indexes) {
-        const indexName = `idx_${tableName}_${index.columns.join('_')}`;
-        const indexSql = `CREATE INDEX ${indexName} ON ${tableName}(${index.columns.join(', ')})`;
+        // Only create index if it matches this table
+        if (sanitizeSqlIdentifier(index.table) !== sanitizedTableName) {
+          continue;
+        }
+        
+        const sanitizedColumns = sanitizeColumnNames(index.columns);
+        const indexName = `idx_${sanitizedTableName}_${sanitizedColumns.join('_')}`;
+        const sanitizedIndexName = sanitizeSqlIdentifier(indexName);
+        const columnList = sanitizedColumns.join(', ');
+        
+        const indexSql = `CREATE INDEX ${sanitizedIndexName} ON ${sanitizedTableName}(${columnList})`;
         await client.execute(indexSql);
-        indexNames.push(indexName);
+        indexNames.push(sanitizedIndexName);
       }
     }
 
     logger.info('Table built successfully', {
-      tableName,
+      tableName: sanitizedTableName,
       rowCount,
       columns: columns.length,
       indexes: indexNames.length,
     });
 
     return {
-      name: tableName,
+      name: sanitizedTableName,
       rowCount,
       columns,
       indexes: indexNames,
@@ -203,31 +318,51 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
 
   /**
    * Rebuild an existing projection
+   * Requires the original ProjectionRequest to rebuild with same configuration
    */
-  async rebuildProjection(projectionId: string): Promise<void> {
-    logger.info('Rebuilding projection', { projectionId });
+  async rebuildProjection(projectionId: string, request: ProjectionRequest): Promise<void> {
+    logger.info('Rebuilding projection', {
+      projectionId,
+      artifactCount:
+        (request.artifacts.alerts?.length || 0) + (request.artifacts.ohlcv?.length || 0),
+    });
 
-    // For rebuild, we need to store the original request
-    // This is a limitation - we'd need to persist the request or require it as a parameter
-    throw new Error(
-      'rebuildProjection not implemented - requires persisting original ProjectionRequest'
-    );
+    // Validate projectionId matches request
+    if (request.projectionId !== projectionId) {
+      throw new Error(
+        `Projection ID mismatch: request.projectionId (${request.projectionId}) !== projectionId (${projectionId})`
+      );
+    }
+
+    // Rebuild by calling buildProjection (which will delete and recreate)
+    await this.buildProjection(request);
   }
 
   /**
    * Dispose a projection (delete DuckDB file)
    */
-  async disposeProjection(projectionId: string): Promise<void> {
-    const duckdbPath = join(this.defaultCacheDir, `${projectionId}.duckdb`);
+  async disposeProjection(projectionId: string, cacheDir?: string): Promise<void> {
+    const dir = cacheDir || this.defaultCacheDir;
+    const duckdbPath = join(dir, `${projectionId}.duckdb`);
 
     logger.info('Disposing projection', {
       projectionId,
       duckdbPath,
+      cacheDir: dir,
     });
 
     if (existsSync(duckdbPath)) {
-      unlinkSync(duckdbPath);
-      logger.info('Projection disposed', { projectionId });
+      try {
+        await unlink(duckdbPath);
+        logger.info('Projection disposed', { projectionId });
+      } catch (error) {
+        logger.error('Failed to dispose projection', {
+          projectionId,
+          duckdbPath,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        throw new Error(`Failed to dispose projection: ${error instanceof Error ? error.message : String(error)}`);
+      }
     } else {
       logger.warn('Projection not found for disposal', { projectionId, duckdbPath });
     }
@@ -236,8 +371,9 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
   /**
    * Check if a projection exists
    */
-  async projectionExists(projectionId: string): Promise<boolean> {
-    const duckdbPath = join(this.defaultCacheDir, `${projectionId}.duckdb`);
+  async projectionExists(projectionId: string, cacheDir?: string): Promise<boolean> {
+    const dir = cacheDir || this.defaultCacheDir;
+    const duckdbPath = join(dir, `${projectionId}.duckdb`);
     return existsSync(duckdbPath);
   }
 }

@@ -132,6 +132,9 @@ export * from './research/index.js';
 export { createExperimentContext } from './research/context.js';
 export type { ExperimentContextConfig } from './research/context.js';
 
+// Experiments - Experiment Execution (Phase IV)
+export * from './experiments/index.js';
+
 // Slice Export and Analysis
 // Types moved to @quantbot/core - re-export for backward compatibility
 export * from './slices/types.js';
