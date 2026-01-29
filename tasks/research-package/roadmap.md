@@ -30,7 +30,8 @@ Week 7-8    │ Phase VII: OHLCV Slice Integration      │ Parallel
 | II | Projection Builder | Week 2-3 | ✅ **COMPLETE** | Phase I |
 | III | Experiment Tracking | Week 3-4 | ✅ **COMPLETE** | Phase I |
 | IV | Experiment Execution | Week 4-5 | ✅ **COMPLETE** | Phase II, III |
-| V | CLI Integration | Week 5-6 | 🔲 Pending | Phase I, II, III |
+| V | CLI Integration | Week 5-6 | ✅ **COMPLETE + ENHANCED** | Phase I, II, III |
+| V+ | RunSet + Resolver | Week 5-6 | ✅ **FOUNDATION COMPLETE** | Phase V |
 | VI | Alert Ingestion Integration | Week 6-7 | 🔲 Pending | Phase I |
 | VII | OHLCV Slice Integration | Week 7-8 | 🔲 Pending | Phase I |
 
@@ -205,23 +206,42 @@ Data Lake (/home/memez/opn)
 
 ---
 
-### Phase V: CLI Integration (Week 5-6)
+### Phase V: CLI Integration (Week 5-6) ✅ **COMPLETE + ENHANCED**
 
 **Goal**: CLI commands for artifacts and experiments
 
 **Deliverables**:
 
-- Artifact CLI commands (`quantbot artifacts list/get/find/lineage`)
-- Experiment CLI commands (`quantbot experiments create/execute/get/list`)
-- CLI handlers (pure, depend on ports)
+- ✅ Artifact CLI commands (`quantbot research artifacts list/get/find/lineage/downstream`)
+- ✅ Experiment CLI commands (`quantbot research experiments create/execute/get/list/find-by-inputs`)
+- ✅ CLI handlers (pure, depend on ports)
+- ✅ 21 unit tests (100% passing)
+- ✅ Comprehensive documentation
+
+**Enhancement**: RunSet + Resolver Architecture
+
+- ✅ RunSet type system (logical selections)
+- ✅ Resolver port interface (DNS for data lake)
+- ✅ Python resolver implementation (deterministic, auditable)
+- ✅ Registry rebuild (Parquet → DuckDB)
+- ✅ TypeScript adapter (PythonEngine integration)
+- ✅ Registry schema (magic join table)
+- ✅ Documentation (1,500+ lines)
 
 **Success Criteria**:
 
 - ✅ All CLI commands work
 - ✅ Handlers follow pattern
 - ✅ Output formatting correct
+- ✅ RunSet foundation complete
+- ✅ Parquet-first registry implemented
 
-**Document**: [Phase V: CLI Integration](./phase-5-cli-integration.md)
+**Completed**: 2026-01-29
+
+**Documents**:
+- [Phase V: CLI Integration](./phase-5-cli-integration.md)
+- [RunSet Resolver Design](../../docs/architecture/runset-resolver-design.md)
+- [RunSet Parquet-First](../../docs/architecture/runset-parquet-first.md)
 
 ---
 
