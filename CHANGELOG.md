@@ -157,7 +157,7 @@ Experiment Outputs (via ExperimentTrackerPort)
   - Default path: `/home/memez/opn/data/experiments.duckdb`
 
 - ✅ **Unit Tests** (`packages/storage/tests/unit/adapters/experiment-tracker-adapter.test.ts`)
-  - 10 test cases covering all port methods
+  - 14 test cases covering all port methods (all passing, 22ms)
   - Mock PythonEngine for isolation
   - CRUD operations verification
   - Status update tests (pending → running → completed/failed)
@@ -166,7 +166,7 @@ Experiment Outputs (via ExperimentTrackerPort)
   - Error handling verification
 
 - ✅ **Integration Tests** (`packages/storage/tests/integration/experiment-tracker-adapter.test.ts`)
-  - 15 end-to-end test cases with real DuckDB
+  - 13 end-to-end test cases with real DuckDB (all passing, 15.19s)
   - Full experiment lifecycle (create → run → store results → complete)
   - Failed experiment tracking
   - List experiments with filters (status, git commit, limit)
@@ -190,8 +190,17 @@ Experiment Outputs (via ExperimentTrackerPort)
 - **Provenance Tracking**: Git commit, dirty flag, engine version, timestamps
 - **Output Artifacts**: Trades, metrics, curves, diagnostics artifact IDs
 - **Execution Metadata**: Start/completion timestamps, duration, error messages
-- **Lineage Queries**: Find experiments by input artifact IDs
+- **Lineage Queries**: Find experiments by input artifact IDs (using SQL LIKE pattern matching)
 - **Filtering**: By status, git commit, date range, limit
+
+**Fixes Applied**:
+
+- DuckDB connection management with context managers (prevents file locking)
+- Artifact search using SQL LIKE for reliable JSON array matching
+- Increased test timeouts for DuckDB operations (30s for beforeAll hooks)
+- Type naming fix: `Artifact` → `ArtifactManifestRecord` (avoids conflict with legacy type)
+
+**Test Results**: ✅ All 27 tests pass (14 unit + 13 integration)
 
 **Next Phase**: Phase IV (Experiment Execution) can now begin.
 

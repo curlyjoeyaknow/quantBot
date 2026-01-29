@@ -5,6 +5,7 @@
  * and ensure storage is initialized. Removes service instantiation from command files.
  */
 
+import { join } from 'path';
 import {
   CallersRepository,
   OhlcvRepository,
@@ -37,7 +38,11 @@ import { MarketDataIngestionService } from '@quantbot/jobs';
 // import { OhlcvFetchJob } from '@quantbot/data/jobs';
 import { AnalyticsEngine } from '@quantbot/analytics';
 import type { AnalyticsEngine as AnalyticsEngineType } from '@quantbot/analytics';
-import { PythonEngine, type PythonEngine as PythonEngineType } from '@quantbot/infra/utils';
+import {
+  PythonEngine,
+  type PythonEngine as PythonEngineType,
+  findWorkspaceRoot,
+} from '@quantbot/infra/utils';
 import { StorageEngine } from '@quantbot/infra/storage';
 // Import directly from source to avoid Vitest SSR module resolution issues
 import { DuckDBStorageService } from '../../../simulation/src/duckdb-storage-service.js';
@@ -286,9 +291,12 @@ export class CommandContext {
       },
       artifactStore: () => {
         // Artifact Store - Parquet + SQLite manifest
+        const workspaceRoot = findWorkspaceRoot();
         const manifestDb =
-          process.env.ARTIFACT_MANIFEST_DB || '/home/memez/opn/manifest/manifest.sqlite';
-        const artifactsRoot = process.env.ARTIFACTS_ROOT || '/home/memez/opn/artifacts';
+          process.env.ARTIFACT_MANIFEST_DB ||
+          join(workspaceRoot, 'data/manifest/manifest.sqlite');
+        const artifactsRoot =
+          process.env.ARTIFACTS_ROOT || join(workspaceRoot, 'data/artifacts');
         return new ArtifactStoreAdapter(manifestDb, artifactsRoot, pythonEngine);
       },
       projectionBuilder: () => {

@@ -9,9 +9,24 @@ import type {
   ArtifactLineage,
 } from '@quantbot/core';
 import { PythonEngine } from '@quantbot/utils';
-import { logger, findWorkspaceRoot, NotFoundError, AppError } from '@quantbot/infra/utils';
+import {
+  logger,
+  findWorkspaceRoot,
+  NotFoundError,
+  AppError,
+  retryWithBackoff,
+  isRetryableError,
+} from '@quantbot/infra/utils';
 
-// Zod schemas for validation
+/**
+ * Zod schemas for validation
+ *
+ * Note on null handling:
+ * - Python returns `null` for optional timestamp fields (minTs, maxTs)
+ * - TypeScript interface expects `string | undefined`
+ * - Transform converts `null` → `undefined` to match TypeScript expectations
+ * - This is intentional: Python uses null for "no value", TypeScript uses undefined
+ */
 const ArtifactSchema = z
   .object({
     artifactId: z.string(),
@@ -30,6 +45,7 @@ const ArtifactSchema = z
   })
   .transform((data) => ({
     ...data,
+    // Convert Python null → TypeScript undefined for optional fields
     minTs: data.minTs ?? undefined,
     maxTs: data.maxTs ?? undefined,
   }));
@@ -57,6 +73,11 @@ const ArtifactLineageSchema = z.object({
  * Implements ArtifactStorePort using Python artifact store.
  * Uses PythonEngine to call Python scripts (following existing pattern).
  *
+ * Features:
+ * - Retry logic for transient failures
+ * - Metrics tracking (operation times, success rates)
+ * - Input validation (handled by Python script)
+ *
  * Pattern: Same as DuckDbSliceAnalyzerAdapter, CanonicalDuckDBAdapter, etc.
  */
 export class ArtifactStoreAdapter implements ArtifactStorePort {
@@ -65,11 +86,29 @@ export class ArtifactStoreAdapter implements ArtifactStorePort {
   private readonly manifestDb: string;
   private readonly artifactsRoot: string;
   private readonly manifestSql: string;
+  private readonly maxRetries: number;
+  private readonly retryDelayMs: number;
 
-  constructor(manifestDb: string, artifactsRoot: string, pythonEngine?: PythonEngine) {
+  // Metrics tracking
+  private readonly operationMetrics: Map<
+    string,
+    { count: number; totalTimeMs: number; errors: number; deduplications: number }
+  > = new Map();
+
+  constructor(
+    manifestDb: string,
+    artifactsRoot: string,
+    pythonEngine?: PythonEngine,
+    options?: {
+      maxRetries?: number;
+      retryDelayMs?: number;
+    }
+  ) {
     this.manifestDb = manifestDb;
     this.artifactsRoot = artifactsRoot;
     this.pythonEngine = pythonEngine || new PythonEngine();
+    this.maxRetries = options?.maxRetries ?? 3;
+    this.retryDelayMs = options?.retryDelayMs ?? 1000;
 
     const workspaceRoot = findWorkspaceRoot();
     this.scriptPath = join(workspaceRoot, 'tools/storage/artifact_store_ops.py');
@@ -79,18 +118,123 @@ export class ArtifactStoreAdapter implements ArtifactStorePort {
     );
   }
 
+  /**
+   * Execute Python script with retry logic and metrics tracking
+   */
+  private async executeWithRetry<T>(
+    operation: string,
+    input: Record<string, unknown>,
+    schema: z.ZodSchema<T>,
+    context?: Record<string, unknown>
+  ): Promise<T> {
+    const startTime = Date.now();
+
+    try {
+      const result = await retryWithBackoff(
+        async () => {
+          return await this.pythonEngine.runScriptWithStdin(this.scriptPath, input, schema);
+        },
+        this.maxRetries,
+        this.retryDelayMs,
+        {
+          operation,
+          ...context,
+        }
+      );
+
+      const duration = Date.now() - startTime;
+      this.recordMetric(operation, duration, false, false);
+
+      return result;
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      const isRetryable = error instanceof Error && isRetryableError(error);
+      this.recordMetric(operation, duration, true, false);
+
+      // Re-throw with context
+      throw error;
+    }
+  }
+
+  /**
+   * Record operation metrics
+   */
+  private recordMetric(
+    operation: string,
+    durationMs: number,
+    isError: boolean,
+    isDeduplication: boolean
+  ): void {
+    const existing = this.operationMetrics.get(operation) || {
+      count: 0,
+      totalTimeMs: 0,
+      errors: 0,
+      deduplications: 0,
+    };
+
+    existing.count++;
+    existing.totalTimeMs += durationMs;
+    if (isError) {
+      existing.errors++;
+    }
+    if (isDeduplication) {
+      existing.deduplications++;
+    }
+
+    this.operationMetrics.set(operation, existing);
+  }
+
+  /**
+   * Get operation metrics
+   */
+  getMetrics(): Record<
+    string,
+    {
+      count: number;
+      avgTimeMs: number;
+      totalTimeMs: number;
+      errorRate: number;
+      deduplicationRate: number;
+    }
+  > {
+    const result: Record<
+      string,
+      {
+        count: number;
+        avgTimeMs: number;
+        totalTimeMs: number;
+        errorRate: number;
+        deduplicationRate: number;
+      }
+    > = {};
+
+    for (const [operation, metrics] of this.operationMetrics.entries()) {
+      result[operation] = {
+        count: metrics.count,
+        avgTimeMs: metrics.count > 0 ? metrics.totalTimeMs / metrics.count : 0,
+        totalTimeMs: metrics.totalTimeMs,
+        errorRate: metrics.count > 0 ? metrics.errors / metrics.count : 0,
+        deduplicationRate:
+          metrics.count > 0 ? metrics.deduplications / metrics.count : 0,
+      };
+    }
+
+    return result;
+  }
+
   async getArtifact(artifactId: string): Promise<ArtifactManifestRecord> {
     logger.debug('Getting artifact', { artifactId });
 
     try {
-      const result = await this.pythonEngine.runScriptWithStdin(
-        this.scriptPath,
+      const result = await this.executeWithRetry(
+        'get_artifact',
         {
           operation: 'get_artifact',
           manifest_db: this.manifestDb,
           artifact_id: artifactId,
         },
-        ArtifactSchema
+        ArtifactSchema,
+        { artifactId }
       );
 
       return result;
@@ -106,34 +250,35 @@ export class ArtifactStoreAdapter implements ArtifactStorePort {
   async listArtifacts(filter: ArtifactFilter): Promise<ArtifactManifestRecord[]> {
     logger.debug('Listing artifacts', { filter });
 
-    const result = await this.pythonEngine.runScriptWithStdin(
-      this.scriptPath,
+    return this.executeWithRetry(
+      'list_artifacts',
       {
         operation: 'list_artifacts',
         manifest_db: this.manifestDb,
         filter,
       },
-      z.array(ArtifactSchema)
+      z.array(ArtifactSchema),
+      { filter: filter.artifactType }
     );
-
-    return result;
   }
 
-  async findByLogicalKey(artifactType: string, logicalKey: string): Promise<ArtifactManifestRecord[]> {
+  async findByLogicalKey(
+    artifactType: string,
+    logicalKey: string
+  ): Promise<ArtifactManifestRecord[]> {
     logger.debug('Finding artifacts by logical key', { artifactType, logicalKey });
 
-    const result = await this.pythonEngine.runScriptWithStdin(
-      this.scriptPath,
+    return this.executeWithRetry(
+      'find_by_logical_key',
       {
         operation: 'find_by_logical_key',
         manifest_db: this.manifestDb,
         artifact_type: artifactType,
         logical_key: logicalKey,
       },
-      z.array(ArtifactSchema)
+      z.array(ArtifactSchema),
+      { artifactType, logicalKey }
     );
-
-    return result;
   }
 
   async publishArtifact(request: PublishArtifactRequest): Promise<PublishArtifactResult> {
@@ -143,8 +288,9 @@ export class ArtifactStoreAdapter implements ArtifactStorePort {
       dataPath: request.dataPath,
     });
 
-    const result = await this.pythonEngine.runScriptWithStdin(
-      this.scriptPath,
+    const startTime = Date.now();
+    const result = await this.executeWithRetry(
+      'publish_artifact',
       {
         operation: 'publish_artifact',
         manifest_db: this.manifestDb,
@@ -163,8 +309,16 @@ export class ArtifactStoreAdapter implements ArtifactStorePort {
         params: request.params || {},
         filename_hint: request.filenameHint,
       },
-      PublishArtifactResultSchema
+      PublishArtifactResultSchema,
+      {
+        artifactType: request.artifactType,
+        logicalKey: request.logicalKey,
+      }
     );
+
+    // Record deduplication metric
+    const duration = Date.now() - startTime;
+    this.recordMetric('publish_artifact', duration, false, result.deduped);
 
     if (result.deduped) {
       logger.info('Artifact deduplicated', {

@@ -74,13 +74,13 @@ Successfully implemented experiment tracking with artifact lineage for the Quant
 - Artifact lineage queries
 - Error handling
 
-**Test Results**: ✅ All 14 unit tests pass
+**Test Results**: ✅ All 14 unit tests pass (22ms)
 
 ### 7. Integration Tests ✅
 
 **File**: `packages/storage/tests/integration/experiment-tracker-adapter.test.ts` (445 lines)
 
-- 15 test cases with real DuckDB
+- 13 test cases with real DuckDB (all passing)
 - Full experiment lifecycle
 - Failed experiment tracking
 - List experiments with filters
@@ -88,7 +88,7 @@ Successfully implemented experiment tracking with artifact lineage for the Quant
 - Partial results storage
 - Error handling
 
-**Note**: Integration tests have a runtime issue with Zod schema validation that needs investigation. The Python script works correctly when tested directly, and unit tests pass. This appears to be an environment/runtime issue rather than a code logic issue.
+**Test Results**: ✅ All 13 integration tests pass (15.19s)
 
 ---
 
@@ -145,18 +145,18 @@ Find experiments by input artifact IDs - enables queries like "which experiments
 ### Unit Tests
 
 ```bash
-pnpm test -- packages/storage/tests/unit/adapters/experiment-tracker-adapter.test.ts --run
+pnpm vitest run packages/storage/tests/unit/adapters/experiment-tracker-adapter.test.ts
 ```
 
-**Result**: ✅ 14/14 tests pass (30ms)
+**Result**: ✅ 14/14 tests pass (22ms)
 
 ### Integration Tests
 
 ```bash
-pnpm test -- packages/storage/tests/integration/experiment-tracker-adapter.test.ts --run
+pnpm vitest run packages/storage/tests/integration/experiment-tracker-adapter.test.ts
 ```
 
-**Result**: ⚠️ 10/13 tests pass (3 failing due to runtime schema validation issue)
+**Result**: ✅ 13/13 tests pass (15.19s)
 
 ### Python Script (Direct Test)
 
@@ -207,14 +207,12 @@ Phase IV requires both Phase II (Projection Builder) and Phase III (Experiment T
 
 ---
 
-## Known Issues
+## Fixes Applied
 
-1. **Integration Test Schema Validation**: 3 integration tests fail with "Cannot read properties of undefined (reading '_zod')". This appears to be a runtime/environment issue rather than a code logic issue, as:
-   - Unit tests pass (14/14)
-   - Python script works correctly when tested directly
-   - The error suggests the Zod schema object is undefined at runtime, which may be a module loading issue in the test environment
-
-**Recommended Action**: Investigate Vitest module loading and Zod schema serialization in the test environment.
+1. **DuckDB Connection Management**: Used context managers (`with duckdb.connect()`) to ensure proper connection cleanup and prevent file locking issues
+2. **Artifact Search Query**: Fixed `findByInputArtifacts` to use SQL LIKE pattern matching instead of DuckDB JSON functions for more reliable artifact ID searching
+3. **Test Timeouts**: Increased `beforeAll` hook timeouts to 30 seconds for DuckDB operations
+4. **Type Naming**: Renamed `Artifact` to `ArtifactManifestRecord` in artifact-store-port to avoid conflict with legacy `Artifact` type
 
 ---
 
@@ -227,12 +225,14 @@ Phase IV requires both Phase II (Projection Builder) and Phase III (Experiment T
 - [x] Uses PythonEngine
 - [x] Stores experiments in DuckDB
 - [x] Tracks artifact lineage
-- [x] Unit tests pass
-- [~] Integration tests pass (10/13, 3 failing due to runtime issue)
+- [x] Unit tests pass (14/14)
+- [x] Integration tests pass (13/13)
 
 ---
 
 ## Conclusion
 
-Phase III is functionally complete with all core functionality implemented and unit tested. The integration test issue is a runtime/environment concern that doesn't affect the production code quality or functionality.
+Phase III is **fully complete** with all core functionality implemented, unit tested, and integration tested. All 27 tests pass (14 unit + 13 integration).
+
+**Ready for Phase IV: Experiment Execution**
 

@@ -113,8 +113,10 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
     const validatedRequest = ProjectionRequestSchema.parse(request);
 
     // Ensure at least one artifact type is provided
-    const hasAlerts = validatedRequest.artifacts.alerts && validatedRequest.artifacts.alerts.length > 0;
-    const hasOhlcv = validatedRequest.artifacts.ohlcv && validatedRequest.artifacts.ohlcv.length > 0;
+    const hasAlerts =
+      validatedRequest.artifacts.alerts && validatedRequest.artifacts.alerts.length > 0;
+    const hasOhlcv =
+      validatedRequest.artifacts.ohlcv && validatedRequest.artifacts.ohlcv.length > 0;
     if (!hasAlerts && !hasOhlcv) {
       throw new Error('ProjectionRequest must include at least one artifact (alerts or ohlcv)');
     }
@@ -127,7 +129,8 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
       projectionId: validatedRequest.projectionId,
       duckdbPath,
       artifactCount:
-        (validatedRequest.artifacts.alerts?.length || 0) + (validatedRequest.artifacts.ohlcv?.length || 0),
+        (validatedRequest.artifacts.alerts?.length || 0) +
+        (validatedRequest.artifacts.ohlcv?.length || 0),
     });
 
     try {
@@ -213,7 +216,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
         projectionId: validatedRequest?.projectionId || 'unknown',
         error: message,
       });
-      
+
       // Re-throw Zod validation errors with better messages
       if (error instanceof z.ZodError) {
         const errorMessages = error.issues.map((issue) => {
@@ -222,7 +225,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
         });
         throw new Error(`Invalid ProjectionRequest: ${errorMessages.join(', ')}`);
       }
-      
+
       throw new Error(`Failed to build projection: ${message}`);
     }
   }
@@ -238,7 +241,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
   ): Promise<ProjectionTable> {
     // Sanitize table name to prevent SQL injection
     const sanitizedTableName = sanitizeSqlIdentifier(tableName);
-    
+
     if (sanitizedTableName !== tableName) {
       logger.warn('Table name sanitized', {
         original: tableName,
@@ -264,7 +267,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
     // Escape file paths for SQL string literals
     const escapedPaths = parquetPaths.map((p) => `'${escapeSqlString(p)}'`);
     const pathsArray = escapedPaths.join(', ');
-    
+
     // Create table from Parquet files (sanitized table name)
     const createTableSql = `
       CREATE TABLE ${sanitizedTableName} AS
@@ -289,12 +292,12 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
         if (sanitizeSqlIdentifier(index.table) !== sanitizedTableName) {
           continue;
         }
-        
+
         const sanitizedColumns = sanitizeColumnNames(index.columns);
         const indexName = `idx_${sanitizedTableName}_${sanitizedColumns.join('_')}`;
         const sanitizedIndexName = sanitizeSqlIdentifier(indexName);
         const columnList = sanitizedColumns.join(', ');
-        
+
         const indexSql = `CREATE INDEX ${sanitizedIndexName} ON ${sanitizedTableName}(${columnList})`;
         await client.execute(indexSql);
         indexNames.push(sanitizedIndexName);
@@ -361,7 +364,9 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
           duckdbPath,
           error: error instanceof Error ? error.message : String(error),
         });
-        throw new Error(`Failed to dispose projection: ${error instanceof Error ? error.message : String(error)}`);
+        throw new Error(
+          `Failed to dispose projection: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
     } else {
       logger.warn('Projection not found for disposal', { projectionId, duckdbPath });

@@ -12,18 +12,42 @@ Follows existing pattern used by:
 """
 
 import json
+import os
+import re
 import sys
+import traceback
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 # Import artifact_store package
 from artifact_store.manifest import (
     connect_manifest,
-    apply_migrations,
     supersede as manifest_supersede,
 )
 from artifact_store.publisher import publish_dataframe
 import pandas as pd
+
+
+def validate_filter_key(key: str) -> bool:
+    """Validate filter key is safe (alphanumeric + underscore only)"""
+    return bool(re.match(r'^[a-zA-Z0-9_]+$', key))
+
+
+def validate_filter_value(value: str) -> bool:
+    """Validate filter value doesn't contain SQL injection attempts"""
+    # Check for common SQL injection patterns
+    dangerous_patterns = [
+        r';\s*(DROP|DELETE|UPDATE|INSERT|ALTER|CREATE)',
+        r'--',
+        r'/\*',
+        r'\*/',
+        r"'\s*OR\s*'",
+        r"'\s*AND\s*'",
+    ]
+    for pattern in dangerous_patterns:
+        if re.search(pattern, value, re.IGNORECASE):
+            return False
+    return True
 
 
 def row_to_dict(row: Any) -> Dict[str, Any]:
@@ -68,32 +92,61 @@ def list_artifacts(manifest_db: str, filter_dict: Dict[str, Any]) -> List[Dict[s
     where_clauses = []
     params = []
     
+    # Validate and filter artifactType
     if filter_dict.get('artifactType'):
+        artifact_type = str(filter_dict['artifactType'])
+        if not validate_filter_value(artifact_type):
+            raise ValueError(f"Invalid artifactType value: {artifact_type}")
         where_clauses.append("artifact_type = ?")
-        params.append(filter_dict['artifactType'])
+        params.append(artifact_type)
     
+    # Validate and filter status
     if filter_dict.get('status'):
+        status = str(filter_dict['status'])
+        if status not in ('active', 'superseded', 'tombstoned'):
+            raise ValueError(f"Invalid status value: {status}")
         where_clauses.append("status = ?")
-        params.append(filter_dict['status'])
+        params.append(status)
     
+    # Validate and filter minCreatedAt
     if filter_dict.get('minCreatedAt'):
+        min_created_at = str(filter_dict['minCreatedAt'])
+        if not validate_filter_value(min_created_at):
+            raise ValueError(f"Invalid minCreatedAt value: {min_created_at}")
         where_clauses.append("created_at >= ?")
-        params.append(filter_dict['minCreatedAt'])
+        params.append(min_created_at)
     
+    # Validate and filter maxCreatedAt
     if filter_dict.get('maxCreatedAt'):
+        max_created_at = str(filter_dict['maxCreatedAt'])
+        if not validate_filter_value(max_created_at):
+            raise ValueError(f"Invalid maxCreatedAt value: {max_created_at}")
         where_clauses.append("created_at <= ?")
-        params.append(filter_dict['maxCreatedAt'])
+        params.append(max_created_at)
     
-    # Tag filtering (if provided)
+    # Tag filtering (if provided) - validate keys and values
     if filter_dict.get('tags'):
+        if not isinstance(filter_dict['tags'], dict):
+            raise ValueError("tags must be a dictionary")
         for k, v in filter_dict['tags'].items():
+            # Validate tag key
+            if not validate_filter_key(str(k)):
+                raise ValueError(f"Invalid tag key: {k}")
+            # Validate tag value
+            tag_value = str(v)
+            if not validate_filter_value(tag_value):
+                raise ValueError(f"Invalid tag value: {tag_value}")
             where_clauses.append(
                 "artifact_id IN (SELECT artifact_id FROM artifact_tags WHERE k = ? AND v = ?)"
             )
-            params.extend([k, v])
+            params.extend([k, tag_value])
     
     where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
     limit = filter_dict.get('limit', 100)
+    
+    # Validate limit
+    if not isinstance(limit, int) or limit < 1 or limit > 10000:
+        raise ValueError(f"Invalid limit value: {limit} (must be between 1 and 10000)")
     
     rows = con.execute(
         f"SELECT * FROM artifacts WHERE {where_sql} ORDER BY created_at DESC LIMIT ?",
@@ -244,9 +297,14 @@ def health_check(manifest_db: str) -> Dict[str, Any]:
 
 def main() -> None:
     """Main entry point - reads JSON from stdin, executes operation, writes JSON to stdout"""
+    input_data = None
+    operation = None
     try:
         input_data = json.load(sys.stdin)
-        operation = input_data['operation']
+        operation = input_data.get('operation')
+        
+        if not operation:
+            raise ValueError("Missing required field: operation")
         
         if operation == 'get_artifact':
             result = get_artifact(input_data['manifest_db'], input_data['artifact_id'])
@@ -283,7 +341,17 @@ def main() -> None:
         json.dump(result, sys.stdout, indent=2)
         sys.exit(0)
     except Exception as e:
-        error_result = {'error': str(e), 'type': type(e).__name__}
+        # Build error result with context
+        error_result = {
+            'error': str(e),
+            'type': type(e).__name__,
+            'operation': operation or 'unknown',
+        }
+        
+        # Include stack trace if DEBUG environment variable is set
+        if os.getenv('DEBUG') or os.getenv('ARTIFACT_STORE_DEBUG'):
+            error_result['traceback'] = traceback.format_exc()
+        
         json.dump(error_result, sys.stderr, indent=2)
         sys.exit(1)
 
