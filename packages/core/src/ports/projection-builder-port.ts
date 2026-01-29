@@ -171,4 +171,3 @@ export interface ProjectionTable {
    */
   indexes: string[];
 }
-

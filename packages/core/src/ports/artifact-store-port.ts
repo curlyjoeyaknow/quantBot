@@ -9,9 +9,9 @@
  */
 
 /**
- * Artifact metadata from manifest
+ * Artifact metadata from manifest (artifact store)
  */
-export interface Artifact {
+export interface ArtifactManifestRecord {
   /** Unique artifact identifier (UUID) */
   artifactId: string;
 
@@ -153,7 +153,7 @@ export interface ArtifactLineage {
   artifactId: string;
 
   /** Input artifacts */
-  inputs: Artifact[];
+  inputs: ArtifactManifestRecord[];
 
   /** Lineage depth (1 = direct inputs only) */
   depth: number;
@@ -173,7 +173,7 @@ export interface ArtifactStorePort {
    * @returns Artifact metadata
    * @throws NotFoundError if artifact does not exist
    */
-  getArtifact(artifactId: string): Promise<Artifact>;
+  getArtifact(artifactId: string): Promise<ArtifactManifestRecord>;
 
   /**
    * List artifacts with filters
@@ -181,7 +181,7 @@ export interface ArtifactStorePort {
    * @param filter - Filter criteria
    * @returns Array of artifacts (ordered by created_at DESC)
    */
-  listArtifacts(filter: ArtifactFilter): Promise<Artifact[]>;
+  listArtifacts(filter: ArtifactFilter): Promise<ArtifactManifestRecord[]>;
 
   /**
    * Find artifacts by logical key
@@ -190,7 +190,7 @@ export interface ArtifactStorePort {
    * @param logicalKey - Logical key
    * @returns Array of artifacts (ordered by created_at DESC)
    */
-  findByLogicalKey(artifactType: string, logicalKey: string): Promise<Artifact[]>;
+  findByLogicalKey(artifactType: string, logicalKey: string): Promise<ArtifactManifestRecord[]>;
 
   /**
    * Publish DataFrame as Parquet artifact
@@ -217,7 +217,7 @@ export interface ArtifactStorePort {
    * @param artifactId - Artifact ID
    * @returns Array of downstream artifacts
    */
-  getDownstream(artifactId: string): Promise<Artifact[]>;
+  getDownstream(artifactId: string): Promise<ArtifactManifestRecord[]>;
 
   /**
    * Supersede old artifact with new one
@@ -236,4 +236,3 @@ export interface ArtifactStorePort {
    */
   isAvailable(): Promise<boolean>;
 }
-

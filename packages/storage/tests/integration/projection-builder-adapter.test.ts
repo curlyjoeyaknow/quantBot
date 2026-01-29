@@ -28,7 +28,8 @@ describe.skipIf(SKIP_INTEGRATION)('ProjectionBuilderAdapter (integration)', () =
   let tempCacheDir: string;
 
   beforeAll(() => {
-    const manifestDb = process.env.ARTIFACT_MANIFEST_DB || '/home/memez/opn/manifest/manifest.sqlite';
+    const manifestDb =
+      process.env.ARTIFACT_MANIFEST_DB || '/home/memez/opn/manifest/manifest.sqlite';
     const artifactsRoot = process.env.ARTIFACTS_ROOT || '/home/memez/opn/artifacts';
     const pythonEngine = new PythonEngine();
 
@@ -47,7 +48,7 @@ describe.skipIf(SKIP_INTEGRATION)('ProjectionBuilderAdapter (integration)', () =
 
   it('should build projection from real alert artifacts', async () => {
     // Find some alert artifacts
-    const artifacts = await artifactStore.findArtifacts({
+    const artifacts = await artifactStore.listArtifacts({
       artifactType: 'alerts',
       limit: 2,
     });
@@ -78,7 +79,7 @@ describe.skipIf(SKIP_INTEGRATION)('ProjectionBuilderAdapter (integration)', () =
 
   it('should build projection from real OHLCV artifacts', async () => {
     // Find some OHLCV artifacts
-    const artifacts = await artifactStore.findArtifacts({
+    const artifacts = await artifactStore.listArtifacts({
       artifactType: 'ohlcv_slice',
       limit: 2,
     });
@@ -109,12 +110,12 @@ describe.skipIf(SKIP_INTEGRATION)('ProjectionBuilderAdapter (integration)', () =
 
   it('should build multi-table projection', async () => {
     // Find artifacts of both types
-    const alertArtifacts = await artifactStore.findArtifacts({
+    const alertArtifacts = await artifactStore.listArtifacts({
       artifactType: 'alerts',
       limit: 1,
     });
 
-    const ohlcvArtifacts = await artifactStore.findArtifacts({
+    const ohlcvArtifacts = await artifactStore.listArtifacts({
       artifactType: 'ohlcv_slice',
       limit: 1,
     });
@@ -145,7 +146,7 @@ describe.skipIf(SKIP_INTEGRATION)('ProjectionBuilderAdapter (integration)', () =
 
   it('should dispose projection', async () => {
     // Build a projection
-    const artifacts = await artifactStore.findArtifacts({
+    const artifacts = await artifactStore.listArtifacts({
       artifactType: 'alerts',
       limit: 1,
     });
@@ -171,7 +172,7 @@ describe.skipIf(SKIP_INTEGRATION)('ProjectionBuilderAdapter (integration)', () =
 
   it('should check projection existence', async () => {
     // Build a projection
-    const artifacts = await artifactStore.findArtifacts({
+    const artifacts = await artifactStore.listArtifacts({
       artifactType: 'alerts',
       limit: 1,
     });
@@ -194,4 +195,3 @@ describe.skipIf(SKIP_INTEGRATION)('ProjectionBuilderAdapter (integration)', () =
     expect(notExists).toBe(false);
   });
 });
-

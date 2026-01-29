@@ -2,7 +2,7 @@ import { join } from 'path';
 import { z } from 'zod';
 import type {
   ArtifactStorePort,
-  Artifact,
+  ArtifactManifestRecord,
   ArtifactFilter,
   PublishArtifactRequest,
   PublishArtifactResult,
@@ -60,23 +60,22 @@ export class ArtifactStoreAdapter implements ArtifactStorePort {
   private readonly artifactsRoot: string;
   private readonly manifestSql: string;
 
-  constructor(
-    manifestDb: string,
-    artifactsRoot: string,
-    pythonEngine?: PythonEngine
-  ) {
+  constructor(manifestDb: string, artifactsRoot: string, pythonEngine?: PythonEngine) {
     this.manifestDb = manifestDb;
     this.artifactsRoot = artifactsRoot;
     this.pythonEngine = pythonEngine || new PythonEngine();
-    
+
     const workspaceRoot = findWorkspaceRoot();
     this.scriptPath = join(workspaceRoot, 'tools/storage/artifact_store_ops.py');
-    this.manifestSql = join(workspaceRoot, 'packages/artifact_store/artifact_store/sql/manifest_v1.sql');
+    this.manifestSql = join(
+      workspaceRoot,
+      'packages/artifact_store/artifact_store/sql/manifest_v1.sql'
+    );
   }
 
-  async getArtifact(artifactId: string): Promise<Artifact> {
+  async getArtifact(artifactId: string): Promise<ArtifactManifestRecord> {
     logger.debug('Getting artifact', { artifactId });
-    
+
     try {
       const result = await this.pythonEngine.runScriptWithStdin(
         this.scriptPath,
@@ -87,7 +86,7 @@ export class ArtifactStoreAdapter implements ArtifactStorePort {
         },
         ArtifactSchema
       );
-      
+
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -98,9 +97,9 @@ export class ArtifactStoreAdapter implements ArtifactStorePort {
     }
   }
 
-  async listArtifacts(filter: ArtifactFilter): Promise<Artifact[]> {
+  async listArtifacts(filter: ArtifactFilter): Promise<ArtifactManifestRecord[]> {
     logger.debug('Listing artifacts', { filter });
-    
+
     const result = await this.pythonEngine.runScriptWithStdin(
       this.scriptPath,
       {
@@ -110,13 +109,13 @@ export class ArtifactStoreAdapter implements ArtifactStorePort {
       },
       z.array(ArtifactSchema)
     );
-    
+
     return result;
   }
 
-  async findByLogicalKey(artifactType: string, logicalKey: string): Promise<Artifact[]> {
+  async findByLogicalKey(artifactType: string, logicalKey: string): Promise<ArtifactManifestRecord[]> {
     logger.debug('Finding artifacts by logical key', { artifactType, logicalKey });
-    
+
     const result = await this.pythonEngine.runScriptWithStdin(
       this.scriptPath,
       {
@@ -127,7 +126,7 @@ export class ArtifactStoreAdapter implements ArtifactStorePort {
       },
       z.array(ArtifactSchema)
     );
-    
+
     return result;
   }
 
@@ -137,7 +136,7 @@ export class ArtifactStoreAdapter implements ArtifactStorePort {
       logicalKey: request.logicalKey,
       dataPath: request.dataPath,
     });
-    
+
     const result = await this.pythonEngine.runScriptWithStdin(
       this.scriptPath,
       {
@@ -160,7 +159,7 @@ export class ArtifactStoreAdapter implements ArtifactStorePort {
       },
       PublishArtifactResultSchema
     );
-    
+
     if (result.deduped) {
       logger.info('Artifact deduplicated', {
         mode: result.mode,
@@ -172,13 +171,13 @@ export class ArtifactStoreAdapter implements ArtifactStorePort {
         pathParquet: result.pathParquet,
       });
     }
-    
+
     return result;
   }
 
   async getLineage(artifactId: string): Promise<ArtifactLineage> {
     logger.debug('Getting artifact lineage', { artifactId });
-    
+
     const result = await this.pythonEngine.runScriptWithStdin(
       this.scriptPath,
       {
@@ -188,13 +187,13 @@ export class ArtifactStoreAdapter implements ArtifactStorePort {
       },
       ArtifactLineageSchema
     );
-    
+
     return result;
   }
 
-  async getDownstream(artifactId: string): Promise<Artifact[]> {
+  async getDownstream(artifactId: string): Promise<ArtifactManifestRecord[]> {
     logger.debug('Getting downstream artifacts', { artifactId });
-    
+
     const result = await this.pythonEngine.runScriptWithStdin(
       this.scriptPath,
       {
@@ -204,13 +203,13 @@ export class ArtifactStoreAdapter implements ArtifactStorePort {
       },
       z.array(ArtifactSchema)
     );
-    
+
     return result;
   }
 
   async supersede(newArtifactId: string, oldArtifactId: string): Promise<void> {
     logger.info('Superseding artifact', { newArtifactId, oldArtifactId });
-    
+
     await this.pythonEngine.runScriptWithStdin(
       this.scriptPath,
       {
@@ -237,4 +236,3 @@ export class ArtifactStoreAdapter implements ArtifactStorePort {
     }
   }
 }
-

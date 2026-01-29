@@ -244,4 +244,3 @@ describe('ArtifactStoreAdapter (integration)', () => {
     expect(oldArtifact.status).toBe('superseded');
   });
 });
-

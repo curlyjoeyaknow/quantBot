@@ -81,7 +81,7 @@ export type {
 export * from './run-event-port.js';
 export type {
   ArtifactStorePort,
-  Artifact,
+  ArtifactManifestRecord,
   ArtifactFilter,
   PublishArtifactRequest,
   PublishArtifactResult,
