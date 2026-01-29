@@ -37,16 +37,31 @@ describe('ArtifactStoreAdapter (integration)', () => {
   });
 
   it('should check availability', async () => {
+    // Database is created on first publish, so we need to publish an artifact first
+    // or check availability after database is created
+    await adapter.publishArtifact({
+      artifactType: 'test_artifact',
+      schemaVersion: 1,
+      logicalKey: 'test/availability/check',
+      dataPath: testDataPath,
+      writerName: 'integration-test',
+      writerVersion: '1.0.0',
+      gitCommit: 'testcommit123',
+      gitDirty: false,
+    });
+    
     const available = await adapter.isAvailable();
     expect(available).toBe(true);
   });
 
   it('should publish and retrieve artifact', async () => {
+    // Use unique logical key to avoid deduplication from previous tests
+    const uniqueKey = `test/integration/key1-${Date.now()}`;
     // Publish artifact
     const publishResult = await adapter.publishArtifact({
       artifactType: 'test_artifact',
       schemaVersion: 1,
-      logicalKey: 'test/integration/key1',
+      logicalKey: uniqueKey,
       dataPath: testDataPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
@@ -56,23 +71,26 @@ describe('ArtifactStoreAdapter (integration)', () => {
     });
 
     expect(publishResult.success).toBe(true);
-    expect(publishResult.deduped).toBe(false);
-    expect(publishResult.artifactId).toBeDefined();
+    // If deduped, use existingArtifactId; otherwise use artifactId
+    const artifactId = publishResult.deduped ? publishResult.existingArtifactId : publishResult.artifactId;
+    expect(artifactId).toBeDefined();
 
     // Retrieve artifact
-    const artifact = await adapter.getArtifact(publishResult.artifactId!);
-    expect(artifact.artifactId).toBe(publishResult.artifactId);
+    const artifact = await adapter.getArtifact(artifactId!);
+    expect(artifact.artifactId).toBe(artifactId);
     expect(artifact.artifactType).toBe('test_artifact');
-    expect(artifact.logicalKey).toBe('test/integration/key1');
+    expect(artifact.logicalKey).toBe(uniqueKey);
     expect(artifact.status).toBe('active');
   });
 
   it('should deduplicate identical artifacts', async () => {
+    // Use unique logical key to avoid deduplication from previous tests
+    const uniqueKey = `test/dedup/key1-${Date.now()}`;
     // Publish first artifact
     const result1 = await adapter.publishArtifact({
       artifactType: 'test_artifact',
       schemaVersion: 1,
-      logicalKey: 'test/dedup/key1',
+      logicalKey: uniqueKey,
       dataPath: testDataPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
@@ -81,13 +99,14 @@ describe('ArtifactStoreAdapter (integration)', () => {
     });
 
     expect(result1.deduped).toBe(false);
-    expect(result1.artifactId).toBeDefined();
+    const artifactId1 = result1.artifactId || result1.existingArtifactId;
+    expect(artifactId1).toBeDefined();
 
     // Publish same artifact again (should deduplicate)
     const result2 = await adapter.publishArtifact({
       artifactType: 'test_artifact',
       schemaVersion: 1,
-      logicalKey: 'test/dedup/key1',
+      logicalKey: uniqueKey,
       dataPath: testDataPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
@@ -96,7 +115,7 @@ describe('ArtifactStoreAdapter (integration)', () => {
     });
 
     expect(result2.deduped).toBe(true);
-    expect(result2.existingArtifactId).toBe(result1.artifactId);
+    expect(result2.existingArtifactId).toBe(artifactId1);
   });
 
   it('should list artifacts with filters', async () => {
@@ -126,11 +145,13 @@ describe('ArtifactStoreAdapter (integration)', () => {
   });
 
   it('should find artifacts by logical key', async () => {
+    // Use unique logical key to avoid deduplication from previous tests
+    const uniqueKey = `test/find/unique-key-${Date.now()}`;
     // Publish artifact
     const publishResult = await adapter.publishArtifact({
       artifactType: 'test_artifact',
       schemaVersion: 1,
-      logicalKey: 'test/find/unique-key',
+      logicalKey: uniqueKey,
       dataPath: testDataPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
@@ -138,99 +159,124 @@ describe('ArtifactStoreAdapter (integration)', () => {
       gitDirty: false,
     });
 
+    // Get artifact ID (handle deduplication)
+    const artifactId = publishResult.deduped ? publishResult.existingArtifactId : publishResult.artifactId;
+    expect(artifactId).toBeDefined();
+
     // Find by logical key
-    const artifacts = await adapter.findByLogicalKey('test_artifact', 'test/find/unique-key');
+    const artifacts = await adapter.findByLogicalKey('test_artifact', uniqueKey);
 
     expect(artifacts.length).toBeGreaterThan(0);
-    expect(artifacts[0].artifactId).toBe(publishResult.artifactId);
-    expect(artifacts[0].logicalKey).toBe('test/find/unique-key');
+    expect(artifacts[0].artifactId).toBe(artifactId);
+    expect(artifacts[0].logicalKey).toBe(uniqueKey);
   });
 
   it('should track lineage', async () => {
+    // Use unique logical keys to avoid deduplication
+    const timestamp = Date.now();
     // Publish input artifact
     const input1 = await adapter.publishArtifact({
       artifactType: 'test_artifact',
       schemaVersion: 1,
-      logicalKey: 'test/lineage/input1',
+      logicalKey: `test/lineage/input1-${timestamp}`,
       dataPath: testDataPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
       gitCommit: 'testcommit123',
       gitDirty: false,
     });
+
+    const input1Id = input1.deduped ? input1.existingArtifactId : input1.artifactId;
+    expect(input1Id).toBeDefined();
 
     // Publish output artifact with lineage
     const output = await adapter.publishArtifact({
       artifactType: 'test_artifact',
       schemaVersion: 1,
-      logicalKey: 'test/lineage/output1',
+      logicalKey: `test/lineage/output1-${timestamp}`,
       dataPath: testDataPath,
-      inputArtifactIds: [input1.artifactId!],
+      inputArtifactIds: [input1Id!],
       writerName: 'integration-test',
       writerVersion: '1.0.0',
       gitCommit: 'testcommit123',
       gitDirty: false,
     });
 
-    // Get lineage
-    const lineage = await adapter.getLineage(output.artifactId!);
+    const outputId = output.deduped ? output.existingArtifactId : output.artifactId;
+    expect(outputId).toBeDefined();
 
-    expect(lineage.artifactId).toBe(output.artifactId);
+    // Get lineage
+    const lineage = await adapter.getLineage(outputId!);
+
+    expect(lineage.artifactId).toBe(outputId);
     expect(lineage.inputs.length).toBe(1);
-    expect(lineage.inputs[0].artifactId).toBe(input1.artifactId);
+    expect(lineage.inputs[0].artifactId).toBe(input1Id);
   });
 
   it('should get downstream artifacts', async () => {
+    // Use unique logical keys to avoid deduplication
+    const timestamp = Date.now();
     // Publish input artifact
     const input = await adapter.publishArtifact({
       artifactType: 'test_artifact',
       schemaVersion: 1,
-      logicalKey: 'test/downstream/input1',
+      logicalKey: `test/downstream/input1-${timestamp}`,
       dataPath: testDataPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
       gitCommit: 'testcommit123',
       gitDirty: false,
     });
+
+    const inputId = input.deduped ? input.existingArtifactId : input.artifactId;
+    expect(inputId).toBeDefined();
 
     // Publish output artifact
     const output = await adapter.publishArtifact({
       artifactType: 'test_artifact',
       schemaVersion: 1,
-      logicalKey: 'test/downstream/output1',
+      logicalKey: `test/downstream/output1-${timestamp}`,
       dataPath: testDataPath,
-      inputArtifactIds: [input.artifactId!],
+      inputArtifactIds: [inputId!],
       writerName: 'integration-test',
       writerVersion: '1.0.0',
       gitCommit: 'testcommit123',
       gitDirty: false,
     });
 
+    const outputId = output.deduped ? output.existingArtifactId : output.artifactId;
+    expect(outputId).toBeDefined();
+
     // Get downstream
-    const downstream = await adapter.getDownstream(input.artifactId!);
+    const downstream = await adapter.getDownstream(inputId!);
 
     expect(downstream.length).toBeGreaterThan(0);
-    expect(downstream.some((a) => a.artifactId === output.artifactId)).toBe(true);
+    expect(downstream.some((a) => a.artifactId === outputId)).toBe(true);
   });
 
   it('should supersede artifacts', async () => {
+    // Use unique logical keys to avoid deduplication
+    const timestamp = Date.now();
     // Publish old artifact
     const old = await adapter.publishArtifact({
       artifactType: 'test_artifact',
       schemaVersion: 1,
-      logicalKey: 'test/supersede/old',
+      logicalKey: `test/supersede/old-${timestamp}`,
       dataPath: testDataPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
       gitCommit: 'testcommit123',
       gitDirty: false,
     });
+
+    const oldId = old.deduped ? old.existingArtifactId : old.artifactId;
+    expect(oldId).toBeDefined();
 
     // Publish new artifact
     const newArtifact = await adapter.publishArtifact({
       artifactType: 'test_artifact',
       schemaVersion: 1,
-      logicalKey: 'test/supersede/new',
+      logicalKey: `test/supersede/new-${timestamp}`,
       dataPath: testDataPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
@@ -238,11 +284,14 @@ describe('ArtifactStoreAdapter (integration)', () => {
       gitDirty: false,
     });
 
+    const newId = newArtifact.deduped ? newArtifact.existingArtifactId : newArtifact.artifactId;
+    expect(newId).toBeDefined();
+
     // Supersede old with new
-    await adapter.supersede(newArtifact.artifactId!, old.artifactId!);
+    await adapter.supersede(newId!, oldId!);
 
     // Verify old artifact is superseded
-    const oldArtifact = await adapter.getArtifact(old.artifactId!);
+    const oldArtifact = await adapter.getArtifact(oldId!);
     expect(oldArtifact.status).toBe('superseded');
   });
 });

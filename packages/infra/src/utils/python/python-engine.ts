@@ -915,21 +915,48 @@ export class PythonEngine {
                 ? errorObj.stdout.toString()
                 : String(errorObj.stdout)
           : '';
+        // Try to parse error JSON from stderr (Python scripts write errors as JSON to stderr)
+        let parsedError: { error?: string; type?: string; operation?: string } | null = null;
+        if (stderr) {
+          try {
+            // Try to parse JSON from stderr
+            const stderrLines = stderr.trim().split('\n');
+            for (const line of stderrLines) {
+              if (line.trim().startsWith('{') && line.trim().endsWith('}')) {
+                parsedError = JSON.parse(line.trim());
+                break;
+              }
+            }
+          } catch {
+            // Not JSON, use as-is
+          }
+        }
+
         const errorMessage =
+          parsedError?.error ||
           errorObj.message ||
           errorObj.shortMessage ||
           (error instanceof Error ? error.message : String(error));
+        
+        const errorDetails: Record<string, unknown> = {
+          script: scriptFullPath,
+          exitCode,
+          stderr: stderr.substring(0, 1000),
+          stdout: stdout.substring(0, 500),
+          command: errorObj.command,
+        };
+        
+        if (parsedError) {
+          errorDetails.pythonError = parsedError.error;
+          errorDetails.pythonErrorType = parsedError.type;
+          errorDetails.pythonOperation = parsedError.operation;
+        }
+        
         throw new AppError(
-          `Python script exited with code ${exitCode}: ${stderr || errorMessage || 'Unknown error'}`,
+          `Python script exited with code ${exitCode}: ${errorMessage || 'Unknown error'}`,
           'PYTHON_SCRIPT_ERROR',
           500,
-          {
-            script: scriptFullPath,
-            exitCode,
-            stderr: stderr.substring(0, 1000),
-            stdout: stdout.substring(0, 500),
-            command: errorObj.command,
-          }
+          errorDetails
         );
       }
 

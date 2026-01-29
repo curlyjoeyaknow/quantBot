@@ -13,38 +13,56 @@ import { z } from 'zod';
  * Create experiment schema
  *
  * Creates a new experiment with frozen artifact sets.
+ * Supports two modes:
+ * 1. Explicit artifact IDs (--alerts, --ohlcv)
+ * 2. RunSet reference (--runset)
  */
-export const createResearchExperimentSchema = z.object({
-  /** Experiment name (required) */
-  name: z.string().min(1),
+export const createResearchExperimentSchema = z
+  .object({
+    /** Experiment name (required) */
+    name: z.string().min(1),
 
-  /** Optional description */
-  description: z.string().optional(),
+    /** Optional description */
+    description: z.string().optional(),
 
-  /** Alert artifact IDs (comma-separated) */
-  alerts: z.array(z.string().uuid()),
+    /** RunSet ID (alternative to explicit artifacts) */
+    runset: z.string().optional(),
 
-  /** OHLCV artifact IDs (comma-separated) */
-  ohlcv: z.array(z.string().uuid()),
+    /** Alert artifact IDs (comma-separated) */
+    alerts: z.array(z.string().uuid()).optional(),
 
-  /** Strategy artifact IDs (optional, comma-separated) */
-  strategies: z.array(z.string().uuid()).optional(),
+    /** OHLCV artifact IDs (comma-separated) */
+    ohlcv: z.array(z.string().uuid()).optional(),
 
-  /** Strategy configuration (JSON) */
-  strategy: z.record(z.unknown()).optional(),
+    /** Strategy artifact IDs (optional, comma-separated) */
+    strategies: z.array(z.string().uuid()).optional(),
 
-  /** Start date (ISO 8601) */
-  from: z.string(),
+    /** Strategy configuration (JSON) */
+    strategy: z.record(z.unknown()).optional(),
 
-  /** End date (ISO 8601) */
-  to: z.string(),
+    /** Start date (ISO 8601) */
+    from: z.string(),
 
-  /** Additional parameters (JSON) */
-  params: z.record(z.unknown()).optional(),
+    /** End date (ISO 8601) */
+    to: z.string(),
 
-  /** Output format */
-  format: z.enum(['json', 'table']).default('table'),
-});
+    /** Additional parameters (JSON) */
+    params: z.record(z.unknown()).optional(),
+
+    /** Output format */
+    format: z.enum(['json', 'table']).default('table'),
+  })
+  .refine(
+    (data) => {
+      // Must provide either runset OR (alerts + ohlcv)
+      const hasRunset = !!data.runset;
+      const hasExplicitArtifacts = !!data.alerts && !!data.ohlcv;
+      return hasRunset || hasExplicitArtifacts;
+    },
+    {
+      message: 'Must provide either --runset OR (--alerts + --ohlcv)',
+    }
+  );
 
 /**
  * Execute experiment schema

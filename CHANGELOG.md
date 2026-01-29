@@ -13,11 +13,13 @@ All notable changes to this project will be documented in this file.
 **Solution**: RunSet + Resolver pattern - reference logical sets, not individual artifacts.
 
 **Core Concept**:
+
 - **RunSet**: A logical selection (declarative spec), not data
 - **Resolver**: DNS for your data lake (finds matching runs/artifacts)
 - **Registry**: Append-only Parquet facts with DuckDB as disposable cache
 
 **Key Principles**:
+
 1. **Parquet is Truth**: Registry state stored as append-only Parquet
 2. **DuckDB is Cache**: Can delete and rebuild anytime
 3. **Deterministic IDs**: `runset_id = sha256(spec)`, `run_id = sha256(inputs)`
@@ -59,6 +61,7 @@ All notable changes to this project will be documented in this file.
    - Magic join table: `runset_membership`
 
 **Lake Layout**:
+
 ```
 lake/registry/
   runsets_spec/              # Immutable specs
@@ -69,6 +72,7 @@ lake/registry/
 ```
 
 **Example Workflow**:
+
 ```bash
 # Create RunSet (logical selection)
 quantbot runset create \
@@ -94,6 +98,7 @@ quantbot registry rebuild
 ```
 
 **Documentation**:
+
 - `docs/architecture/runset-parquet-first.md` - Parquet-first design (400+ lines)
 - `docs/architecture/runset-resolver-design.md` - Resolver architecture (300+ lines)
 
@@ -247,6 +252,7 @@ quantbot research experiments create-smart \
 **Updated** (2026-01-29): Fixed integration test and Python simulation integration
 
 **Fixes**:
+
 - ✅ Fixed Python import errors in `simulator.py` (relative import fallback)
 - ✅ Fixed PYTHONPATH configuration for `tools.shared` imports
 - ✅ Fixed schema validation (`run_id` nullable support)
@@ -260,6 +266,7 @@ quantbot research experiments create-smart \
 - ✅ All 30 tests passing (unit, edge cases, performance, property, integration)
 
 **Technical Details**:
+
 - Python simulation service now properly integrated with TypeScript handlers
 - DuckDB COPY TO PARQUET works correctly with file-based temporary databases
 - All artifact types properly registered in artifact store spec

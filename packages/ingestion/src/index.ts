@@ -74,3 +74,24 @@ export {
   TelegramPipelineResultSchema,
   type TelegramPipelineResult,
 } from './TelegramPipelineService.js';
+
+// Alert Ingestion (Phase VI)
+export {
+  normalizeAlerts,
+  type CanonicalAlert,
+  type NormalizeAlertsOptions,
+  type NormalizeAlertsResult,
+} from './alerts/normalize.js';
+export {
+  validateAlerts,
+  getValidationSummary,
+  type ValidationResult,
+  type InvalidAlert,
+  type ValidationErrorCode,
+} from './alerts/validate.js';
+export { quarantineAlerts, type QuarantineResult } from './alerts/quarantine.js';
+export {
+  ingestTelegramAlertsHandler,
+  type IngestTelegramAlertsArgs,
+  type IngestTelegramAlertsResult,
+} from './handlers/ingest-telegram-alerts.js';

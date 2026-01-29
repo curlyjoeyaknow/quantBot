@@ -364,37 +364,61 @@ def main() -> None:
         if not operation:
             raise ValueError("Missing required field: operation")
         
+        # Use .get() with defaults for required fields to provide better error messages
         if operation == 'get_artifact':
-            result = get_artifact(input_data['manifest_db'], input_data['artifact_id'])
+            result = get_artifact(
+                input_data.get('manifest_db') or input_data['manifest_db'],
+                input_data.get('artifact_id') or input_data['artifact_id']
+            )
         elif operation == 'get_artifacts_batch':
-            result = get_artifacts_batch(input_data['manifest_db'], input_data['artifact_ids'])
+            result = get_artifacts_batch(
+                input_data.get('manifest_db') or input_data['manifest_db'],
+                input_data.get('artifact_ids') or input_data['artifact_ids']
+            )
         elif operation == 'list_artifacts':
-            result = list_artifacts(input_data['manifest_db'], input_data.get('filter', {}))
+            result = list_artifacts(input_data.get('manifest_db') or input_data['manifest_db'], input_data.get('filter', {}))
         elif operation == 'find_by_logical_key':
             result = find_by_logical_key(
-                input_data['manifest_db'],
-                input_data['artifact_type'],
-                input_data['logical_key']
+                input_data.get('manifest_db') or input_data['manifest_db'],
+                input_data.get('artifact_type') or input_data['artifact_type'],
+                input_data.get('logical_key') or input_data['logical_key']
             )
         elif operation == 'publish_artifact':
             result = publish_artifact_op(
-                input_data['manifest_db'],
-                input_data['manifest_sql'],
-                input_data['artifacts_root'],
+                input_data.get('manifest_db') or input_data['manifest_db'],
+                input_data.get('manifest_sql') or input_data['manifest_sql'],
+                input_data.get('artifacts_root') or input_data['artifacts_root'],
                 input_data
             )
         elif operation == 'get_lineage':
-            result = get_lineage(input_data['manifest_db'], input_data['artifact_id'])
+            manifest_db = input_data.get('manifest_db')
+            artifact_id = input_data.get('artifact_id')
+            if not manifest_db:
+                raise KeyError("Missing required field: 'manifest_db'")
+            if not artifact_id:
+                raise KeyError("Missing required field: 'artifact_id'")
+            result = get_lineage(manifest_db, artifact_id)
         elif operation == 'get_downstream':
-            result = get_downstream(input_data['manifest_db'], input_data['artifact_id'])
+            manifest_db = input_data.get('manifest_db')
+            artifact_id = input_data.get('artifact_id')
+            if not manifest_db:
+                raise KeyError("Missing required field: 'manifest_db'")
+            if not artifact_id:
+                raise KeyError("Missing required field: 'artifact_id'")
+            result = get_downstream(manifest_db, artifact_id)
         elif operation == 'supersede':
-            result = supersede_artifact(
-                input_data['manifest_db'],
-                input_data['new_artifact_id'],
-                input_data['old_artifact_id']
-            )
+            manifest_db = input_data.get('manifest_db')
+            new_artifact_id = input_data.get('new_artifact_id')
+            old_artifact_id = input_data.get('old_artifact_id')
+            if not manifest_db:
+                raise KeyError("Missing required field: 'manifest_db'")
+            if not new_artifact_id:
+                raise KeyError("Missing required field: 'new_artifact_id'")
+            if not old_artifact_id:
+                raise KeyError("Missing required field: 'old_artifact_id'")
+            result = supersede_artifact(manifest_db, new_artifact_id, old_artifact_id)
         elif operation == 'health_check':
-            result = health_check(input_data['manifest_db'])
+            result = health_check(input_data.get('manifest_db') or input_data['manifest_db'])
         else:
             raise ValueError(f"Unknown operation: {operation}")
         

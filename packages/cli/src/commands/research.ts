@@ -161,12 +161,13 @@ export function registerResearchCommands(program: Command): void {
     .command('experiments')
     .description('Experiment tracking and execution');
 
-  // Create experiment (explicit artifact IDs)
+  // Create experiment (supports RunSet or explicit artifact IDs)
   const createExperimentCmd = experimentsCmd
     .command('create')
-    .description('Create a new experiment with explicit artifact IDs')
+    .description('Create a new experiment (use --runset OR --alerts + --ohlcv)')
     .option('--name <name>', 'Experiment name (required)')
     .option('--description <desc>', 'Optional description')
+    .option('--runset <runset-id>', 'RunSet ID (alternative to explicit artifacts)')
     .option('--alerts <ids...>', 'Alert artifact IDs (comma-separated)')
     .option('--ohlcv <ids...>', 'OHLCV artifact IDs (comma-separated)')
     .option('--strategies <ids...>', 'Strategy artifact IDs (optional)')
@@ -373,13 +374,14 @@ const researchModule: PackageCommandModule = {
     // Experiment commands
     {
       name: 'experiments-create',
-      description: 'Create a new experiment with explicit artifact IDs',
+      description: 'Create a new experiment (use --runset OR --alerts + --ohlcv)',
       schema: createResearchExperimentSchema,
       handler: async (args: unknown, ctx: CommandContext) => {
         const typedArgs = args as z.infer<typeof createResearchExperimentSchema>;
         return await createResearchExperimentHandler(typedArgs, ctx);
       },
       examples: [
+        'quantbot research experiments create --name "momentum-v1" --runset brook_baseline_2025Q4 --from 2025-05-01 --to 2025-05-31',
         'quantbot research experiments create --name "momentum-v1" --alerts alert-1,alert-2 --ohlcv ohlcv-1 --from 2025-05-01 --to 2025-05-31',
       ],
     },

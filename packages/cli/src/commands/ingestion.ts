@@ -24,6 +24,7 @@ import { surgicalOhlcvFetchHandler } from './ingestion/surgical-ohlcv-fetch.js';
 import { ensureOhlcvCoverageHandler } from '../handlers/ingestion/ensure-ohlcv-coverage.js';
 import { fetchTokenCreationInfoHandler } from '../handlers/ingestion/fetch-token-creation-info.js';
 import { ingestMarketDataHandler } from '../handlers/ingestion/ingest-market-data.js';
+import { ingestTelegramAlertsCLIHandler } from '../handlers/ingestion/ingest-telegram-alerts.js';
 
 /**
  * Telegram ingestion schema
@@ -123,6 +124,18 @@ export const ingestMarketDataSchema = z.object({
   chain: z.string().default('solana'),
   limit: z.number().int().positive().optional(), // Limit number of tokens to process (for testing)
   skipExisting: z.boolean().default(false), // Skip tokens that already have market data
+  format: z.enum(['json', 'table', 'csv']).default('table'),
+});
+
+/**
+ * Telegram alerts ingestion schema (artifact-based)
+ */
+export const telegramAlertsSchema = z.object({
+  exportPath: z.string().min(1),
+  chain: z.enum(['solana', 'evm']).default('solana'),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD
+  defaultCallerName: z.string().optional(),
+  chatId: z.string().optional(),
   format: z.enum(['json', 'table', 'csv']).default('table'),
 });
 
