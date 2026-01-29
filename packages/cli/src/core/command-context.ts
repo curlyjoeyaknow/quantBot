@@ -18,6 +18,7 @@ import {
   ArtifactStoreAdapter,
   ProjectionBuilderAdapter,
   ExperimentTrackerAdapter,
+  RunSetResolverAdapter,
   // PostgreSQL repositories removed - use DuckDB equivalents
   // CallsRepository, TokensRepository, AlertsRepository, SimulationRunsRepository
 } from '@quantbot/storage';
@@ -31,6 +32,7 @@ import type {
   ProjectionBuilderPort,
   ExperimentTrackerPort,
   BacktestResultsPort,
+  RunSetResolverPort,
 } from '@quantbot/core';
 import { OhlcvIngestionService } from '@quantbot/ingestion';
 import { MarketDataIngestionService } from '@quantbot/jobs';
@@ -106,6 +108,7 @@ export interface CommandServices {
   projectionBuilder(): ProjectionBuilderPort; // Projection builder (DuckDB from Parquet)
   experimentTracker(): ExperimentTrackerPort; // Experiment tracker (DuckDB)
   backtestResults(): BacktestResultsPort; // Backtest results (DuckDB + filesystem)
+  runsetResolver(): RunSetResolverPort; // RunSet resolver (Parquet-first registry)
   // Note: marketDataPort is async - use ctx.getMarketDataPort() instead
   marketDataPort(): never; // Market data port (for fetching OHLCV, metadata, etc.) - use getMarketDataPort() instead
   // Add more services as needed
@@ -314,8 +317,16 @@ export class CommandContext {
       },
       backtestResults: () => {
         // Backtest Results - DuckDB + filesystem adapter
-        const artifactsBaseDir = process.env.ARTIFACTS_DIR || join(process.cwd(), 'artifacts', 'backtest');
+        const artifactsBaseDir =
+          process.env.ARTIFACTS_DIR || join(process.cwd(), 'artifacts', 'backtest');
         return new BacktestResultsAdapter(artifactsBaseDir);
+      },
+      runsetResolver: () => {
+        // RunSet Resolver - Parquet-first registry with DuckDB cache
+        const workspaceRoot = findWorkspaceRoot();
+        const registryRoot = process.env.REGISTRY_ROOT || '/home/memez/opn/registry';
+        const duckdbPath = process.env.REGISTRY_DB || join(workspaceRoot, 'data/registry.duckdb');
+        return new RunSetResolverAdapter(registryRoot, duckdbPath, pythonEngine);
       },
       // Note: marketDataPort is async and should be accessed via getMarketDataPort()
       // Keeping in interface for type safety but implementation is async

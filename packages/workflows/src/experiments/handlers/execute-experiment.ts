@@ -92,7 +92,13 @@ export async function executeExperiment(
 
   // Validate exit targets exist
   const exitConfig = definition.config.strategy?.exit;
-  if (!exitConfig || typeof exitConfig !== 'object' || !('targets' in exitConfig) || !Array.isArray(exitConfig.targets) || exitConfig.targets.length === 0) {
+  if (
+    !exitConfig ||
+    typeof exitConfig !== 'object' ||
+    !('targets' in exitConfig) ||
+    !Array.isArray(exitConfig.targets) ||
+    exitConfig.targets.length === 0
+  ) {
     throw new Error('Exit targets are required');
   }
 
@@ -113,12 +119,12 @@ export async function executeExperiment(
     // 4. Build DuckDB projection from artifacts
     // Use UUID-based projection ID to avoid collisions
     const projectionId = `exp-${experiment.experimentId}-${uuidv4()}`;
-    
+
     // Retry projection building for transient failures (e.g., DuckDB locks)
     let projection;
     let retries = 3;
     let lastError: Error | undefined;
-    
+
     while (retries > 0) {
       try {
         projection = await projectionBuilder.buildProjection({
@@ -140,24 +146,24 @@ export async function executeExperiment(
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
         retries--;
-        
+
         // Check if error is transient (e.g., lock timeout)
         const isTransient =
           lastError.message.includes('lock') ||
           lastError.message.includes('timeout') ||
           lastError.message.includes('busy');
-        
+
         if (!isTransient || retries === 0) {
           throw lastError;
         }
-        
+
         // Wait before retry (exponential backoff)
         const delayMs = (4 - retries) * 100; // 100ms, 200ms, 300ms
         // Note: Logging removed for handler purity - retry logic continues silently
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
     }
-    
+
     if (!projection) {
       throw lastError || new Error('Failed to build projection after retries');
     }
@@ -172,7 +178,12 @@ export async function executeExperiment(
 
       // Validate date range
       const dateRange = experiment.config.dateRange;
-      if (!dateRange || typeof dateRange !== 'object' || !('from' in dateRange) || !('to' in dateRange)) {
+      if (
+        !dateRange ||
+        typeof dateRange !== 'object' ||
+        !('from' in dateRange) ||
+        !('to' in dateRange)
+      ) {
         throw new Error('Invalid date range: must have from and to properties');
       }
       if (typeof dateRange.from !== 'string' || typeof dateRange.to !== 'string') {

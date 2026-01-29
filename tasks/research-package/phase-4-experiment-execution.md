@@ -407,10 +407,13 @@ The experiment execution guarantees determinism:
 - [x] All tasks completed
 - [x] All success criteria met
 - [x] Unit tests pass
-- [x] Integration tests pass
+- [x] Integration tests pass (fixed and enabled)
+- [x] Python simulation integration working
+- [x] DuckDB Parquet writing working
+- [x] All artifact types registered
 - [ ] Code review completed
-- [ ] Build succeeds
-- [ ] End-to-end experiment works
+- [x] Build succeeds
+- [x] End-to-end experiment works
 
 ---
 

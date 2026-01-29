@@ -33,10 +33,7 @@ vi.mock('../../src/experiments/simulation-executor.js', () => ({
   }),
 }));
 
-import {
-  executeExperiment,
-  type ExperimentExecutionPorts,
-} from '../../src/experiments/index.js';
+import { executeExperiment, type ExperimentExecutionPorts } from '../../src/experiments/index.js';
 
 describe('Experiment Execution - Property Tests', () => {
   let mockArtifactStore: ArtifactStorePort;
@@ -307,4 +304,3 @@ describe('Experiment Execution - Property Tests', () => {
     });
   });
 });
-

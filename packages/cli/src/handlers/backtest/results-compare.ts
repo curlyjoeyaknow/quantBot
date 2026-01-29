@@ -36,10 +36,7 @@ export async function resultsCompareHandler(
     difference: string | null;
   }> = [];
 
-  const metricKeys = new Set([
-    ...Object.keys(metrics1),
-    ...Object.keys(metrics2),
-  ]);
+  const metricKeys = new Set([...Object.keys(metrics1), ...Object.keys(metrics2)]);
 
   for (const key of metricKeys) {
     const val1 = metrics1[key];

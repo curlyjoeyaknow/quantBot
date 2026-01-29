@@ -92,7 +92,10 @@ const ProjectionRequestSchema = z
       .string()
       .min(1, 'Projection ID cannot be empty')
       .max(255, 'Projection ID cannot exceed 255 characters')
-      .regex(/^[a-zA-Z0-9_-]+$/, 'Projection ID can only contain alphanumeric characters, hyphens, and underscores'),
+      .regex(
+        /^[a-zA-Z0-9_-]+$/,
+        'Projection ID can only contain alphanumeric characters, hyphens, and underscores'
+      ),
     version: z.string().optional(),
     artifacts: z
       .object({
@@ -112,8 +115,18 @@ const ProjectionRequestSchema = z
         'At least one artifact type (alerts or ohlcv) must be provided'
       ),
     tables: z.object({
-      alerts: z.string().min(1).max(255).regex(/^[a-zA-Z0-9_]+$/).optional(),
-      ohlcv: z.string().min(1).max(255).regex(/^[a-zA-Z0-9_]+$/).optional(),
+      alerts: z
+        .string()
+        .min(1)
+        .max(255)
+        .regex(/^[a-zA-Z0-9_]+$/)
+        .optional(),
+      ohlcv: z
+        .string()
+        .min(1)
+        .max(255)
+        .regex(/^[a-zA-Z0-9_]+$/)
+        .optional(),
     }),
     cacheDir: z.string().min(1).optional(),
     indexes: z
@@ -127,7 +140,6 @@ const ProjectionRequestSchema = z
       .optional(),
   })
   .strict();
-
 
 /**
  * Sanitize SQL identifier (table name, index name)
@@ -186,10 +198,10 @@ function sanitizeColumnNames(columns: string[]): string[] {
   }
 
   const sanitized = columns.map((col) => sanitizeSqlIdentifier(col));
-  
+
   // Remove duplicates while preserving order
   const unique = Array.from(new Set(sanitized));
-  
+
   if (unique.length === 0) {
     throw new Error('No valid columns after sanitization');
   }
@@ -218,23 +230,26 @@ async function retryWithBackoff<T>(
       ) {
         throw error;
       }
-      
+
       // If this is the last attempt, throw the error
       if (attempt === maxRetries - 1) {
         throw error;
       }
-      
+
       // Exponential backoff: baseDelayMs * 2^attempt
       const delay = baseDelayMs * Math.pow(2, attempt);
-      logger.debug(`Retrying ${description || 'operation'} (attempt ${attempt + 1}/${maxRetries})`, {
-        delayMs: delay,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      
+      logger.debug(
+        `Retrying ${description || 'operation'} (attempt ${attempt + 1}/${maxRetries})`,
+        {
+          delayMs: delay,
+          error: error instanceof Error ? error.message : String(error),
+        }
+      );
+
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
-  
+
   // This should never be reached, but TypeScript requires it
   throw new Error('Retry loop completed without returning or throwing');
 }
@@ -242,17 +257,14 @@ async function retryWithBackoff<T>(
 /**
  * Validate file path exists, is readable, and is within artifacts root (path traversal prevention)
  */
-async function validateParquetPath(
-  path: string,
-  artifactsRoot: string
-): Promise<void> {
+async function validateParquetPath(path: string, artifactsRoot: string): Promise<void> {
   try {
     // Resolve to absolute path (handles relative paths and ..)
     const resolvedPath = resolve(path);
-    
+
     // Resolve artifacts root to absolute path
     const resolvedArtifactsRoot = resolve(artifactsRoot);
-    
+
     // Use realpath to resolve symlinks and get canonical path
     // This prevents path traversal attacks via symlinks
     let canonicalPath: string;
@@ -262,16 +274,18 @@ async function validateParquetPath(
       // If realpath fails, use resolved path (file might not exist yet)
       canonicalPath = resolvedPath;
     }
-    
-    const canonicalArtifactsRoot = await realpath(resolvedArtifactsRoot).catch(() => resolvedArtifactsRoot);
-    
+
+    const canonicalArtifactsRoot = await realpath(resolvedArtifactsRoot).catch(
+      () => resolvedArtifactsRoot
+    );
+
     // Ensure path is within artifacts root (defense-in-depth)
     if (!canonicalPath.startsWith(canonicalArtifactsRoot)) {
       throw new Error(
         `Path traversal detected: ${path} resolves to ${canonicalPath} which is outside artifacts root ${canonicalArtifactsRoot}`
       );
     }
-    
+
     // Validate file exists and is readable
     const stats = await stat(canonicalPath);
     if (!stats.isFile()) {
@@ -310,7 +324,10 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
   constructor(
     artifactStore: ArtifactStorePort,
     cacheDir: string = process.env.PROJECTION_CACHE_DIR || join(tmpdir(), 'quantbot-projections'),
-    maxProjectionSizeBytes: number = parseInt(process.env.MAX_PROJECTION_SIZE_BYTES || '10737418240', 10), // 10GB default
+    maxProjectionSizeBytes: number = parseInt(
+      process.env.MAX_PROJECTION_SIZE_BYTES || '10737418240',
+      10
+    ), // 10GB default
     metadataDbPath?: string,
     batchSize: number = parseInt(process.env.PROJECTION_BATCH_SIZE || '10', 10),
     artifactsRoot?: string,
@@ -328,12 +345,13 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
     this.batchSize = batchSize;
     this.maxRetries = retryOptions?.maxRetries ?? 3;
     this.retryBaseDelayMs = retryOptions?.baseDelayMs ?? 100;
-    
+
     // Get artifacts root from artifact store if available, otherwise use environment variable or default
     // Note: ArtifactStorePort doesn't expose artifactsRoot, so we need to get it from environment
     // or pass it explicitly. For now, use environment variable with fallback.
-    this.artifactsRoot = artifactsRoot || 
-      process.env.ARTIFACTS_ROOT || 
+    this.artifactsRoot =
+      artifactsRoot ||
+      process.env.ARTIFACTS_ROOT ||
       process.env.QUANTBOT_ARTIFACTS_DIR ||
       join(process.env.HOME || tmpdir(), '.cache', 'quantbot', 'artifacts');
 
@@ -349,27 +367,30 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
 
   /**
    * Build a new projection from artifacts
-   * 
+   *
    * @throws {InvalidProjectionRequestError} If request validation fails
    * @throws {ArtifactNotFoundError} If any artifact is not found
    * @throws {ProjectionBuildError} If build fails
    */
   async buildProjection(request: ProjectionRequest, traceId?: string): Promise<ProjectionResult> {
     const startTime = Date.now();
-    
+
     // Create tracer for distributed tracing
     const tracer = createTracer(traceId);
     const buildSpan = tracer.startSpan('buildProjection', 'projection-builder', {
       projectionId: request.projectionId,
       version: request.version || 'auto',
-      artifactCount: (request.artifacts.alerts?.length || 0) + (request.artifacts.ohlcv?.length || 0),
+      artifactCount:
+        (request.artifacts.alerts?.length || 0) + (request.artifacts.ohlcv?.length || 0),
     });
 
     // Validate request with detailed error messages
     let validatedRequest: z.infer<typeof ProjectionRequestSchema>;
     try {
       validatedRequest = ProjectionRequestSchema.parse(request);
-      tracer.log(buildSpan.spanId, 'Request validated', { projectionId: validatedRequest.projectionId });
+      tracer.log(buildSpan.spanId, 'Request validated', {
+        projectionId: validatedRequest.projectionId,
+      });
     } catch (error) {
       tracer.endSpan(buildSpan.spanId, error instanceof Error ? error : new Error(String(error)));
       if (error instanceof z.ZodError) {
@@ -411,7 +432,10 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
 
       // Delete existing projection if it exists (for same version)
       // Note: Different versions can coexist
-      const deleteSpan = tracer.startSpan('deleteExistingProjection', 'projection-builder', { projectionId: validatedRequest.projectionId, version });
+      const deleteSpan = tracer.startSpan('deleteExistingProjection', 'projection-builder', {
+        projectionId: validatedRequest.projectionId,
+        version,
+      });
       await this.deleteExistingProjection(duckdbPath, validatedRequest.projectionId, version);
       tracer.endSpan(deleteSpan.spanId);
 
@@ -422,7 +446,8 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
 
       // Build tables with proper error recovery
       const tablesSpan = tracer.startSpan('buildTables', 'projection-builder', {
-        tableCount: (validatedRequest.artifacts.alerts ? 1 : 0) + (validatedRequest.artifacts.ohlcv ? 1 : 0),
+        tableCount:
+          (validatedRequest.artifacts.alerts ? 1 : 0) + (validatedRequest.artifacts.ohlcv ? 1 : 0),
       });
       const { tables, totalRows, artifactCount } = await this.buildTables(
         conn,
@@ -549,7 +574,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
       // Wrap unknown errors
       const message = error instanceof Error ? error.message : String(error);
       const projectionId = validatedRequest?.projectionId || 'unknown';
-      
+
       // Increment failure metrics
       try {
         await this.metadataManager.incrementFailureCount();
@@ -558,8 +583,12 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
           error: metricsError instanceof Error ? metricsError.message : String(metricsError),
         });
       }
-      
-      throw new ProjectionBuildError(message, projectionId, error instanceof Error ? error : undefined);
+
+      throw new ProjectionBuildError(
+        message,
+        projectionId,
+        error instanceof Error ? error : undefined
+      );
     }
   }
 
@@ -585,11 +614,15 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
   /**
    * Delete existing projection file if it exists
    */
-  private async deleteExistingProjection(duckdbPath: string, projectionId: string, version: string): Promise<void> {
+  private async deleteExistingProjection(
+    duckdbPath: string,
+    projectionId: string,
+    version: string
+  ): Promise<void> {
     if (existsSync(duckdbPath)) {
       try {
         await unlink(duckdbPath);
-        
+
         // Delete metadata for this version
         try {
           await this.metadataManager.deleteMetadata(projectionId, version);
@@ -600,7 +633,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
             error: error instanceof Error ? error.message : String(error),
           });
         }
-        
+
         logger.debug('Deleted existing projection', { projectionId, version, duckdbPath });
       } catch (error) {
         // Log warning but continue - DuckDB will overwrite if file exists
@@ -709,7 +742,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
 
   /**
    * Build a single table from artifacts
-   * 
+   *
    * @throws {ArtifactNotFoundError} If any artifact is not found
    * @throws {ProjectionBuildError} If table build fails
    */
@@ -740,11 +773,15 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
     // Fetch and validate artifacts
     const parquetPaths = await this.fetchAndValidateArtifacts(artifactIds, projectionId);
 
-      // Create table from Parquet files
-      await this.createTableFromParquet(conn, sanitizedTableName, parquetPaths, projectionId);
+    // Create table from Parquet files
+    await this.createTableFromParquet(conn, sanitizedTableName, parquetPaths, projectionId);
 
-      // Get table metadata
-      const { rowCount, columns } = await this.getTableMetadata(conn, sanitizedTableName, projectionId);
+    // Get table metadata
+    const { rowCount, columns } = await this.getTableMetadata(
+      conn,
+      sanitizedTableName,
+      projectionId
+    );
 
     // Create indexes
     const indexNames = await this.createIndexes(
@@ -782,7 +819,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
     // Process artifacts in batches for better performance
     for (let i = 0; i < artifactIds.length; i += this.batchSize) {
       const batch = artifactIds.slice(i, i + this.batchSize);
-      
+
       // Fetch artifacts concurrently within batch with retry logic
       const batchResults = await Promise.all(
         batch.map(async (artifactId) => {
@@ -865,7 +902,9 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
     try {
       // Get row count
       // DuckDB COUNT(*) returns BigInt, so we need to handle both number and BigInt
-      const countResult = await conn.all<{ cnt: number | bigint }>(`SELECT COUNT(*) as cnt FROM ${tableName}`);
+      const countResult = await conn.all<{ cnt: number | bigint }>(
+        `SELECT COUNT(*) as cnt FROM ${tableName}`
+      );
       if (!countResult || countResult.length === 0) {
         throw new Error('Failed to get row count');
       }
@@ -943,7 +982,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
   /**
    * Rebuild an existing projection
    * Uses incremental rebuild if <10% of artifacts changed, otherwise full rebuild
-   * 
+   *
    * @throws {InvalidProjectionRequestError} If request validation fails
    * @throws {ProjectionBuildError} If rebuild fails
    */
@@ -963,7 +1002,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
 
     // Check if projection exists and get metadata
     const existing = await this.getProjectionMetadata(projectionId);
-    
+
     if (!existing) {
       // No existing projection, do full build
       logger.debug('No existing projection found, performing full build', { projectionId });
@@ -973,7 +1012,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
 
     // Detect changed artifacts using content hashes
     const changedArtifacts = await this.detectChangedArtifacts(existing, request);
-    
+
     if (changedArtifacts.length === 0) {
       // No changes detected, skip rebuild
       logger.info('No changes detected, skipping rebuild', { projectionId });
@@ -1007,7 +1046,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
 
   /**
    * Detect changed artifacts by comparing artifact sets
-   * 
+   *
    * Note: Full incremental rebuild would require storing artifact hashes in metadata.
    * For now, we detect changes by comparing artifact ID sets.
    */
@@ -1016,7 +1055,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
     request: ProjectionRequest
   ): Promise<string[]> {
     const changedArtifactIds: string[] = [];
-    
+
     // Collect all artifact IDs from request
     const requestedArtifactIds: string[] = [];
     if (request.artifacts.alerts) {
@@ -1047,7 +1086,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
     // For artifacts that exist in both, check if content hash changed
     // This requires fetching artifacts, so we do it in batch
     const commonArtifactIds = requestedArtifactIds.filter((id) => existingSet.has(id));
-    
+
     if (commonArtifactIds.length > 0) {
       // Fetch artifacts to check content hashes
       // Note: We'd need to store hashes in metadata for optimal performance
@@ -1060,7 +1099,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
 
   /**
    * Perform incremental rebuild (only rebuild changed artifacts)
-   * 
+   *
    * Note: DuckDB doesn't support incremental table updates easily.
    * For now, we'll rebuild the affected tables entirely.
    * A more sophisticated implementation would use INSERT/UPDATE statements.
@@ -1074,7 +1113,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
     // Group changed artifacts by type
     const changedAlerts: string[] = [];
     const changedOhlcv: string[] = [];
-    
+
     for (const artifactId of changedArtifactIds) {
       const index = existing.artifactIds.indexOf(artifactId);
       if (index !== -1) {
@@ -1090,7 +1129,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
     // For incremental rebuild, we rebuild entire tables that have changes
     // This is simpler than trying to do row-level updates in DuckDB
     // A more sophisticated implementation could use INSERT/UPDATE/DELETE
-    
+
     // Rebuild request with only changed artifacts (plus unchanged ones for same table)
     const incrementalRequest: ProjectionRequest = {
       ...request,
@@ -1107,18 +1146,18 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
       changedAlerts: changedAlerts.length,
       changedOhlcv: changedOhlcv.length,
     });
-    
+
     await this.buildProjection(incrementalRequest);
   }
 
   /**
    * Dispose a projection (delete DuckDB file)
-   * 
+   *
    * @throws {ProjectionDisposalError} If disposal fails
    */
   async disposeProjection(projectionId: string, cacheDir?: string): Promise<void> {
     const dir = cacheDir || this.defaultCacheDir;
-    
+
     // Try to find the projection (could be versioned or unversioned)
     // First check metadata for latest version
     let duckdbPath: string | null = null;
@@ -1148,7 +1187,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
     if (existsSync(duckdbPath)) {
       try {
         await unlink(duckdbPath);
-        
+
         // Delete metadata
         try {
           await this.metadataManager.deleteMetadata(projectionId);
@@ -1158,7 +1197,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
             error: error instanceof Error ? error.message : String(error),
           });
         }
-        
+
         logger.info('Projection disposed', { projectionId });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -1167,7 +1206,11 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
           duckdbPath,
           error: message,
         });
-        throw new ProjectionDisposalError(message, projectionId, error instanceof Error ? error : undefined);
+        throw new ProjectionDisposalError(
+          message,
+          projectionId,
+          error instanceof Error ? error : undefined
+        );
       }
     } else {
       logger.debug('Projection not found for disposal (may already be disposed)', {
@@ -1197,7 +1240,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
     // Fallback to filesystem check
     const dir = cacheDir || this.defaultCacheDir;
     const duckdbPath = join(dir, `${projectionId}.duckdb`);
-    
+
     try {
       return existsSync(duckdbPath);
     } catch (error) {
@@ -1213,7 +1256,10 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
   /**
    * Get projection metadata
    */
-  async getProjectionMetadata(projectionId: string, version?: string): Promise<ProjectionMetadata | null> {
+  async getProjectionMetadata(
+    projectionId: string,
+    version?: string
+  ): Promise<ProjectionMetadata | null> {
     return this.metadataManager.getMetadata(projectionId, version);
   }
 
@@ -1227,30 +1273,35 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
   /**
    * Get projection lineage
    */
-  async getProjectionLineage(projectionId: string, version?: string): Promise<ProjectionLineage | null> {
+  async getProjectionLineage(
+    projectionId: string,
+    version?: string
+  ): Promise<ProjectionLineage | null> {
     const lineage = await this.metadataManager.getLineage(projectionId, version);
     if (!lineage) {
       return null;
     }
 
     // Enrich with actual artifact paths from artifact store
-      const enrichedArtifacts = await Promise.all(
-      lineage.artifacts.map(async (artifact: { artifactId: string; artifactType: string; pathParquet: string }) => {
-        try {
-          const fullArtifact = await this.artifactStore.getArtifact(artifact.artifactId);
-          return {
-            artifactId: artifact.artifactId,
-            artifactType: artifact.artifactType,
-            pathParquet: fullArtifact?.pathParquet || '',
-          };
-        } catch (error) {
-          logger.warn('Failed to get artifact for lineage', {
-            artifactId: artifact.artifactId,
-            error: error instanceof Error ? error.message : String(error),
-          });
-          return artifact;
+    const enrichedArtifacts = await Promise.all(
+      lineage.artifacts.map(
+        async (artifact: { artifactId: string; artifactType: string; pathParquet: string }) => {
+          try {
+            const fullArtifact = await this.artifactStore.getArtifact(artifact.artifactId);
+            return {
+              artifactId: artifact.artifactId,
+              artifactType: artifact.artifactType,
+              pathParquet: fullArtifact?.pathParquet || '',
+            };
+          } catch (error) {
+            logger.warn('Failed to get artifact for lineage', {
+              artifactId: artifact.artifactId,
+              error: error instanceof Error ? error.message : String(error),
+            });
+            return artifact;
+          }
         }
-      })
+      )
     );
 
     return {
@@ -1268,7 +1319,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
 
   /**
    * Cleanup old projections based on lifecycle policy
-   * 
+   *
    * @param policy - Lifecycle policy (TTL, max age, max count)
    * @returns Number of projections cleaned up
    */
@@ -1281,9 +1332,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
     let cleanedCount = 0;
 
     // Sort by build timestamp (oldest first)
-    const sortedProjections = [...projections].sort(
-      (a, b) => a.buildTimestamp - b.buildTimestamp
-    );
+    const sortedProjections = [...projections].sort((a, b) => a.buildTimestamp - b.buildTimestamp);
 
     for (const projection of sortedProjections) {
       const age = now - projection.buildTimestamp;
@@ -1337,7 +1386,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
 
   /**
    * Cleanup failed builds (orphaned files without metadata)
-   * 
+   *
    * @param cacheDir - Optional cache directory to scan (defaults to defaultCacheDir)
    * @returns Number of orphaned files cleaned up
    */
@@ -1348,18 +1397,16 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
     try {
       const { readdir } = await import('fs/promises');
       const files = await readdir(dir);
-      
+
       // Get all known projections from metadata
       const knownProjections = await this.listProjections();
-      const knownPaths = new Set(
-        knownProjections.map((p) => p.duckdbPath)
-      );
+      const knownPaths = new Set(knownProjections.map((p) => p.duckdbPath));
 
       // Find orphaned DuckDB files
       for (const file of files) {
         if (file.endsWith('.duckdb')) {
           const filePath = join(dir, file);
-          
+
           // Check if file exists in metadata
           if (!knownPaths.has(filePath)) {
             try {
@@ -1391,7 +1438,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
 
   /**
    * Check data quality for a projection
-   * 
+   *
    * Validates:
    * - Schema consistency across artifacts
    * - Data freshness (artifact timestamps)
@@ -1485,7 +1532,9 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
         projectionId: result.projectionId,
         error: error instanceof Error ? error.message : String(error),
       });
-      warnings.push(`Data quality check error: ${error instanceof Error ? error.message : String(error)}`);
+      warnings.push(
+        `Data quality check error: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
 
     return {
@@ -1505,10 +1554,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
 
     const checkpoint = await this.checkpointManager.getCheckpoint(checkpointId);
     if (!checkpoint) {
-      throw new ProjectionBuildError(
-        `Checkpoint not found: ${checkpointId}`,
-        checkpointId
-      );
+      throw new ProjectionBuildError(`Checkpoint not found: ${checkpointId}`, checkpointId);
     }
 
     // Check if projection already exists (build may have completed)
@@ -1518,13 +1564,20 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
         projectionId: checkpoint.projectionId,
         checkpointId,
       });
-      const metadata = await this.metadataManager.getMetadata(checkpoint.projectionId, checkpoint.version);
+      const metadata = await this.metadataManager.getMetadata(
+        checkpoint.projectionId,
+        checkpoint.version
+      );
       if (metadata) {
         // Reconstruct result from metadata
         const conn = await openDuckDb(metadata.duckdbPath);
         const tables: ProjectionTable[] = [];
         for (const tableName of metadata.tableNames) {
-          const { rowCount, columns } = await this.getTableMetadata(conn, tableName, checkpoint.projectionId);
+          const { rowCount, columns } = await this.getTableMetadata(
+            conn,
+            tableName,
+            checkpoint.projectionId
+          );
           const indexResult = await conn.all<{ name: string }>(
             `SELECT name FROM duckdb_indexes() WHERE table_name = '${tableName}'`
           );
@@ -1627,10 +1680,7 @@ export class ProjectionBuilderAdapter implements ProjectionBuilderPort {
     logger.info('Decompressing projection', { compressedPath });
 
     if (!existsSync(compressedPath)) {
-      throw new ProjectionBuildError(
-        `Compressed file not found: ${compressedPath}`,
-        'unknown'
-      );
+      throw new ProjectionBuildError(`Compressed file not found: ${compressedPath}`, 'unknown');
     }
 
     // Remove .gz extension to get original path

@@ -12,11 +12,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ProjectionBuilderAdapter } from '../../../src/adapters/projection-builder-adapter.js';
-import type {
-  ArtifactStorePort,
-  ArtifactManifestRecord,
-  ProjectionRequest,
-} from '@quantbot/core';
+import type { ArtifactStorePort, ArtifactManifestRecord, ProjectionRequest } from '@quantbot/core';
 import { existsSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -52,7 +48,10 @@ describe('ProjectionBuilderAdapter Performance', () => {
     /**
      * Create mock artifacts for testing
      */
-    function createMockArtifacts(count: number, type: 'alerts' | 'ohlcv' = 'alerts'): ArtifactManifestRecord[] {
+    function createMockArtifacts(
+      count: number,
+      type: 'alerts' | 'ohlcv' = 'alerts'
+    ): ArtifactManifestRecord[] {
       return Array.from({ length: count }, (_, i) => ({
         artifactId: `${type}-${i}`,
         artifactType: type === 'alerts' ? 'alerts' : 'ohlcv_slice',
@@ -108,7 +107,13 @@ describe('ProjectionBuilderAdapter Performance', () => {
         return artifacts.find((a) => a.artifactId === artifactId) || null;
       });
 
-      const adapter = new ProjectionBuilderAdapter(mockArtifactStore, tempCacheDir, undefined, undefined, 10); // Batch size: 10
+      const adapter = new ProjectionBuilderAdapter(
+        mockArtifactStore,
+        tempCacheDir,
+        undefined,
+        undefined,
+        10
+      ); // Batch size: 10
 
       const request: ProjectionRequest = {
         projectionId: 'perf-test-batched',
@@ -123,7 +128,7 @@ describe('ProjectionBuilderAdapter Performance', () => {
 
         // Batched fetching should be faster than sequential
         expect(duration).toBeLessThan(300000); // 5 minutes max
-        
+
         // Verify batch size was used (check call count)
         expect(mockArtifactStore.getArtifact).toHaveBeenCalledTimes(50);
       } catch (error) {
@@ -181,7 +186,7 @@ describe('ProjectionBuilderAdapter Performance', () => {
 
         // Concurrent builds should complete
         expect(duration).toBeLessThan(300000); // 5 minutes max
-        
+
         // Verify all projections were created
         for (const req of requests) {
           const exists = await adapter.projectionExists(req.projectionId);
@@ -232,9 +237,9 @@ describe('ProjectionBuilderAdapter Performance', () => {
       try {
         // Measure memory before (approximate)
         const memBefore = process.memoryUsage().heapUsed;
-        
+
         await adapter.buildProjection(request);
-        
+
         // Measure memory after (approximate)
         const memAfter = process.memoryUsage().heapUsed;
         const memIncrease = memAfter - memBefore;
@@ -293,4 +298,3 @@ describe('ProjectionBuilderAdapter Performance', () => {
     });
   });
 });
-

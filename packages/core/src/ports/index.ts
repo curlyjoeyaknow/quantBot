@@ -106,6 +106,26 @@ export type {
   ExperimentFilter,
   ExperimentResults,
 } from './experiment-tracker-port.js';
+
+export type {
+  RunSetResolverPort,
+  CreateRunSetRequest,
+  RunSetQueryFilter,
+} from './runset-resolver-port.js';
+
+export type {
+  RunSetSpec,
+  RunSetResolution,
+  RunSetWithResolution,
+  Dataset,
+  Run as RunSetRun,
+  DatasetId,
+  ResolvedArtifact,
+  UniverseFilter,
+  TimeBounds,
+  StrategyFilter,
+  RunSetMode,
+} from '../types/runset.js';
 export type {
   BacktestResultsPort,
   RunSummary,

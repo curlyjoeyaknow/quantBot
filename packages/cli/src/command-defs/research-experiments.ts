@@ -109,3 +109,45 @@ export const findResearchExperimentsByInputsSchema = z.object({
   /** Output format */
   format: z.enum(['json', 'table', 'csv']).default('table'),
 });
+
+/**
+ * Create smart experiment schema
+ *
+ * Creates experiment with automatic artifact selection based on high-level filters.
+ * Supports exploratory workflows where users specify intent (caller, dates, strategy)
+ * and the system selects the most relevant artifacts.
+ */
+export const createSmartExperimentSchema = z.object({
+  /** Experiment name (required) */
+  name: z.string().min(1),
+
+  /** Optional description */
+  description: z.string().optional(),
+
+  /** Filter by caller (optional - if omitted, uses all callers) */
+  caller: z.string().optional(),
+
+  /** Start date (ISO 8601, required) */
+  from: z.string(),
+
+  /** End date (ISO 8601, required) */
+  to: z.string(),
+
+  /** Strategy artifact IDs (optional, comma-separated) */
+  strategies: z.array(z.string().uuid()).optional(),
+
+  /** Strategy configuration (JSON) */
+  strategy: z.record(z.unknown()).optional(),
+
+  /** Additional parameters (JSON) */
+  params: z.record(z.unknown()).optional(),
+
+  /** Confirm artifact selection before creating experiment (default: true) */
+  confirm: z.boolean().default(true),
+
+  /** Auto-confirm artifact selection (skip confirmation prompt) */
+  autoConfirm: z.boolean().default(false),
+
+  /** Output format */
+  format: z.enum(['json', 'table']).default('table'),
+});

@@ -142,6 +142,15 @@ SPECS: Dict[str, ArtifactTypeSpec] = {
             "timestamp": "CAST({col} AS BIGINT)",
         },
     ),
+    "test_artifact": ArtifactTypeSpec(
+        artifact_type="test_artifact",
+        canonical_cols=("alert_ts_utc", "chain", "mint", "alert_id"),
+        sort_keys=("alert_ts_utc", "chain", "mint"),
+        casts={
+            # Handle both VARCHAR (ISO string) and TIMESTAMP types
+            "alert_ts_utc": "strftime(TRY_CAST({col} AS TIMESTAMP), '%Y-%m-%dT%H:%M:%S.%fZ')",
+        },
+    ),
 }
 
 def get_spec(artifact_type: str) -> ArtifactTypeSpec:

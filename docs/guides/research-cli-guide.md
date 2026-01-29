@@ -21,6 +21,7 @@ quantbot research <subcommand> <action> [options]
 ```
 
 **Subcommands**:
+
 - `artifacts` - Artifact store operations (Parquet + SQLite manifest)
 - `experiments` - Experiment tracking and execution
 
@@ -37,6 +38,7 @@ quantbot research artifacts list [options]
 ```
 
 **Options**:
+
 - `--type <type>` - Filter by artifact type (e.g., `alerts_v1`, `ohlcv_slice_v2`)
 - `--status <status>` - Filter by status (`active`, `superseded`, `tombstoned`)
 - `--limit <n>` - Limit number of results (default: 100)
@@ -77,9 +79,11 @@ quantbot research artifacts get <artifact-id> [options]
 ```
 
 **Arguments**:
+
 - `<artifact-id>` - Artifact ID (UUID)
 
 **Options**:
+
 - `--format <format>` - Output format (`json`, `table`) (default: `table`)
 
 **Examples**:
@@ -115,11 +119,13 @@ quantbot research artifacts find --type <type> --key <key> [options]
 ```
 
 **Options**:
+
 - `--type <type>` - Artifact type (required)
 - `--key <key>` - Logical key (required)
 - `--format <format>` - Output format (`json`, `table`, `csv`) (default: `table`)
 
 **Logical Key Formats**:
+
 - Alerts: `day=YYYY-MM-DD/chain=<chain>`
 - OHLCV: `mint=<address>/from=<iso8601>/to=<iso8601>`
 
@@ -144,9 +150,11 @@ quantbot research artifacts lineage <artifact-id> [options]
 ```
 
 **Arguments**:
+
 - `<artifact-id>` - Artifact ID (UUID)
 
 **Options**:
+
 - `--format <format>` - Output format (`json`, `table`) (default: `table`)
 
 **Examples**:
@@ -176,9 +184,11 @@ quantbot research artifacts downstream <artifact-id> [options]
 ```
 
 **Arguments**:
+
 - `<artifact-id>` - Artifact ID (UUID)
 
 **Options**:
+
 - `--format <format>` - Output format (`json`, `table`, `csv`) (default: `table`)
 
 **Examples**:
@@ -206,11 +216,20 @@ Downstream artifacts (3):
 
 Create a new experiment with frozen artifact sets.
 
+**Two modes available**:
+1. **Explicit mode** (`create`) - Specify exact artifact IDs
+2. **Smart mode** (`create-smart`) - Automatic artifact selection based on filters
+
+#### Explicit Mode
+
+Create experiment with explicit artifact IDs (for reproducible workflows).
+
 ```bash
 quantbot research experiments create [options]
 ```
 
 **Options**:
+
 - `--name <name>` - Experiment name (required)
 - `--description <desc>` - Optional description
 - `--alerts <ids...>` - Alert artifact IDs (comma-separated, required)
@@ -250,6 +269,87 @@ Experiment created: exp-20260129120000-abc123
 Status: pending
 ```
 
+#### Smart Mode (Recommended for Exploration)
+
+Create experiment with automatic artifact selection based on high-level filters.
+
+```bash
+quantbot research experiments create-smart [options]
+```
+
+**Options**:
+- `--name <name>` - Experiment name (required)
+- `--description <desc>` - Optional description
+- `--caller <caller>` - Filter by caller (optional - if omitted, uses all callers)
+- `--from <date>` - Start date (ISO 8601, required)
+- `--to <date>` - End date (ISO 8601, required)
+- `--strategies <ids...>` - Strategy artifact IDs (optional)
+- `--strategy <json>` - Strategy configuration (JSON)
+- `--params <json>` - Additional parameters (JSON)
+- `--no-confirm` - Skip confirmation prompt (auto-confirm)
+- `--format <format>` - Output format (`json`, `table`) (default: `table`)
+
+**Examples**:
+
+```bash
+# Create experiment for specific caller (with confirmation)
+quantbot research experiments create-smart \
+  --name "momentum-whale-watcher" \
+  --caller whale_watcher \
+  --from 2025-05-01 \
+  --to 2025-05-31 \
+  --strategy '{"name":"momentum","threshold":0.05}'
+
+# Create experiment for all callers (auto-confirm)
+quantbot research experiments create-smart \
+  --name "momentum-all-callers" \
+  --from 2025-05-01 \
+  --to 2025-05-31 \
+  --no-confirm
+
+# Create experiment with custom parameters
+quantbot research experiments create-smart \
+  --name "momentum-debug" \
+  --caller whale_watcher \
+  --from 2025-05-01 \
+  --to 2025-05-31 \
+  --params '{"debug":true,"verbose":true}'
+```
+
+**Output** (with confirmation):
+
+```
+Artifact Selection:
+  Alerts: 15 artifacts for caller "whale_watcher" (2025-05-01 to 2025-05-31)
+  OHLCV: 142 artifacts overlapping date range
+
+Confirm artifact selection? [y/N]: y
+
+Experiment created: exp-20260129120000-abc123
+Status: pending
+```
+
+**Output** (auto-confirm):
+
+```
+Experiment created: exp-20260129120000-abc123 (15 alert artifacts, 142 OHLCV artifacts)
+Status: pending
+```
+
+**How Smart Selection Works**:
+
+1. **Alert Artifacts**:
+   - If `--caller` specified: Finds all alert artifacts for that caller within date range
+   - If no caller: Finds all alert artifacts within date range (all callers)
+
+2. **OHLCV Artifacts**:
+   - Finds all OHLCV slice artifacts that overlap the date range
+   - Ensures coverage for all tokens in selected alerts
+
+3. **Confirmation**:
+   - By default, shows selection summary and prompts for confirmation
+   - Use `--no-confirm` to skip confirmation (useful for automation)
+
 ---
 
 ### Execute Experiment
@@ -261,9 +361,11 @@ quantbot research experiments execute <experiment-id> [options]
 ```
 
 **Arguments**:
+
 - `<experiment-id>` - Experiment ID (required)
 
 **Options**:
+
 - `--format <format>` - Output format (`json`, `table`) (default: `table`)
 
 **Examples**:
@@ -298,9 +400,11 @@ quantbot research experiments get <experiment-id> [options]
 ```
 
 **Arguments**:
+
 - `<experiment-id>` - Experiment ID (required)
 
 **Options**:
+
 - `--format <format>` - Output format (`json`, `table`) (default: `table`)
 
 **Examples**:
@@ -336,6 +440,7 @@ quantbot research experiments list [options]
 ```
 
 **Options**:
+
 - `--status <status>` - Filter by status (`pending`, `running`, `completed`, `failed`, `cancelled`)
 - `--git-commit <hash>` - Filter by git commit
 - `--min-created <date>` - Filter by minimum creation date (ISO 8601)
@@ -367,6 +472,7 @@ quantbot research experiments find-by-inputs --artifacts <ids...> [options]
 ```
 
 **Options**:
+
 - `--artifacts <ids...>` - Artifact IDs to search for (comma-separated, required)
 - `--format <format>` - Output format (`json`, `table`, `csv`) (default: `table`)
 
@@ -391,12 +497,40 @@ Found 2 experiments using these artifacts:
 
 ### End-to-End Experiment Workflow
 
+#### Exploratory Workflow (Recommended)
+
+Use smart creation for quick experimentation:
+
+```bash
+# 1. Create and execute experiment in one flow
+quantbot research experiments create-smart \
+  --name "momentum-whale-test" \
+  --caller whale_watcher \
+  --from 2025-05-01 \
+  --to 2025-05-31 \
+  --strategy '{"name":"momentum","threshold":0.05}' \
+  --no-confirm
+
+# 2. Execute experiment
+quantbot research experiments execute exp-20260129120000-abc123
+
+# 3. Get results
+quantbot research experiments get exp-20260129120000-abc123
+
+# 4. Check lineage
+quantbot research artifacts lineage experiment-trades-xyz789
+```
+
+#### Reproducible Workflow
+
+Use explicit artifact IDs for reproducible research:
+
 ```bash
 # 1. List available artifacts
 quantbot research artifacts list --type alerts_v1 --limit 5
 quantbot research artifacts list --type ohlcv_slice_v2 --limit 5
 
-# 2. Create experiment
+# 2. Create experiment with explicit IDs
 quantbot research experiments create \
   --name "momentum-test" \
   --alerts 88f07b79-621c-4d6b-ae39-a2c71c995703 \
@@ -412,6 +546,31 @@ quantbot research experiments get exp-20260129120000-abc123
 
 # 5. Check lineage
 quantbot research artifacts lineage experiment-trades-xyz789
+```
+
+#### Comparison Workflow
+
+Compare different callers or strategies:
+
+```bash
+# Create experiments for multiple callers
+for caller in whale_watcher smart_money degen_trader; do
+  quantbot research experiments create-smart \
+    --name "momentum-$caller" \
+    --caller $caller \
+    --from 2025-05-01 \
+    --to 2025-05-31 \
+    --strategy '{"name":"momentum","threshold":0.05}' \
+    --no-confirm
+done
+
+# Execute all experiments
+quantbot research experiments list --status pending --format json | \
+  jq -r '.experiments[] | .experimentId' | \
+  xargs -I {} quantbot research experiments execute {}
+
+# Compare results
+quantbot research experiments list --status completed --format table
 ```
 
 ---
@@ -529,6 +688,7 @@ quantbot research experiments get <experiment-id>
 **Problem**: `Error: Invalid logical key format`
 
 **Solution**: Use correct logical key format:
+
 - Alerts: `day=YYYY-MM-DD/chain=<chain>`
 - OHLCV: `mint=<address>/from=<iso8601>/to=<iso8601>`
 
@@ -545,8 +705,8 @@ quantbot research experiments get <experiment-id>
 ## Support
 
 For issues or questions:
+
 1. Check this guide
 2. Review error messages
 3. Check artifact/experiment status
 4. Review lineage and provenance
-

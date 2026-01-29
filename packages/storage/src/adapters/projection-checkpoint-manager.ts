@@ -57,10 +57,14 @@ const CheckpointSchema = z.object({
       alerts: z.string().optional(),
       ohlcv: z.string().optional(),
     }),
-    indexes: z.array(z.object({
-      table: z.string(),
-      columns: z.array(z.string()),
-    })).optional(),
+    indexes: z
+      .array(
+        z.object({
+          table: z.string(),
+          columns: z.array(z.string()),
+        })
+      )
+      .optional(),
   }),
   completedArtifacts: z.object({
     alerts: z.array(z.string()),
@@ -122,7 +126,7 @@ export class ProjectionCheckpointManager {
    */
   async getCheckpoint(checkpointId: string): Promise<BuildCheckpoint | null> {
     const checkpointPath = join(this.checkpointDir, `${checkpointId}.json`);
-    
+
     if (!existsSync(checkpointPath)) {
       return null;
     }
@@ -145,7 +149,7 @@ export class ProjectionCheckpointManager {
    */
   async deleteCheckpoint(checkpointId: string): Promise<void> {
     const checkpointPath = join(this.checkpointDir, `${checkpointId}.json`);
-    
+
     if (existsSync(checkpointPath)) {
       try {
         await unlink(checkpointPath);
@@ -177,4 +181,3 @@ export class ProjectionCheckpointManager {
     return 0;
   }
 }
-

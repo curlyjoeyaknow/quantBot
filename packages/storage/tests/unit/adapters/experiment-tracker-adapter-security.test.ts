@@ -39,7 +39,7 @@ describe('ExperimentTrackerAdapter Security & Edge Cases', () => {
           "'; ALTER TABLE experiments ADD COLUMN hacked TEXT; --",
           "'; CREATE TABLE hacked (id TEXT); --",
           "alert-1'; DROP TABLE experiments; --",
-          "alert-1\"; DROP TABLE experiments; --",
+          'alert-1"; DROP TABLE experiments; --',
           "alert-1' OR '1'='1",
           "alert-1' UNION SELECT * FROM experiments--",
         ];
@@ -48,7 +48,7 @@ describe('ExperimentTrackerAdapter Security & Edge Cases', () => {
           // The adapter should validate input before calling Python
           // Invalid artifact IDs should be rejected with validation error
           await expect(adapter.findByInputArtifacts([maliciousId])).rejects.toThrow(AppError);
-          
+
           // Verify Python was NOT called (validation failed before Python call)
           expect(mockPythonEngine.runScriptWithStdin).not.toHaveBeenCalled();
         }
@@ -68,9 +68,9 @@ describe('ExperimentTrackerAdapter Security & Edge Cases', () => {
 
         for (const artifactId of specialChars) {
           vi.clearAllMocks(); // Clear mocks between iterations
-          
+
           const isValid = /^[a-zA-Z0-9_-]+$/.test(artifactId) && artifactId.length <= 100;
-          
+
           if (isValid) {
             vi.mocked(mockPythonEngine.runScriptWithStdin).mockResolvedValueOnce([]);
             await adapter.findByInputArtifacts([artifactId]);
@@ -96,7 +96,7 @@ describe('ExperimentTrackerAdapter Security & Edge Cases', () => {
         const longArtifactId = 'a'.repeat(1000);
         // Very long IDs (>100 chars) should be rejected with validation error
         await expect(adapter.findByInputArtifacts([longArtifactId])).rejects.toThrow(AppError);
-        
+
         // Verify Python was NOT called (validation failed before Python call)
         expect(mockPythonEngine.runScriptWithStdin).not.toHaveBeenCalled();
       });
@@ -119,7 +119,7 @@ describe('ExperimentTrackerAdapter Security & Edge Cases', () => {
           // The adapter should validate input before calling Python
           // Invalid status should be rejected with validation error
           await expect(adapter.listExperiments(filter)).rejects.toThrow(AppError);
-          
+
           // Verify Python was NOT called (validation failed before Python call)
           expect(mockPythonEngine.runScriptWithStdin).not.toHaveBeenCalled();
         }
@@ -140,7 +140,7 @@ describe('ExperimentTrackerAdapter Security & Edge Cases', () => {
           // The adapter should validate input before calling Python
           // Invalid git commit should be rejected with validation error
           await expect(adapter.listExperiments(filter)).rejects.toThrow(AppError);
-          
+
           // Verify Python was NOT called (validation failed before Python call)
           expect(mockPythonEngine.runScriptWithStdin).not.toHaveBeenCalled();
         }
@@ -161,7 +161,7 @@ describe('ExperimentTrackerAdapter Security & Edge Cases', () => {
           // The adapter should validate input before calling Python
           // Invalid date should be rejected with validation error
           await expect(adapter.listExperiments(filter)).rejects.toThrow(AppError);
-          
+
           // Verify Python was NOT called (validation failed before Python call)
           expect(mockPythonEngine.runScriptWithStdin).not.toHaveBeenCalled();
         }
@@ -215,7 +215,7 @@ describe('ExperimentTrackerAdapter Security & Edge Cases', () => {
           // The adapter should validate input before calling Python
           // Invalid experiment ID should be rejected with validation error
           await expect(adapter.storeResults(maliciousId, results)).rejects.toThrow(AppError);
-          
+
           // Verify Python was NOT called (validation failed before Python call)
           expect(mockPythonEngine.runScriptWithStdin).not.toHaveBeenCalled();
         }
@@ -236,7 +236,7 @@ describe('ExperimentTrackerAdapter Security & Edge Cases', () => {
           // The adapter should validate input before calling Python
           // Invalid artifact ID should be rejected with validation error
           await expect(adapter.storeResults('exp-123', results)).rejects.toThrow(AppError);
-          
+
           // Verify Python was NOT called (validation failed before Python call)
           expect(mockPythonEngine.runScriptWithStdin).not.toHaveBeenCalled();
         }
@@ -280,7 +280,7 @@ describe('ExperimentTrackerAdapter Security & Edge Cases', () => {
           // The adapter should validate input before calling Python
           // Invalid experiment ID should be rejected with validation error
           await expect(adapter.createExperiment(definition)).rejects.toThrow(AppError);
-          
+
           // Verify Python was NOT called (validation failed before Python call)
           expect(mockPythonEngine.runScriptWithStdin).not.toHaveBeenCalled();
         }
@@ -325,7 +325,7 @@ describe('ExperimentTrackerAdapter Security & Edge Cases', () => {
           // The adapter should validate input before calling Python
           // Invalid artifact ID should be rejected with validation error
           await expect(adapter.createExperiment(definition)).rejects.toThrow(AppError);
-          
+
           // Verify Python was NOT called (validation failed before Python call)
           expect(mockPythonEngine.runScriptWithStdin).not.toHaveBeenCalled();
         }
@@ -344,7 +344,7 @@ describe('ExperimentTrackerAdapter Security & Edge Cases', () => {
           // The adapter should validate input before calling Python
           // Invalid experiment ID should be rejected with validation error
           await expect(adapter.getExperiment(maliciousId)).rejects.toThrow(AppError);
-          
+
           // Verify Python was NOT called (validation failed before Python call)
           expect(mockPythonEngine.runScriptWithStdin).not.toHaveBeenCalled();
         }
@@ -363,7 +363,7 @@ describe('ExperimentTrackerAdapter Security & Edge Cases', () => {
           // The adapter should validate input before calling Python
           // Invalid experiment ID should be rejected with validation error
           await expect(adapter.updateStatus(maliciousId, 'running')).rejects.toThrow(AppError);
-          
+
           // Verify Python was NOT called (validation failed before Python call)
           expect(mockPythonEngine.runScriptWithStdin).not.toHaveBeenCalled();
         }
@@ -379,8 +379,10 @@ describe('ExperimentTrackerAdapter Security & Edge Cases', () => {
         for (const maliciousStatus of maliciousStatuses) {
           // The adapter should validate input before calling Python
           // Invalid status should be rejected with validation error
-          await expect(adapter.updateStatus('exp-123', maliciousStatus as any)).rejects.toThrow(AppError);
-          
+          await expect(adapter.updateStatus('exp-123', maliciousStatus as any)).rejects.toThrow(
+            AppError
+          );
+
           // Verify Python was NOT called (validation failed before Python call)
           expect(mockPythonEngine.runScriptWithStdin).not.toHaveBeenCalled();
         }
@@ -392,7 +394,7 @@ describe('ExperimentTrackerAdapter Security & Edge Cases', () => {
     describe('createExperiment', () => {
       it('should reject empty experiment ID', async () => {
         vi.clearAllMocks();
-        
+
         const definition: ExperimentDefinition = {
           experimentId: '',
           name: 'Test',
@@ -415,7 +417,7 @@ describe('ExperimentTrackerAdapter Security & Edge Cases', () => {
 
         // Empty experiment ID should be rejected with validation error
         await expect(adapter.createExperiment(definition)).rejects.toThrow(AppError);
-        
+
         // Verify Python was NOT called (validation failed before Python call)
         expect(mockPythonEngine.runScriptWithStdin).not.toHaveBeenCalled();
       });
@@ -474,7 +476,7 @@ describe('ExperimentTrackerAdapter Security & Edge Cases', () => {
 
         // Invalid createdAt date should be rejected with validation error
         await expect(adapter.createExperiment(definition)).rejects.toThrow(AppError);
-        
+
         // Verify Python was NOT called (validation failed before Python call)
         expect(mockPythonEngine.runScriptWithStdin).not.toHaveBeenCalled();
       });
@@ -503,7 +505,7 @@ describe('ExperimentTrackerAdapter Security & Edge Cases', () => {
 
         // Very long IDs (>100 chars) should be rejected with validation error
         await expect(adapter.createExperiment(definition)).rejects.toThrow(AppError);
-        
+
         // Verify Python was NOT called (validation failed before Python call)
         expect(mockPythonEngine.runScriptWithStdin).not.toHaveBeenCalled();
       });
@@ -515,7 +517,7 @@ describe('ExperimentTrackerAdapter Security & Edge Cases', () => {
 
         for (const invalidStatus of invalidStatuses) {
           vi.clearAllMocks(); // Clear mocks between iterations
-          
+
           const filter: ExperimentFilter = {
             status: invalidStatus as any,
           };
@@ -523,7 +525,7 @@ describe('ExperimentTrackerAdapter Security & Edge Cases', () => {
           // The adapter should validate input before calling Python
           // Invalid status should be rejected with validation error
           await expect(adapter.listExperiments(filter)).rejects.toThrow(AppError);
-          
+
           // Verify Python was NOT called (validation failed before Python call)
           expect(mockPythonEngine.runScriptWithStdin).not.toHaveBeenCalled();
         }
@@ -558,7 +560,7 @@ describe('ExperimentTrackerAdapter Security & Edge Cases', () => {
 
         for (const invalidDate of invalidDates) {
           vi.clearAllMocks(); // Clear mocks between iterations
-          
+
           const filter: ExperimentFilter = {
             minCreatedAt: invalidDate,
           };
@@ -566,7 +568,7 @@ describe('ExperimentTrackerAdapter Security & Edge Cases', () => {
           // The adapter should validate input before calling Python
           // Invalid date format should be rejected with validation error
           await expect(adapter.listExperiments(filter)).rejects.toThrow(AppError);
-          
+
           // Verify Python was NOT called (validation failed before Python call)
           expect(mockPythonEngine.runScriptWithStdin).not.toHaveBeenCalled();
         }
@@ -599,9 +601,7 @@ describe('ExperimentTrackerAdapter Security & Edge Cases', () => {
     });
 
     it('should handle Python script timeouts', async () => {
-      vi.mocked(mockPythonEngine.runScriptWithStdin).mockRejectedValueOnce(
-        new Error('Timeout')
-      );
+      vi.mocked(mockPythonEngine.runScriptWithStdin).mockRejectedValueOnce(new Error('Timeout'));
 
       await expect(adapter.getExperiment('exp-123')).rejects.toThrow();
     });
@@ -686,4 +686,3 @@ describe('ExperimentTrackerAdapter Security & Edge Cases', () => {
     });
   });
 });
-

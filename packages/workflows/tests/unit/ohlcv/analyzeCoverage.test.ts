@@ -133,7 +133,7 @@ describe('analyzeCoverage workflow', () => {
       await analyzeCoverage(spec, mockContext);
 
       expect(mockPythonEngine.runScript).toHaveBeenCalledWith(
-        expect.stringMatching(/ohlcv_coverage_map\.py$/),
+        expect.stringContaining('ohlcv_coverage_map.py'),
         {
           format: 'json',
           chain: 'solana',

@@ -334,8 +334,8 @@ export class ProjectionMetadataManager {
       };
 
       // Get success/failure counts from metrics table
-      const successCount = await this.getMetricValue('success_count') || 0;
-      const failureCount = await this.getMetricValue('failure_count') || 0;
+      const successCount = (await this.getMetricValue('success_count')) || 0;
+      const failureCount = (await this.getMetricValue('failure_count')) || 0;
       const buildCount = successCount + failureCount;
 
       // Calculate average artifact count from JSON arrays
@@ -459,7 +459,9 @@ export class ProjectionMetadataManager {
         );
       } else {
         // Delete all versions
-        await conn.run(`DELETE FROM projection_manifest WHERE projection_id = '${escapedProjectionId}'`);
+        await conn.run(
+          `DELETE FROM projection_manifest WHERE projection_id = '${escapedProjectionId}'`
+        );
       }
     } catch (error) {
       logger.error('Failed to delete projection metadata', {
@@ -482,7 +484,7 @@ export class ProjectionMetadataManager {
     }
 
     const conn = await openDuckDb(this.metadataDbPath);
-    
+
     // Initialize schema if needed (check if table exists)
     try {
       const tables = await conn.all<{ table_name: string }>(
@@ -502,8 +504,7 @@ export class ProjectionMetadataManager {
         });
       }
     }
-    
+
     return conn;
   }
 }
-

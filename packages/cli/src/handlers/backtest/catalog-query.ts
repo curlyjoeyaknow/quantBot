@@ -25,16 +25,7 @@ export async function catalogQueryHandler(
   args: CatalogQueryArgs,
   ctx: CommandContext
 ): Promise<unknown> {
-  const {
-    runType,
-    status,
-    gitBranch,
-    fromDate,
-    toDate,
-    limit = 10,
-    runId,
-    artifactType,
-  } = args;
+  const { runType, status, gitBranch, fromDate, toDate, limit = 10, runId, artifactType } = args;
 
   // Get backtest results port from context
   const resultsPort = ctx.services.backtestResults();

@@ -95,7 +95,7 @@ describe('executeExperiment (integration)', () => {
       dataPath: alertsPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
-        gitCommit: 'testcommit123',
+      gitCommit: 'testcommit123',
       gitDirty: false,
       params: {},
     });
@@ -107,7 +107,7 @@ describe('executeExperiment (integration)', () => {
       dataPath: ohlcvPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
-        gitCommit: 'testcommit123',
+      gitCommit: 'testcommit123',
       gitDirty: false,
       params: {},
     });

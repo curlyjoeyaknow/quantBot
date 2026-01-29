@@ -448,12 +448,10 @@ describe('ExperimentTrackerAdapter Security (Integration)', () => {
       expect(results[0].experimentId).toBe('exp-large-artifacts');
     });
 
-    it(
-      'should handle multiple experiments efficiently',
-      async () => {
-        // Create multiple experiments
-        const experiments: ExperimentDefinition[] = [];
-        for (let i = 0; i < 50; i++) {
+    it('should handle multiple experiments efficiently', async () => {
+      // Create multiple experiments
+      const experiments: ExperimentDefinition[] = [];
+      for (let i = 0; i < 50; i++) {
         experiments.push({
           experimentId: `exp-bulk-${i}`,
           name: `Bulk Test ${i}`,
@@ -485,12 +483,10 @@ describe('ExperimentTrackerAdapter Security (Integration)', () => {
 
       expect(allExperiments.length).toBeGreaterThanOrEqual(50);
 
-        // Filter by status
-        const pendingExperiments = await adapter.listExperiments({ status: 'pending' });
-        expect(pendingExperiments.length).toBeGreaterThanOrEqual(50);
-      },
-      60000
-    ); // 60 second timeout for bulk operations
+      // Filter by status
+      const pendingExperiments = await adapter.listExperiments({ status: 'pending' });
+      expect(pendingExperiments.length).toBeGreaterThanOrEqual(50);
+    }, 60000); // 60 second timeout for bulk operations
 
     it('should handle concurrent operations', async () => {
       // Test 1: Concurrent reads should work (read-only connections)
@@ -671,4 +667,3 @@ describe('ExperimentTrackerAdapter Security (Integration)', () => {
     });
   });
 });
-

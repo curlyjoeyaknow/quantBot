@@ -1645,9 +1645,7 @@ const backtestModule: PackageCommandModule = {
           ctx as InstanceType<typeof CommandContext>
         );
       },
-      examples: [
-        'quantbot backtest results compare --run-id-1 <id1> --run-id-2 <id2>',
-      ],
+      examples: ['quantbot backtest results compare --run-id-1 <id1> --run-id-2 <id2>'],
     },
     {
       name: 'results-export',
@@ -1672,7 +1670,8 @@ const backtestModule: PackageCommandModule = {
       description: 'Reproduce a previous backtest run',
       schema: backtestReproduceSchema,
       handler: async (args: unknown, ctx: unknown) => {
-        const { resultsReproduceHandler } = await import('../handlers/backtest/results-reproduce.js');
+        const { resultsReproduceHandler } =
+          await import('../handlers/backtest/results-reproduce.js');
         const { CommandContext } = await import('../core/command-context.js');
         return resultsReproduceHandler(
           args as BacktestReproduceArgs,

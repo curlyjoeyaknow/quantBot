@@ -95,8 +95,10 @@ export class ArtifactStoreAdapter implements ArtifactStorePort {
   > = new Map();
 
   // LRU cache for frequently accessed artifacts
-  private readonly artifactCache: Map<string, { artifact: ArtifactManifestRecord; timestamp: number }> =
-    new Map();
+  private readonly artifactCache: Map<
+    string,
+    { artifact: ArtifactManifestRecord; timestamp: number }
+  > = new Map();
   private readonly cacheTTL: number;
   private readonly maxCacheSize: number;
 

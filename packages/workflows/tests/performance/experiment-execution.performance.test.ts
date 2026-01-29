@@ -25,10 +25,7 @@ vi.mock('../../src/experiments/simulation-executor.js', () => ({
   }),
 }));
 
-import {
-  executeExperiment,
-  type ExperimentExecutionPorts,
-} from '../../src/experiments/index.js';
+import { executeExperiment, type ExperimentExecutionPorts } from '../../src/experiments/index.js';
 
 describe('Experiment Execution - Performance Tests', () => {
   let mockArtifactStore: ArtifactStorePort;
@@ -263,4 +260,3 @@ describe('Experiment Execution - Performance Tests', () => {
     expect(mockProjectionBuilder.disposeProjection).toHaveBeenCalledTimes(10);
   });
 });
-

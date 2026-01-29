@@ -39,6 +39,11 @@ vi.mock('@quantbot/storage', () => ({
     failRun: vi.fn().mockResolvedValue(undefined),
     updateRunStats: vi.fn(),
   })),
+  ohlcvCache: {
+    get: vi.fn(),
+    set: vi.fn(),
+    clear: vi.fn(),
+  },
 }));
 
 vi.mock('@quantbot/infra/storage', () => ({

@@ -70,9 +70,7 @@ export async function resultsShowHandler(
       avgReturnBps: summary.avgReturnBps.toFixed(1),
       winRate: (summary.winRate * 100).toFixed(1) + '%',
       maxDrawdownBps: summary.maxDrawdownBps.toFixed(0),
-      medianDrawdownBps: summary.medianDrawdownBps
-        ? summary.medianDrawdownBps.toFixed(0)
-        : null,
+      medianDrawdownBps: summary.medianDrawdownBps ? summary.medianDrawdownBps.toFixed(0) : null,
       totalCalls: summary.totalCalls,
       uniqueCallers: summary.uniqueCallers,
       createdAt: summary.createdAt,

@@ -70,7 +70,11 @@ function validateExperimentId(id: string): void {
     throw new AppError('Experiment ID cannot be empty', 'VALIDATION_ERROR', 400);
   }
   if (id.length > 100) {
-    throw new AppError('Experiment ID exceeds maximum length of 100 characters', 'VALIDATION_ERROR', 400);
+    throw new AppError(
+      'Experiment ID exceeds maximum length of 100 characters',
+      'VALIDATION_ERROR',
+      400
+    );
   }
   if (!/^[a-zA-Z0-9_-]+$/.test(id)) {
     throw new AppError(
@@ -86,7 +90,11 @@ function validateArtifactId(id: string): void {
     throw new AppError('Artifact ID cannot be empty', 'VALIDATION_ERROR', 400);
   }
   if (id.length > 100) {
-    throw new AppError('Artifact ID exceeds maximum length of 100 characters', 'VALIDATION_ERROR', 400);
+    throw new AppError(
+      'Artifact ID exceeds maximum length of 100 characters',
+      'VALIDATION_ERROR',
+      400
+    );
   }
   if (!/^[a-zA-Z0-9_-]+$/.test(id)) {
     throw new AppError(
@@ -101,7 +109,13 @@ function validateStatus(status: ExperimentStatus): void {
   if (!status || status.length === 0) {
     throw new AppError('Status cannot be empty', 'VALIDATION_ERROR', 400);
   }
-  const validStatuses: ExperimentStatus[] = ['pending', 'running', 'completed', 'failed', 'cancelled'];
+  const validStatuses: ExperimentStatus[] = [
+    'pending',
+    'running',
+    'completed',
+    'failed',
+    'cancelled',
+  ];
   if (!validStatuses.includes(status)) {
     throw new AppError(
       `Invalid status: ${status}. Must be one of: ${validStatuses.join(', ')}`,
@@ -118,7 +132,11 @@ function validateDateString(dateStr: string): void {
   // Basic ISO 8601 format check
   const iso8601Regex = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?(Z|[+-]\d{2}:\d{2})?)?$/;
   if (!iso8601Regex.test(dateStr)) {
-    throw new AppError(`Invalid date format: ${dateStr}. Expected ISO 8601 format`, 'VALIDATION_ERROR', 400);
+    throw new AppError(
+      `Invalid date format: ${dateStr}. Expected ISO 8601 format`,
+      'VALIDATION_ERROR',
+      400
+    );
   }
 }
 
@@ -258,12 +276,9 @@ export class ExperimentTrackerAdapter implements ExperimentTrackerPort {
       if (message.includes('not found') || message.includes('not found:')) {
         throw new NotFoundError('Experiment', experimentId, { experimentId });
       }
-      throw new AppError(
-        `Failed to get experiment: ${message}`,
-        'EXPERIMENT_TRACKER_ERROR',
-        500,
-        { experimentId }
-      );
+      throw new AppError(`Failed to get experiment: ${message}`, 'EXPERIMENT_TRACKER_ERROR', 500, {
+        experimentId,
+      });
     }
   }
 

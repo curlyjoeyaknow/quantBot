@@ -86,7 +86,7 @@ export interface ProjectionBuilderPort {
 
   /**
    * Cleanup old projections based on lifecycle policy
-   * 
+   *
    * @param policy - Lifecycle policy (TTL, max age, max count)
    * @returns Number of projections cleaned up
    */
@@ -97,7 +97,7 @@ export interface ProjectionBuilderPort {
 
   /**
    * Cleanup failed builds (orphaned files without metadata)
-   * 
+   *
    * @param cacheDir - Optional cache directory to scan (defaults to defaultCacheDir)
    * @returns Number of orphaned files cleaned up
    */
@@ -105,7 +105,7 @@ export interface ProjectionBuilderPort {
 
   /**
    * Resume a failed projection build from checkpoint
-   * 
+   *
    * @param checkpointId - Checkpoint identifier from previous build attempt
    * @returns Projection result if build completes successfully
    */
@@ -113,7 +113,7 @@ export interface ProjectionBuilderPort {
 
   /**
    * Compress a projection (reduces disk usage)
-   * 
+   *
    * @param projectionId - Projection identifier
    * @param version - Optional version tag (if not provided, uses latest)
    * @returns Path to compressed file
@@ -122,7 +122,7 @@ export interface ProjectionBuilderPort {
 
   /**
    * Decompress a compressed projection
-   * 
+   *
    * @param compressedPath - Path to compressed projection file
    * @returns Path to decompressed DuckDB file
    */

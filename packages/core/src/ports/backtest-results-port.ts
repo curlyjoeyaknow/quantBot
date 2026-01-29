@@ -145,4 +145,3 @@ export interface BacktestResultsPort {
    */
   isAvailable(): Promise<boolean>;
 }
-

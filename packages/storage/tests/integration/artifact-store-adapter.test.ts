@@ -234,7 +234,7 @@ describe('ArtifactStoreAdapter (integration)', () => {
       dataPath: testDataPath,
       writerName: 'integration-test',
       writerVersion: '1.0.0',
-      gitCommit: 'test-commit-456',
+      gitCommit: 'testcommit456',
       gitDirty: false,
     });
 

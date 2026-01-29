@@ -22,7 +22,11 @@ import { DateTime } from 'luxon';
  * DuckDB connection type (callback-based API)
  */
 type DuckDbConnection = {
-  all<T = unknown>(sql: string, params: unknown[], callback: (err: unknown, rows: T[]) => void): void;
+  all<T = unknown>(
+    sql: string,
+    params: unknown[],
+    callback: (err: unknown, rows: T[]) => void
+  ): void;
   run(sql: string, params: unknown[], callback: (err: unknown) => void): void;
 };
 
@@ -34,7 +38,11 @@ function createDuckDbAdapter(db: {
   run?: (sql: string, params: unknown[], callback: (err: unknown) => void) => void;
 }): DuckDbConnection {
   return {
-    all<T = unknown>(sql: string, params: unknown[], callback: (err: unknown, rows: T[]) => void): void {
+    all<T = unknown>(
+      sql: string,
+      params: unknown[],
+      callback: (err: unknown, rows: T[]) => void
+    ): void {
       db.all(sql, params, (err: unknown, rows: unknown) => {
         if (err) {
           callback(err, []);
@@ -56,11 +64,7 @@ function createDuckDbAdapter(db: {
 /**
  * Helper to query DuckDB
  */
-function queryDuckDB<T>(
-  db: DuckDbConnection,
-  sql: string,
-  params: unknown[] = []
-): Promise<T[]> {
+function queryDuckDB<T>(db: DuckDbConnection, sql: string, params: unknown[] = []): Promise<T[]> {
   return new Promise((resolve, reject) => {
     db.all<T>(sql, params, (err: unknown, rows: T[]) => {
       if (err) {
@@ -168,7 +172,10 @@ export class BacktestResultsAdapter implements BacktestResultsPort {
       // Use dynamic import - backtest package re-exports from simulation
       // @ts-expect-error - Dynamic import may not resolve at compile time
       const backtestModule = await import('@quantbot/backtest');
-      if ('getCallerPathReport' in backtestModule && typeof backtestModule.getCallerPathReport === 'function') {
+      if (
+        'getCallerPathReport' in backtestModule &&
+        typeof backtestModule.getCallerPathReport === 'function'
+      ) {
         return backtestModule.getCallerPathReport(adapter, runId);
       }
       throw new Error('getCallerPathReport not available in @quantbot/backtest');
@@ -207,36 +214,41 @@ export class BacktestResultsAdapter implements BacktestResultsPort {
     // Use dynamic import - backtest package re-exports from simulation
     // @ts-expect-error - Dynamic import may not resolve at compile time
     const backtestModule = await import('@quantbot/backtest');
-    if (!('getAllRunSummaries' in backtestModule) || typeof backtestModule.getAllRunSummaries !== 'function') {
+    if (
+      !('getAllRunSummaries' in backtestModule) ||
+      typeof backtestModule.getAllRunSummaries !== 'function'
+    ) {
       throw new Error('getAllRunSummaries not available in @quantbot/backtest');
     }
     const summaries = await backtestModule.getAllRunSummaries(this.artifactsBaseDir);
 
-    let filtered = summaries.map((s: {
-      run_id: string;
-      total_trades: number;
-      total_pnl_usd: number;
-      total_pnl_pct: number;
-      avg_return_bps: number;
-      win_rate: number;
-      max_drawdown_bps: number;
-      median_drawdown_bps: number | null;
-      total_calls: number;
-      unique_callers: number;
-      created_at: string | null;
-    }) => ({
-      runId: s.run_id,
-      totalTrades: s.total_trades,
-      totalPnlUsd: s.total_pnl_usd,
-      totalPnlPct: s.total_pnl_pct,
-      avgReturnBps: s.avg_return_bps,
-      winRate: s.win_rate,
-      maxDrawdownBps: s.max_drawdown_bps,
-      medianDrawdownBps: s.median_drawdown_bps,
-      totalCalls: s.total_calls,
-      uniqueCallers: s.unique_callers,
-      createdAt: s.created_at,
-    }));
+    let filtered = summaries.map(
+      (s: {
+        run_id: string;
+        total_trades: number;
+        total_pnl_usd: number;
+        total_pnl_pct: number;
+        avg_return_bps: number;
+        win_rate: number;
+        max_drawdown_bps: number;
+        median_drawdown_bps: number | null;
+        total_calls: number;
+        unique_callers: number;
+        created_at: string | null;
+      }) => ({
+        runId: s.run_id,
+        totalTrades: s.total_trades,
+        totalPnlUsd: s.total_pnl_usd,
+        totalPnlPct: s.total_pnl_pct,
+        avgReturnBps: s.avg_return_bps,
+        winRate: s.win_rate,
+        maxDrawdownBps: s.max_drawdown_bps,
+        medianDrawdownBps: s.median_drawdown_bps,
+        totalCalls: s.total_calls,
+        uniqueCallers: s.unique_callers,
+        createdAt: s.created_at,
+      })
+    );
 
     // Apply filters
     if (query?.runId) {
@@ -399,5 +411,3 @@ export class BacktestResultsAdapter implements BacktestResultsPort {
     }
   }
 }
-
-

@@ -50,7 +50,7 @@ describe('ProjectionBuilderPort Contract', () => {
 
     // Create adapter instance
     adapter = new ProjectionBuilderAdapter(mockArtifactStore, tempCacheDir);
-    
+
     // Initialize metadata manager (needed for metadata operations)
     // The metadata manager initializes lazily on first use, but we can pre-initialize
     try {
@@ -127,7 +127,7 @@ describe('ProjectionBuilderPort Contract', () => {
 
       try {
         const result = await adapter.buildProjection(request);
-        
+
         // Verify result structure matches ProjectionResult interface
         expect(result).toHaveProperty('projectionId');
         expect(result).toHaveProperty('version');
@@ -135,7 +135,7 @@ describe('ProjectionBuilderPort Contract', () => {
         expect(result).toHaveProperty('tables');
         expect(result).toHaveProperty('artifactCount');
         expect(result).toHaveProperty('totalRows');
-        
+
         expect(typeof result.projectionId).toBe('string');
         expect(typeof result.version).toBe('string');
         expect(typeof result.duckdbPath).toBe('string');
@@ -151,9 +151,9 @@ describe('ProjectionBuilderPort Contract', () => {
 
     it('getProjectionMetadata should return ProjectionMetadata | null', async () => {
       const result = await adapter.getProjectionMetadata('nonexistent');
-      
+
       expect(result === null || typeof result === 'object').toBe(true);
-      
+
       if (result !== null) {
         // Verify structure matches ProjectionMetadata interface
         expect(result).toHaveProperty('projectionId');
@@ -174,9 +174,9 @@ describe('ProjectionBuilderPort Contract', () => {
 
     it('listProjections should return ProjectionMetadata[]', async () => {
       const result = await adapter.listProjections();
-      
+
       expect(Array.isArray(result)).toBe(true);
-      
+
       // Verify all items match ProjectionMetadata structure
       for (const projection of result) {
         expect(projection).toHaveProperty('projectionId');
@@ -190,9 +190,9 @@ describe('ProjectionBuilderPort Contract', () => {
 
     it('getProjectionLineage should return ProjectionLineage | null', async () => {
       const result = await adapter.getProjectionLineage('nonexistent');
-      
+
       expect(result === null || typeof result === 'object').toBe(true);
-      
+
       if (result !== null) {
         // Verify structure matches ProjectionLineage interface
         expect(result).toHaveProperty('projectionId');
@@ -208,7 +208,7 @@ describe('ProjectionBuilderPort Contract', () => {
 
     it('getMetrics should return ProjectionMetrics', async () => {
       const result = await adapter.getMetrics();
-      
+
       // Verify structure matches ProjectionMetrics interface
       expect(result).toHaveProperty('buildCount');
       expect(result).toHaveProperty('successCount');
@@ -218,7 +218,7 @@ describe('ProjectionBuilderPort Contract', () => {
       expect(result).toHaveProperty('avgTotalRows');
       expect(result).toHaveProperty('totalDiskUsageBytes');
       expect(result).toHaveProperty('projectionCount');
-      
+
       expect(typeof result.buildCount).toBe('number');
       expect(typeof result.successCount).toBe('number');
       expect(typeof result.failureCount).toBe('number');
@@ -231,21 +231,21 @@ describe('ProjectionBuilderPort Contract', () => {
 
     it('cleanupOldProjections should return number', async () => {
       const result = await adapter.cleanupOldProjections({});
-      
+
       expect(typeof result).toBe('number');
       expect(result).toBeGreaterThanOrEqual(0);
     });
 
     it('cleanupFailedBuilds should return number', async () => {
       const result = await adapter.cleanupFailedBuilds();
-      
+
       expect(typeof result).toBe('number');
       expect(result).toBeGreaterThanOrEqual(0);
     });
 
     it('projectionExists should return boolean', async () => {
       const result = await adapter.projectionExists('nonexistent');
-      
+
       expect(typeof result).toBe('boolean');
     });
   });
@@ -270,7 +270,9 @@ describe('ProjectionBuilderPort Contract', () => {
         tables: { alerts: 'alerts' },
       } as ProjectionRequest;
 
-      await expect(adapter.buildProjection(invalidRequest)).rejects.toThrow('Invalid ProjectionRequest');
+      await expect(adapter.buildProjection(invalidRequest)).rejects.toThrow(
+        'Invalid ProjectionRequest'
+      );
     });
 
     it('should throw ProjectionBuildError for build failures', async () => {
@@ -312,7 +314,7 @@ describe('ProjectionBuilderPort Contract', () => {
         minBuildTimestamp: Date.now() - 86400000, // 24 hours ago
         maxBuildTimestamp: Date.now(),
       };
-      
+
       const result2 = await adapter.listProjections(filter);
       expect(Array.isArray(result2)).toBe(true);
     });
@@ -367,4 +369,3 @@ describe('ProjectionBuilderPort Contract', () => {
     });
   });
 });
-

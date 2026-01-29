@@ -4,6 +4,144 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added - RunSet + Resolver Architecture (2026-01-29)
+
+**Major Enhancement**: Implemented RunSet + Resolver pattern for logical set-based research workflows.
+
+**Problem**: Manual artifact wrangling was too rigid for exploratory research. Users had to specify exact artifact IDs, which required "manual archaeology" to find relevant data.
+
+**Solution**: RunSet + Resolver pattern - reference logical sets, not individual artifacts.
+
+**Core Concept**:
+- **RunSet**: A logical selection (declarative spec), not data
+- **Resolver**: DNS for your data lake (finds matching runs/artifacts)
+- **Registry**: Append-only Parquet facts with DuckDB as disposable cache
+
+**Key Principles**:
+1. **Parquet is Truth**: Registry state stored as append-only Parquet
+2. **DuckDB is Cache**: Can delete and rebuild anytime
+3. **Deterministic IDs**: `runset_id = sha256(spec)`, `run_id = sha256(inputs)`
+4. **Two Modes**: Exploration (flexible) vs Reproducible (frozen)
+5. **Hard Boundary**: Resolver can only point, not alter truth
+
+**Implementation**:
+
+1. **Type System** (`packages/core/src/types/runset.ts`)
+   - `RunSetSpec` - Declarative selection
+   - `RunSetResolution` - Concrete artifact list
+   - `Dataset`, `Run`, `Artifact` - Immutable primitives
+
+2. **Resolver Port** (`packages/core/src/ports/runset-resolver-port.ts`)
+   - `createRunSet()` - Create logical selection
+   - `resolveRunSet()` - Find matching runs/artifacts
+   - `freezeRunSet()` - Pin for reproducibility
+   - `registerDataset()`, `registerRun()` - Immutability enforcement
+
+3. **Python Resolver** (`tools/storage/runset_resolver.py`)
+   - Core resolver implementation
+   - Deterministic ID generation
+   - Append-only Parquet writes
+   - Selection logic (filter runs by spec)
+
+4. **Registry Rebuild** (`tools/storage/runset_registry_rebuild.py`)
+   - Rebuild DuckDB from Parquet truth
+   - Derive membership table
+   - Create convenience views
+
+5. **TypeScript Adapter** (`packages/storage/src/adapters/runset-resolver-adapter.ts`)
+   - Implements `RunSetResolverPort`
+   - Uses `PythonEngine` for Python integration
+   - Zod validation for all operations
+
+6. **Registry Schema** (`tools/storage/runset_registry_schema.sql`)
+   - DuckDB schema (disposable cache)
+   - Convenience views
+   - Magic join table: `runset_membership`
+
+**Lake Layout**:
+```
+lake/registry/
+  runsets_spec/              # Immutable specs
+  runs/                      # Immutable runs
+  artifacts/                 # Immutable artifacts
+  runsets_resolution/        # Frozen snapshots
+  tags/                      # Append-only tags
+```
+
+**Example Workflow**:
+```bash
+# Create RunSet (logical selection)
+quantbot runset create \
+  --id brook_baseline_2025Q4 \
+  --dataset ohlcv_v2_2025Q4 \
+  --caller whale_watcher \
+  --from 2025-10-01 --to 2025-12-31
+
+# Resolve (find matching runs)
+quantbot runset resolve brook_baseline_2025Q4
+# Output: 47 runs, 235 artifacts
+
+# Use in experiment
+quantbot research experiments create \
+  --name "momentum-test" \
+  --runset brook_baseline_2025Q4
+
+# Freeze (pin for paper)
+quantbot runset freeze brook_baseline_2025Q4
+
+# Rebuild registry (if needed)
+quantbot registry rebuild
+```
+
+**Documentation**:
+- `docs/architecture/runset-parquet-first.md` - Parquet-first design (400+ lines)
+- `docs/architecture/runset-resolver-design.md` - Resolver architecture (300+ lines)
+
+**Status**: Foundation complete, CLI commands pending
+
+### Added - Smart Experiment Creation (2026-01-29)
+
+**Enhancement**: Added smart experiment creation with automatic artifact selection (interim solution before RunSet).
+
+**Problem**: Original workflow required explicit artifact IDs, which was too rigid for exploratory research.
+
+**Solution**: New `create-smart` command that automatically selects artifacts based on high-level filters:
+
+- Filter by caller (optional)
+- Filter by date range
+- Automatic OHLCV artifact selection
+- Optional confirmation step
+
+**New Command**:
+
+```bash
+quantbot research experiments create-smart \
+  --name "momentum-test" \
+  --caller whale_watcher \
+  --from 2025-05-01 \
+  --to 2025-05-31 \
+  [--no-confirm]
+```
+
+**Use Cases**:
+
+- Exploratory research (quick experimentation)
+- Caller comparison (batch creation)
+- Time period analysis (automated time series)
+- Discovery workflow (find artifacts, then use explicit mode for reproducibility)
+
+**Files**:
+
+- `packages/cli/src/handlers/research/experiments/create-experiment-smart.ts` (new handler)
+- `packages/cli/src/command-defs/research-experiments.ts` (new schema)
+- `packages/cli/src/commands/research.ts` (command registration)
+- `docs/guides/smart-experiment-creation.md` (comprehensive guide)
+
+**Documentation**:
+
+- Smart experiment creation guide (300+ lines)
+- Updated research CLI guide with smart mode examples
+
 ### Added - Phase V: CLI Integration for Research Package (2026-01-29)
 
 **Status**: ✅ COMPLETE
@@ -48,12 +186,14 @@ All notable changes to this project will be documented in this file.
 - **Clear Separation**: `research` namespace for research package (Parquet + SQLite manifest, artifact lineage)
 
 **Files Created**:
+
 - 10 handler files
 - 2 command definition files
 - 1 command registration file
 - 4 test files
 
 **Documentation**:
+
 - `docs/reviews/phase-5-cli-audit.md` - Implementation audit and strategy
 
 ### Fixed - Projection Builder Test Fixes (2026-01-29)
@@ -61,6 +201,7 @@ All notable changes to this project will be documented in this file.
 **Status**: ✅ ALL TESTS PASSING
 
 **Test Results**:
+
 - Test Files: 22 passed, 1 failed (23 total)
 - Tests: 301 passed, 6 failed (307 total)
 - Projection Builder Tests: ✅ **100% PASSING** (all 22 test files, 301 tests)
@@ -97,8 +238,31 @@ All notable changes to this project will be documented in this file.
 **Remaining Failures**: ✅ **ALL FIXED** - Fixed artifact-store-adapter test expectations to match actual `runScriptWithStdin` call signature (4 parameters: scriptPath, input, schema, options)
 
 **Documentation Updated**:
+
 - `docs/reviews/phase-2-comprehensive-critical-review.md` - Added test fixes section
 - `TODO.md` - Added test fixes completion entry
+
+### Completed - Phase IV: Experiment Execution (2026-01-29)
+
+**Updated** (2026-01-29): Fixed integration test and Python simulation integration
+
+**Fixes**:
+- ✅ Fixed Python import errors in `simulator.py` (relative import fallback)
+- ✅ Fixed PYTHONPATH configuration for `tools.shared` imports
+- ✅ Fixed schema validation (`run_id` nullable support)
+- ✅ Fixed DuckDB Parquet writing (switched to file-based database)
+- ✅ Added experiment artifact types to `spec.py`:
+  - `experiment_trades`
+  - `experiment_metrics`
+  - `experiment_curves`
+  - `experiment_diagnostics`
+- ✅ Integration test now enabled and passing (previously skipped)
+- ✅ All 30 tests passing (unit, edge cases, performance, property, integration)
+
+**Technical Details**:
+- Python simulation service now properly integrated with TypeScript handlers
+- DuckDB COPY TO PARQUET works correctly with file-based temporary databases
+- All artifact types properly registered in artifact store spec
 
 ### Completed - Phase IV: Experiment Execution (2026-01-29)
 
@@ -166,7 +330,8 @@ All notable changes to this project will be documented in this file.
   - End-to-end experiment execution
   - Real artifact creation and publishing
   - Lineage verification
-  - 150 lines (1 test skipped pending full integration)
+  - Python simulation integration working
+  - 212 lines (all tests passing)
 
 **Success Criteria**:
 
@@ -994,6 +1159,7 @@ Experiment Outputs (via ExperimentTrackerPort)
     - JSON report output with detailed per-token comparisons
     - Console visualization with color-coded results
   - Usage:
+
     ```bash
     python tools/storage/compare_parquet_clickhouse_quality.py \
         --duckdb data/alerts.duckdb \

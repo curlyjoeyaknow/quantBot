@@ -29,6 +29,7 @@ import {
 // Experiment schemas
 import {
   createResearchExperimentSchema,
+  createSmartExperimentSchema,
   executeResearchExperimentSchema,
   getResearchExperimentSchema,
   listResearchExperimentsSchema,
@@ -44,6 +45,7 @@ import { getResearchArtifactDownstreamHandler } from '../handlers/research/artif
 
 // Experiment handlers
 import { createResearchExperimentHandler } from '../handlers/research/experiments/create-experiment.js';
+import { createSmartExperimentHandler } from '../handlers/research/experiments/create-experiment-smart.js';
 import { executeResearchExperimentHandler } from '../handlers/research/experiments/execute-experiment.js';
 import { getResearchExperimentHandler } from '../handlers/research/experiments/get-experiment.js';
 import { listResearchExperimentsHandler } from '../handlers/research/experiments/list-experiments.js';
@@ -159,10 +161,10 @@ export function registerResearchCommands(program: Command): void {
     .command('experiments')
     .description('Experiment tracking and execution');
 
-  // Create experiment
+  // Create experiment (explicit artifact IDs)
   const createExperimentCmd = experimentsCmd
     .command('create')
-    .description('Create a new experiment with frozen artifact sets')
+    .description('Create a new experiment with explicit artifact IDs')
     .option('--name <name>', 'Experiment name (required)')
     .option('--description <desc>', 'Optional description')
     .option('--alerts <ids...>', 'Alert artifact IDs (comma-separated)')
@@ -191,6 +193,43 @@ export function registerResearchCommands(program: Command): void {
       };
     },
     validate: (opts) => createResearchExperimentSchema.parse(opts),
+    onError: die,
+  });
+
+  // Create smart experiment (automatic artifact selection)
+  const createSmartExperimentCmd = experimentsCmd
+    .command('create-smart')
+    .description('Create experiment with automatic artifact selection')
+    .option('--name <name>', 'Experiment name (required)')
+    .option('--description <desc>', 'Optional description')
+    .option('--caller <caller>', 'Filter by caller (optional - if omitted, uses all callers)')
+    .option('--from <date>', 'Start date (ISO 8601, required)')
+    .option('--to <date>', 'End date (ISO 8601, required)')
+    .option('--strategies <ids...>', 'Strategy artifact IDs (optional)')
+    .option('--strategy <json>', 'Strategy configuration (JSON)')
+    .option('--params <json>', 'Additional parameters (JSON)')
+    .option('--no-confirm', 'Skip confirmation prompt (auto-confirm)')
+    .option('--format <format>', 'Output format (json|table)', 'table');
+
+  defineCommand(createSmartExperimentCmd, {
+    name: 'experiments-create-smart',
+    packageName: 'research',
+    argsToOpts: (args, rawOpts) => {
+      // Parse JSON fields if provided as strings
+      const strategy =
+        typeof rawOpts.strategy === 'string' ? JSON.parse(rawOpts.strategy) : rawOpts.strategy;
+      const params =
+        typeof rawOpts.params === 'string' ? JSON.parse(rawOpts.params) : rawOpts.params;
+
+      return {
+        ...rawOpts,
+        strategy,
+        params,
+        autoConfirm: rawOpts.confirm === false, // --no-confirm sets confirm to false
+        confirm: rawOpts.confirm !== false, // Default to true unless --no-confirm
+      };
+    },
+    validate: (opts) => createSmartExperimentSchema.parse(opts),
     onError: die,
   });
 
@@ -334,7 +373,7 @@ const researchModule: PackageCommandModule = {
     // Experiment commands
     {
       name: 'experiments-create',
-      description: 'Create a new experiment',
+      description: 'Create a new experiment with explicit artifact IDs',
       schema: createResearchExperimentSchema,
       handler: async (args: unknown, ctx: CommandContext) => {
         const typedArgs = args as z.infer<typeof createResearchExperimentSchema>;
@@ -342,6 +381,19 @@ const researchModule: PackageCommandModule = {
       },
       examples: [
         'quantbot research experiments create --name "momentum-v1" --alerts alert-1,alert-2 --ohlcv ohlcv-1 --from 2025-05-01 --to 2025-05-31',
+      ],
+    },
+    {
+      name: 'experiments-create-smart',
+      description: 'Create experiment with automatic artifact selection',
+      schema: createSmartExperimentSchema,
+      handler: async (args: unknown, ctx: CommandContext) => {
+        const typedArgs = args as z.infer<typeof createSmartExperimentSchema>;
+        return await createSmartExperimentHandler(typedArgs, ctx);
+      },
+      examples: [
+        'quantbot research experiments create-smart --name "momentum-test" --caller whale_watcher --from 2025-05-01 --to 2025-05-31',
+        'quantbot research experiments create-smart --name "momentum-all" --from 2025-05-01 --to 2025-05-31 --no-confirm',
       ],
     },
     {

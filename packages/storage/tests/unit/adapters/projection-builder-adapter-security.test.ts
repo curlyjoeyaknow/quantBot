@@ -57,7 +57,14 @@ describe('ProjectionBuilderAdapter Security & Edge Cases', () => {
 
   describe('SQL Injection Prevention', () => {
     it('should sanitize malicious table names', async () => {
-      const adapter = new ProjectionBuilderAdapter(mockArtifactStore, tempCacheDir, undefined, undefined, undefined, tempCacheDir);
+      const adapter = new ProjectionBuilderAdapter(
+        mockArtifactStore,
+        tempCacheDir,
+        undefined,
+        undefined,
+        undefined,
+        tempCacheDir
+      );
       const maliciousTableName = "'; DROP TABLE users; --";
 
       vi.mocked(mockArtifactStore.getArtifact).mockResolvedValue(
@@ -84,7 +91,14 @@ describe('ProjectionBuilderAdapter Security & Edge Cases', () => {
     });
 
     it('should sanitize table names with special characters', async () => {
-      const adapter = new ProjectionBuilderAdapter(mockArtifactStore, tempCacheDir, undefined, undefined, undefined, tempCacheDir);
+      const adapter = new ProjectionBuilderAdapter(
+        mockArtifactStore,
+        tempCacheDir,
+        undefined,
+        undefined,
+        undefined,
+        tempCacheDir
+      );
       const specialChars = 'table-name.with@special#chars$123';
 
       vi.mocked(mockArtifactStore.getArtifact).mockResolvedValue(
@@ -111,7 +125,14 @@ describe('ProjectionBuilderAdapter Security & Edge Cases', () => {
     });
 
     it('should escape file paths with special characters', async () => {
-      const adapter = new ProjectionBuilderAdapter(mockArtifactStore, tempCacheDir, undefined, undefined, undefined, tempCacheDir);
+      const adapter = new ProjectionBuilderAdapter(
+        mockArtifactStore,
+        tempCacheDir,
+        undefined,
+        undefined,
+        undefined,
+        tempCacheDir
+      );
       // Use paths within the artifacts root (tempCacheDir) with special characters
       const pathWithQuotes = join(tempCacheDir, "with'quotes", 'file.parquet');
       // Use forward slashes for cross-platform compatibility (backslashes are Windows-specific)
@@ -144,11 +165,18 @@ describe('ProjectionBuilderAdapter Security & Edge Cases', () => {
     });
 
     it('should sanitize column names in indexes', async () => {
-      const adapter = new ProjectionBuilderAdapter(mockArtifactStore, tempCacheDir, undefined, undefined, undefined, tempCacheDir);
+      const adapter = new ProjectionBuilderAdapter(
+        mockArtifactStore,
+        tempCacheDir,
+        undefined,
+        undefined,
+        undefined,
+        tempCacheDir
+      );
 
       const parquetPath = join(tempCacheDir, 'alert1.parquet');
       writeFileSync(parquetPath, 'dummy');
-      
+
       vi.mocked(mockArtifactStore.getArtifact).mockResolvedValue(
         createMockArtifact('alert-1', parquetPath)
       );
@@ -174,7 +202,14 @@ describe('ProjectionBuilderAdapter Security & Edge Cases', () => {
 
   describe('Input Validation', () => {
     it('should reject empty projection ID', async () => {
-      const adapter = new ProjectionBuilderAdapter(mockArtifactStore, tempCacheDir, undefined, undefined, undefined, tempCacheDir);
+      const adapter = new ProjectionBuilderAdapter(
+        mockArtifactStore,
+        tempCacheDir,
+        undefined,
+        undefined,
+        undefined,
+        tempCacheDir
+      );
 
       await expect(
         adapter.buildProjection({
@@ -186,7 +221,14 @@ describe('ProjectionBuilderAdapter Security & Edge Cases', () => {
     });
 
     it('should reject projection ID with invalid characters', async () => {
-      const adapter = new ProjectionBuilderAdapter(mockArtifactStore, tempCacheDir, undefined, undefined, undefined, tempCacheDir);
+      const adapter = new ProjectionBuilderAdapter(
+        mockArtifactStore,
+        tempCacheDir,
+        undefined,
+        undefined,
+        undefined,
+        tempCacheDir
+      );
 
       await expect(
         adapter.buildProjection({
@@ -198,7 +240,14 @@ describe('ProjectionBuilderAdapter Security & Edge Cases', () => {
     });
 
     it('should reject projection ID exceeding max length', async () => {
-      const adapter = new ProjectionBuilderAdapter(mockArtifactStore, tempCacheDir, undefined, undefined, undefined, tempCacheDir);
+      const adapter = new ProjectionBuilderAdapter(
+        mockArtifactStore,
+        tempCacheDir,
+        undefined,
+        undefined,
+        undefined,
+        tempCacheDir
+      );
       const longId = 'a'.repeat(256);
 
       await expect(
@@ -211,7 +260,14 @@ describe('ProjectionBuilderAdapter Security & Edge Cases', () => {
     });
 
     it('should reject empty artifact arrays', async () => {
-      const adapter = new ProjectionBuilderAdapter(mockArtifactStore, tempCacheDir, undefined, undefined, undefined, tempCacheDir);
+      const adapter = new ProjectionBuilderAdapter(
+        mockArtifactStore,
+        tempCacheDir,
+        undefined,
+        undefined,
+        undefined,
+        tempCacheDir
+      );
 
       await expect(
         adapter.buildProjection({
@@ -223,7 +279,14 @@ describe('ProjectionBuilderAdapter Security & Edge Cases', () => {
     });
 
     it('should reject missing artifacts', async () => {
-      const adapter = new ProjectionBuilderAdapter(mockArtifactStore, tempCacheDir, undefined, undefined, undefined, tempCacheDir);
+      const adapter = new ProjectionBuilderAdapter(
+        mockArtifactStore,
+        tempCacheDir,
+        undefined,
+        undefined,
+        undefined,
+        tempCacheDir
+      );
 
       await expect(
         adapter.buildProjection({
@@ -235,7 +298,14 @@ describe('ProjectionBuilderAdapter Security & Edge Cases', () => {
     });
 
     it('should reject too many artifacts', async () => {
-      const adapter = new ProjectionBuilderAdapter(mockArtifactStore, tempCacheDir, undefined, undefined, undefined, tempCacheDir);
+      const adapter = new ProjectionBuilderAdapter(
+        mockArtifactStore,
+        tempCacheDir,
+        undefined,
+        undefined,
+        undefined,
+        tempCacheDir
+      );
       const manyArtifacts = Array.from({ length: 10001 }, (_, i) => `alert-${i}`);
 
       await expect(
@@ -248,7 +318,14 @@ describe('ProjectionBuilderAdapter Security & Edge Cases', () => {
     });
 
     it('should reject invalid table names', async () => {
-      const adapter = new ProjectionBuilderAdapter(mockArtifactStore, tempCacheDir, undefined, undefined, undefined, tempCacheDir);
+      const adapter = new ProjectionBuilderAdapter(
+        mockArtifactStore,
+        tempCacheDir,
+        undefined,
+        undefined,
+        undefined,
+        tempCacheDir
+      );
 
       await expect(
         adapter.buildProjection({
@@ -260,7 +337,14 @@ describe('ProjectionBuilderAdapter Security & Edge Cases', () => {
     });
 
     it('should reject too many indexes', async () => {
-      const adapter = new ProjectionBuilderAdapter(mockArtifactStore, tempCacheDir, undefined, undefined, undefined, tempCacheDir);
+      const adapter = new ProjectionBuilderAdapter(
+        mockArtifactStore,
+        tempCacheDir,
+        undefined,
+        undefined,
+        undefined,
+        tempCacheDir
+      );
       const manyIndexes = Array.from({ length: 51 }, (_, i) => ({
         table: 'alerts',
         columns: [`col${i}`],
@@ -279,7 +363,14 @@ describe('ProjectionBuilderAdapter Security & Edge Cases', () => {
 
   describe('Error Handling', () => {
     it('should throw ArtifactNotFoundError when artifact is missing', async () => {
-      const adapter = new ProjectionBuilderAdapter(mockArtifactStore, tempCacheDir, undefined, undefined, undefined, tempCacheDir);
+      const adapter = new ProjectionBuilderAdapter(
+        mockArtifactStore,
+        tempCacheDir,
+        undefined,
+        undefined,
+        undefined,
+        tempCacheDir
+      );
 
       vi.mocked(mockArtifactStore.getArtifact).mockResolvedValue(null);
 
@@ -293,7 +384,14 @@ describe('ProjectionBuilderAdapter Security & Edge Cases', () => {
     });
 
     it('should throw ProjectionBuildError on DuckDB failure', async () => {
-      const adapter = new ProjectionBuilderAdapter(mockArtifactStore, tempCacheDir, undefined, undefined, undefined, tempCacheDir);
+      const adapter = new ProjectionBuilderAdapter(
+        mockArtifactStore,
+        tempCacheDir,
+        undefined,
+        undefined,
+        undefined,
+        tempCacheDir
+      );
 
       vi.mocked(mockArtifactStore.getArtifact).mockResolvedValue(
         createMockArtifact('alert-1', '/nonexistent/path.parquet')
@@ -309,13 +407,27 @@ describe('ProjectionBuilderAdapter Security & Edge Cases', () => {
     });
 
     it('should handle disposal gracefully when projection does not exist', async () => {
-      const adapter = new ProjectionBuilderAdapter(mockArtifactStore, tempCacheDir, undefined, undefined, undefined, tempCacheDir);
+      const adapter = new ProjectionBuilderAdapter(
+        mockArtifactStore,
+        tempCacheDir,
+        undefined,
+        undefined,
+        undefined,
+        tempCacheDir
+      );
       // Try to dispose a non-existent projection - should not throw, just complete silently
       await expect(adapter.disposeProjection('nonexistent-projection')).resolves.not.toThrow();
     });
 
     it('should handle projectionId mismatch in rebuildProjection', async () => {
-      const adapter = new ProjectionBuilderAdapter(mockArtifactStore, tempCacheDir, undefined, undefined, undefined, tempCacheDir);
+      const adapter = new ProjectionBuilderAdapter(
+        mockArtifactStore,
+        tempCacheDir,
+        undefined,
+        undefined,
+        undefined,
+        tempCacheDir
+      );
 
       await expect(
         adapter.rebuildProjection('projection-1', {
@@ -329,7 +441,14 @@ describe('ProjectionBuilderAdapter Security & Edge Cases', () => {
 
   describe('Resource Management', () => {
     it('should clean up DuckDB client on error', async () => {
-      const adapter = new ProjectionBuilderAdapter(mockArtifactStore, tempCacheDir, undefined, undefined, undefined, tempCacheDir);
+      const adapter = new ProjectionBuilderAdapter(
+        mockArtifactStore,
+        tempCacheDir,
+        undefined,
+        undefined,
+        undefined,
+        tempCacheDir
+      );
 
       vi.mocked(mockArtifactStore.getArtifact).mockRejectedValue(new Error('Network error'));
 
@@ -349,11 +468,18 @@ describe('ProjectionBuilderAdapter Security & Edge Cases', () => {
     });
 
     it('should handle concurrent builds gracefully', async () => {
-      const adapter = new ProjectionBuilderAdapter(mockArtifactStore, tempCacheDir, undefined, undefined, undefined, tempCacheDir);
+      const adapter = new ProjectionBuilderAdapter(
+        mockArtifactStore,
+        tempCacheDir,
+        undefined,
+        undefined,
+        undefined,
+        tempCacheDir
+      );
 
       const parquetPath = join(tempCacheDir, 'alert1.parquet');
       writeFileSync(parquetPath, 'dummy');
-      
+
       vi.mocked(mockArtifactStore.getArtifact).mockResolvedValue(
         createMockArtifact('alert-1', parquetPath)
       );
@@ -380,11 +506,18 @@ describe('ProjectionBuilderAdapter Security & Edge Cases', () => {
 
   describe('Edge Cases', () => {
     it('should handle table names starting with numbers', async () => {
-      const adapter = new ProjectionBuilderAdapter(mockArtifactStore, tempCacheDir, undefined, undefined, undefined, tempCacheDir);
+      const adapter = new ProjectionBuilderAdapter(
+        mockArtifactStore,
+        tempCacheDir,
+        undefined,
+        undefined,
+        undefined,
+        tempCacheDir
+      );
 
       const parquetPath = join(tempCacheDir, 'alert1.parquet');
       writeFileSync(parquetPath, 'dummy');
-      
+
       vi.mocked(mockArtifactStore.getArtifact).mockResolvedValue(
         createMockArtifact('alert-1', parquetPath)
       );
@@ -403,7 +536,14 @@ describe('ProjectionBuilderAdapter Security & Edge Cases', () => {
     });
 
     it('should handle empty column lists in indexes', async () => {
-      const adapter = new ProjectionBuilderAdapter(mockArtifactStore, tempCacheDir, undefined, undefined, undefined, tempCacheDir);
+      const adapter = new ProjectionBuilderAdapter(
+        mockArtifactStore,
+        tempCacheDir,
+        undefined,
+        undefined,
+        undefined,
+        tempCacheDir
+      );
 
       await expect(
         adapter.buildProjection({
@@ -416,11 +556,18 @@ describe('ProjectionBuilderAdapter Security & Edge Cases', () => {
     });
 
     it('should handle duplicate column names in indexes', async () => {
-      const adapter = new ProjectionBuilderAdapter(mockArtifactStore, tempCacheDir, undefined, undefined, undefined, tempCacheDir);
+      const adapter = new ProjectionBuilderAdapter(
+        mockArtifactStore,
+        tempCacheDir,
+        undefined,
+        undefined,
+        undefined,
+        tempCacheDir
+      );
 
       const parquetPath = join(tempCacheDir, 'alert1.parquet');
       writeFileSync(parquetPath, 'dummy');
-      
+
       vi.mocked(mockArtifactStore.getArtifact).mockResolvedValue(
         createMockArtifact('alert-1', parquetPath)
       );
@@ -439,12 +586,19 @@ describe('ProjectionBuilderAdapter Security & Edge Cases', () => {
     });
 
     it('should handle very long table names', async () => {
-      const adapter = new ProjectionBuilderAdapter(mockArtifactStore, tempCacheDir, undefined, undefined, undefined, tempCacheDir);
+      const adapter = new ProjectionBuilderAdapter(
+        mockArtifactStore,
+        tempCacheDir,
+        undefined,
+        undefined,
+        undefined,
+        tempCacheDir
+      );
       const longTableName = 'a'.repeat(100);
 
       const parquetPath = join(tempCacheDir, 'alert1.parquet');
       writeFileSync(parquetPath, 'dummy');
-      
+
       vi.mocked(mockArtifactStore.getArtifact).mockResolvedValue(
         createMockArtifact('alert-1', parquetPath)
       );
@@ -463,4 +617,3 @@ describe('ProjectionBuilderAdapter Security & Edge Cases', () => {
     });
   });
 });
-

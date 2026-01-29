@@ -34,11 +34,11 @@ export async function openDuckDb(
   const duckdbModule = await import('duckdb');
   // Handle both ESM default export and CommonJS module.exports
   const duckdb = duckdbModule.default || duckdbModule;
-  
+
   // Only create directory if not read-only and not in-memory
   const isReadOnly = options?.readOnly === true;
   const isInMemory = dbPath === ':memory:' || dbPath === '';
-  
+
   if (!isReadOnly && !isInMemory) {
     fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   }

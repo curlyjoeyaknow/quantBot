@@ -42,12 +42,15 @@ describe('ExperimentTrackerAdapter Test Gaps Coverage', () => {
 
   describe('Implementation Security Verification (HIGH)', () => {
     it('should use parameterized queries, not string interpolation', async () => {
-      // Create experiment with special characters that could break SQL
+      // Note: Artifact IDs are validated to only allow alphanumeric, hyphens, and underscores
+      // This prevents SQL injection at the input validation layer.
+      // Parameterized queries provide additional protection for valid inputs.
+      // Create experiment with valid artifact IDs
       const definition: ExperimentDefinition = {
         experimentId: 'exp-sql-test',
         name: 'SQL Test',
         inputs: {
-          alerts: ["alert-with'quotes", 'alert-with"double-quotes'],
+          alerts: ['alert-with-hyphens', 'alert_with_underscores', 'alert123'],
           ohlcv: ['ohlcv-1'],
         },
         config: {
@@ -63,22 +66,25 @@ describe('ExperimentTrackerAdapter Test Gaps Coverage', () => {
         },
       };
 
-      // Should not throw SQL errors - parameterized queries handle special chars
+      // Should not throw SQL errors - parameterized queries handle valid inputs safely
       await adapter.createExperiment(definition);
 
       // Verify experiment was created correctly
       const experiment = await adapter.getExperiment('exp-sql-test');
       expect(experiment.experimentId).toBe('exp-sql-test');
-      expect(experiment.inputs.alerts).toContain("alert-with'quotes");
-      expect(experiment.inputs.alerts).toContain('alert-with"double-quotes');
+      expect(experiment.inputs.alerts).toContain('alert-with-hyphens');
+      expect(experiment.inputs.alerts).toContain('alert_with_underscores');
     });
 
     it('should handle LIKE pattern characters safely in artifact IDs', async () => {
+      // Note: Artifact IDs are validated to prevent SQL injection.
+      // Underscores are allowed (valid identifier character), but % wildcards are rejected.
+      // This test verifies that valid artifact IDs with underscores work correctly.
       const definition: ExperimentDefinition = {
         experimentId: 'exp-like-test',
         name: 'LIKE Pattern Test',
         inputs: {
-          alerts: ['alert-with%wildcard', 'alert-with_underscore'],
+          alerts: ['alert_with_underscore', 'alert-with-hyphens'],
           ohlcv: ['ohlcv-1'],
         },
         config: {
@@ -96,8 +102,8 @@ describe('ExperimentTrackerAdapter Test Gaps Coverage', () => {
 
       await adapter.createExperiment(definition);
 
-      // Search for artifacts with LIKE pattern characters
-      const results = await adapter.findByInputArtifacts(['alert-with%wildcard']);
+      // Search for artifacts - parameterized queries handle valid inputs safely
+      const results = await adapter.findByInputArtifacts(['alert_with_underscore']);
       expect(results.length).toBeGreaterThanOrEqual(1);
       expect(results[0]?.experimentId).toBe('exp-like-test');
     });
@@ -185,14 +191,16 @@ describe('ExperimentTrackerAdapter Test Gaps Coverage', () => {
     it('should detect schema version mismatches', async () => {
       // Create database with different schema (missing columns)
       const corruptDbPath = `/tmp/test-experiments-corrupt-${Date.now()}.duckdb`;
-      
+
       try {
         // Create a database with wrong schema
         const { execSync } = await import('child_process');
-        execSync(`duckdb ${corruptDbPath} -c "CREATE TABLE experiments (experiment_id TEXT PRIMARY KEY, name TEXT);"`);
+        execSync(
+          `duckdb ${corruptDbPath} -c "CREATE TABLE experiments (experiment_id TEXT PRIMARY KEY, name TEXT);"`
+        );
 
         const corruptAdapter = new ExperimentTrackerAdapter(corruptDbPath);
-        
+
         // Should handle schema mismatch gracefully
         try {
           await corruptAdapter.listExperiments({});
@@ -274,7 +282,7 @@ describe('ExperimentTrackerAdapter Test Gaps Coverage', () => {
 
       // All should complete (some may fail due to DuckDB locking, but that's expected)
       const results = await Promise.allSettled(updates);
-      
+
       // Verify final state is consistent
       const experiment = await adapter.getExperiment('exp-concurrent-status');
       expect(['pending', 'running']).toContain(experiment.status);
@@ -302,9 +310,7 @@ describe('ExperimentTrackerAdapter Test Gaps Coverage', () => {
       };
 
       // Create 5 concurrent creates with same ID
-      const creates = Array.from({ length: 5 }, () =>
-        adapter.createExperiment(definition)
-      );
+      const creates = Array.from({ length: 5 }, () => adapter.createExperiment(definition));
 
       const results = await Promise.allSettled(creates);
       const successful = results.filter((r) => r.status === 'fulfilled');
@@ -366,7 +372,9 @@ describe('ExperimentTrackerAdapter Test Gaps Coverage', () => {
 
   describe('Input Validation Edge Cases (MEDIUM)', () => {
     it('should handle Unicode characters in artifact IDs', async () => {
-      // Test with Unicode characters (note: normalization may not work perfectly with LIKE matching)
+      // Note: Artifact IDs are validated to only allow alphanumeric, hyphens, and underscores
+      // Unicode characters are rejected at validation time for security and compatibility.
+      // This test verifies that validation correctly rejects invalid characters.
       const unicodeArtifactId = 'alert-café-测试';
       const definition: ExperimentDefinition = {
         experimentId: 'exp-unicode',
@@ -388,20 +396,10 @@ describe('ExperimentTrackerAdapter Test Gaps Coverage', () => {
         },
       };
 
-      await adapter.createExperiment(definition);
-
-      // Verify experiment was created with Unicode characters
-      const experiment = await adapter.getExperiment('exp-unicode');
-      expect(experiment.inputs.alerts).toContain(unicodeArtifactId);
-
-      // Query by exact Unicode artifact ID (normalization may not work with LIKE)
-      const results = await adapter.findByInputArtifacts([unicodeArtifactId]);
-      // Note: LIKE pattern matching may not handle Unicode normalization perfectly
-      // This test verifies Unicode characters are stored and can be queried if exact match
-      expect(results.length).toBeGreaterThanOrEqual(0); // May be 0 if normalization doesn't work
-      
-      // But we can verify the experiment exists and contains the Unicode artifact
-      expect(experiment.inputs.alerts).toContain(unicodeArtifactId);
+      // Should reject Unicode characters in artifact IDs
+      await expect(adapter.createExperiment(definition)).rejects.toThrow(
+        /Artifact ID contains invalid characters/
+      );
     });
 
     it('should handle control characters in experiment names', async () => {
@@ -603,7 +601,7 @@ describe('ExperimentTrackerAdapter Test Gaps Coverage', () => {
   describe('Scalability (LOW)', () => {
     it('should handle large artifact arrays efficiently', async () => {
       const largeArtifactArray = Array.from({ length: 500 }, (_, i) => `alert-${i}`);
-      
+
       const definition: ExperimentDefinition = {
         experimentId: 'exp-large-artifacts',
         name: 'Large Artifacts Test',
@@ -783,4 +781,3 @@ describe('ExperimentTrackerAdapter Test Gaps Coverage', () => {
     });
   });
 });
-

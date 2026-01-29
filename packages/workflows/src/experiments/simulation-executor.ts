@@ -128,7 +128,10 @@ export async function executeSimulation(
     // 7. Calculate aggregate metrics
     const totalGrossPnl = trades.reduce((sum, t) => sum + t.grossPnl, 0);
     const totalNetPnl = trades.reduce((sum, t) => sum + t.netPnl, 0);
-    const totalCosts = trades.reduce((sum, t) => sum + t.entryCosts + t.exitCosts + t.borrowCosts, 0);
+    const totalCosts = trades.reduce(
+      (sum, t) => sum + t.entryCosts + t.exitCosts + t.borrowCosts,
+      0
+    );
     const metrics = calculateMetrics(trades, totalGrossPnl, totalNetPnl, totalCosts);
 
     // 8. Build equity curve
@@ -228,7 +231,9 @@ async function extractAlertsFromProjection(
 /**
  * Convert TypeScript strategy config to Python format
  */
-function convertStrategyConfigToPython(strategy: SimulationInput['config']['strategy']): Record<string, unknown> {
+function convertStrategyConfigToPython(
+  strategy: SimulationInput['config']['strategy']
+): Record<string, unknown> {
   // Extract entry type
   let entryType = 'immediate';
   if (strategy.entry?.delayCandles && strategy.entry.delayCandles > 0) {
@@ -266,7 +271,7 @@ function convertStrategyConfigToPython(strategy: SimulationInput['config']['stra
   // Note: Using hash instead of Date.now() for handler purity
   const strategyConfigStr = JSON.stringify(strategy);
   const hash = createHash('sha256').update(strategyConfigStr).digest('hex').substring(0, 8);
-  
+
   return {
     strategy_id: `exp-${strategy.name}-${hash}`,
     name: strategy.name,
@@ -303,9 +308,10 @@ function convertPythonResultsToTrades(
   for (const result of pythonResults.results) {
     // Handle errors/skipped
     if (result.error) {
-      const alert = result.mint && result.alert_timestamp
-        ? alertMap.get(`${result.mint}:${new Date(result.alert_timestamp).getTime()}`)
-        : null;
+      const alert =
+        result.mint && result.alert_timestamp
+          ? alertMap.get(`${result.mint}:${new Date(result.alert_timestamp).getTime()}`)
+          : null;
       diagnostics.push({
         level: 'error',
         message: result.error,
@@ -316,9 +322,10 @@ function convertPythonResultsToTrades(
     }
 
     if (result.skipped) {
-      const alert = result.mint && result.alert_timestamp
-        ? alertMap.get(`${result.mint}:${new Date(result.alert_timestamp).getTime()}`)
-        : null;
+      const alert =
+        result.mint && result.alert_timestamp
+          ? alertMap.get(`${result.mint}:${new Date(result.alert_timestamp).getTime()}`)
+          : null;
       diagnostics.push({
         level: 'warning',
         message: `Skipped: insufficient data (need ${result.lookback_minutes ?? 0}min lookback, ${result.lookforward_minutes ?? 0}min lookforward)`,
@@ -329,9 +336,10 @@ function convertPythonResultsToTrades(
     }
 
     // Extract alert for this result
-    const alert = result.mint && result.alert_timestamp
-      ? alertMap.get(`${result.mint}:${new Date(result.alert_timestamp).getTime()}`)
-      : null;
+    const alert =
+      result.mint && result.alert_timestamp
+        ? alertMap.get(`${result.mint}:${new Date(result.alert_timestamp).getTime()}`)
+        : null;
 
     if (!alert) {
       // Use alert timestamp from result if available, otherwise 0
@@ -358,7 +366,8 @@ function convertPythonResultsToTrades(
 
     // Estimate entry/exit from alert timestamp
     const entryTime = alert.timestamp;
-    const exitTime = alert.timestamp + (config.params.postWindowMinutes as number ?? 1440) * 60 * 1000;
+    const exitTime =
+      alert.timestamp + ((config.params.postWindowMinutes as number) ?? 1440) * 60 * 1000;
 
     trades.push({
       tradeId: `${alert.id}-0`,
@@ -442,7 +451,8 @@ function calculateMetrics(
   const meanReturn = returns.reduce((sum, r) => sum + r, 0) / returns.length;
 
   // Calculate standard deviation (for Sharpe ratio)
-  const variance = returns.reduce((sum, r) => sum + Math.pow(r - meanReturn, 2), 0) / returns.length;
+  const variance =
+    returns.reduce((sum, r) => sum + Math.pow(r - meanReturn, 2), 0) / returns.length;
   const stdDev = Math.sqrt(variance);
 
   // Calculate downside deviation (for Sortino ratio)
@@ -636,7 +646,9 @@ async function writeResultsToParquet(
     try {
       accessSync(tempDir, constants.W_OK);
     } catch (error) {
-      throw new Error(`Temp directory not writable: ${tempDir} - ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Temp directory not writable: ${tempDir} - ${error instanceof Error ? error.message : String(error)}`
+      );
     }
 
     await db.execute('INSTALL parquet');
@@ -661,7 +673,9 @@ async function writeResultsToParquet(
       try {
         await db.execute(`COPY trades TO '${escapedTradesPath}' (FORMAT PARQUET)`);
       } catch (copyError) {
-        throw new Error(`Failed to copy trades to Parquet: ${copyError instanceof Error ? copyError.message : String(copyError)}`);
+        throw new Error(
+          `Failed to copy trades to Parquet: ${copyError instanceof Error ? copyError.message : String(copyError)}`
+        );
       }
     } else {
       // Create empty Parquet file
@@ -691,7 +705,9 @@ async function writeResultsToParquet(
       try {
         await db.execute(`COPY trades TO '${escapedTradesPath}' (FORMAT PARQUET)`);
       } catch (copyError) {
-        throw new Error(`Failed to copy trades to Parquet: ${copyError instanceof Error ? copyError.message : String(copyError)}`);
+        throw new Error(
+          `Failed to copy trades to Parquet: ${copyError instanceof Error ? copyError.message : String(copyError)}`
+        );
       }
     }
 
@@ -706,7 +722,9 @@ async function writeResultsToParquet(
     try {
       await db.execute(`COPY metrics TO '${escapedMetricsPath}' (FORMAT PARQUET)`);
     } catch (copyError) {
-      throw new Error(`Failed to copy metrics to Parquet: ${copyError instanceof Error ? copyError.message : String(copyError)}`);
+      throw new Error(
+        `Failed to copy metrics to Parquet: ${copyError instanceof Error ? copyError.message : String(copyError)}`
+      );
     }
 
     // Write equity curve to Parquet
@@ -723,7 +741,9 @@ async function writeResultsToParquet(
       try {
         await db.execute(`COPY curves TO '${escapedCurvesPath}' (FORMAT PARQUET)`);
       } catch (copyError) {
-        throw new Error(`Failed to copy curves to Parquet: ${copyError instanceof Error ? copyError.message : String(copyError)}`);
+        throw new Error(
+          `Failed to copy curves to Parquet: ${copyError instanceof Error ? copyError.message : String(copyError)}`
+        );
       }
     } else {
       await db.execute(`
@@ -738,7 +758,9 @@ async function writeResultsToParquet(
       try {
         await db.execute(`COPY curves TO '${escapedCurvesPath}' (FORMAT PARQUET)`);
       } catch (copyError) {
-        throw new Error(`Failed to copy curves to Parquet: ${copyError instanceof Error ? copyError.message : String(copyError)}`);
+        throw new Error(
+          `Failed to copy curves to Parquet: ${copyError instanceof Error ? copyError.message : String(copyError)}`
+        );
       }
     }
 
@@ -759,7 +781,9 @@ async function writeResultsToParquet(
       try {
         await db.execute(`COPY diagnostics TO '${escapedDiagnosticsPath}' (FORMAT PARQUET)`);
       } catch (copyError) {
-        throw new Error(`Failed to copy diagnostics to Parquet: ${copyError instanceof Error ? copyError.message : String(copyError)}`);
+        throw new Error(
+          `Failed to copy diagnostics to Parquet: ${copyError instanceof Error ? copyError.message : String(copyError)}`
+        );
       }
     }
 
