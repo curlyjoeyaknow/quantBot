@@ -118,7 +118,6 @@ export type {
   RunSetResolution,
   RunSetWithResolution,
   Dataset,
-  Run as RunSetRun,
   DatasetId,
   ResolvedArtifact,
   UniverseFilter,
@@ -126,6 +125,10 @@ export type {
   StrategyFilter,
   RunSetMode,
 } from '../types/runset.js';
+// Export Run from runset - conflicts with RunLedger Run, but needed for backward compatibility
+// Importers should use explicit imports: import type { Run } from '@quantbot/core' (will get RunSet Run)
+// For RunLedger Run, use: import type { Run } from '@quantbot/core/domain/runs'
+export type { Run } from '../types/runset.js';
 export type {
   BacktestResultsPort,
   RunSummary,
