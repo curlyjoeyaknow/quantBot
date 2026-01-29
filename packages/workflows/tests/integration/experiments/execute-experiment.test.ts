@@ -7,7 +7,11 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { executeExperiment } from '../../../src/experiments/index.js';
 import type { ExperimentDefinition } from '@quantbot/core';
-import { ArtifactStoreAdapter, ProjectionBuilderAdapter, ExperimentTrackerAdapter } from '@quantbot/storage';
+import {
+  ArtifactStoreAdapter,
+  ProjectionBuilderAdapter,
+  ExperimentTrackerAdapter,
+} from '@quantbot/storage';
 import { PythonEngine } from '@quantbot/utils';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -182,4 +186,3 @@ describe('executeExperiment (integration)', () => {
     ).rejects.toThrow();
   });
 });
-

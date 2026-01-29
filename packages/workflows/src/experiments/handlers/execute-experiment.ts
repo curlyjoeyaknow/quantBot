@@ -180,4 +180,3 @@ function generateSeed(experimentId: string): number {
   }
   return Math.abs(hash);
 }
-

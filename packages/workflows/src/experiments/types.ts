@@ -379,4 +379,3 @@ export interface ValidationError {
   /** Error type */
   type: 'not_found' | 'invalid_status' | 'invalid_schema' | 'other';
 }
-

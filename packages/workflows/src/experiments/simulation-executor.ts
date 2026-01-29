@@ -125,10 +125,7 @@ async function loadDataFromProjection(
        FROM ohlcv
        WHERE timestamp >= ? AND timestamp <= ?
        ORDER BY timestamp ASC`,
-      [
-        new Date(config.dateRange.from).getTime(),
-        new Date(config.dateRange.to).getTime(),
-      ],
+      [new Date(config.dateRange.from).getTime(), new Date(config.dateRange.to).getTime()],
       (err, candleRows) => {
         if (err) {
           db.close();
@@ -141,10 +138,7 @@ async function loadDataFromProjection(
            FROM alerts
            WHERE timestamp >= ? AND timestamp <= ?
            ORDER BY timestamp ASC`,
-          [
-            new Date(config.dateRange.from).getTime(),
-            new Date(config.dateRange.to).getTime(),
-          ],
+          [new Date(config.dateRange.from).getTime(), new Date(config.dateRange.to).getTime()],
           (err2, alertRows) => {
             db.close();
 
@@ -185,8 +179,8 @@ function filterCandlesForAlert(
   config: SimulationInput['config']
 ): Candle[] {
   // Get pre/post window from config (default to 4 hours pre, 24 hours post)
-  const preWindowMs = (config.params.preWindowMinutes as number ?? 240) * 60 * 1000;
-  const postWindowMs = (config.params.postWindowMinutes as number ?? 1440) * 60 * 1000;
+  const preWindowMs = ((config.params.preWindowMinutes as number) ?? 240) * 60 * 1000;
+  const postWindowMs = ((config.params.postWindowMinutes as number) ?? 1440) * 60 * 1000;
 
   const startTime = alert.timestamp - preWindowMs;
   const endTime = alert.timestamp + postWindowMs;
@@ -229,7 +223,11 @@ function convertResultToTrades(result: Record<string, unknown>, alert: Alert): T
 
     const exitReason = (exit.reason as string) ?? 'unknown';
     const validExitReason: 'target' | 'stop_loss' | 'timeout' | 'signal' | 'final' =
-      exitReason === 'target' || exitReason === 'stop_loss' || exitReason === 'timeout' || exitReason === 'signal' || exitReason === 'final'
+      exitReason === 'target' ||
+      exitReason === 'stop_loss' ||
+      exitReason === 'timeout' ||
+      exitReason === 'signal' ||
+      exitReason === 'final'
         ? exitReason
         : 'final';
 
@@ -269,23 +267,22 @@ function calculateMetrics(
   const winningTrades = trades.filter((t) => t.netPnl > 0);
   const losingTrades = trades.filter((t) => t.netPnl <= 0);
 
-  const avgWin = winningTrades.length > 0
-    ? winningTrades.reduce((sum, t) => sum + t.netPnl, 0) / winningTrades.length
-    : 0;
+  const avgWin =
+    winningTrades.length > 0
+      ? winningTrades.reduce((sum, t) => sum + t.netPnl, 0) / winningTrades.length
+      : 0;
 
-  const avgLoss = losingTrades.length > 0
-    ? Math.abs(losingTrades.reduce((sum, t) => sum + t.netPnl, 0) / losingTrades.length)
-    : 0;
+  const avgLoss =
+    losingTrades.length > 0
+      ? Math.abs(losingTrades.reduce((sum, t) => sum + t.netPnl, 0) / losingTrades.length)
+      : 0;
 
   const profitFactor = avgLoss > 0 ? avgWin / avgLoss : 0;
 
-  const avgDuration = trades.length > 0
-    ? trades.reduce((sum, t) => sum + t.duration, 0) / trades.length
-    : 0;
+  const avgDuration =
+    trades.length > 0 ? trades.reduce((sum, t) => sum + t.duration, 0) / trades.length : 0;
 
-  const maxDrawdown = trades.length > 0
-    ? Math.max(...trades.map((t) => t.maxDrawdown))
-    : 0;
+  const maxDrawdown = trades.length > 0 ? Math.max(...trades.map((t) => t.maxDrawdown)) : 0;
 
   return {
     totalTrades: trades.length,
@@ -369,4 +366,3 @@ interface Alert {
   timestamp: number;
   price: number;
 }
-

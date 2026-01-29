@@ -5,7 +5,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { executeExperiment, type ExperimentExecutionPorts } from '../../../src/experiments/index.js';
+import {
+  executeExperiment,
+  type ExperimentExecutionPorts,
+} from '../../../src/experiments/index.js';
 import type {
   ArtifactStorePort,
   ProjectionBuilderPort,
@@ -62,7 +65,12 @@ describe('executeExperiment', () => {
         duckdbPath: '/tmp/test-projection.duckdb',
         tables: [
           { name: 'alerts', rowCount: 10, columns: ['id', 'timestamp'], indexes: [] },
-          { name: 'ohlcv', rowCount: 1000, columns: ['timestamp', 'open', 'high', 'low', 'close', 'volume'], indexes: [] },
+          {
+            name: 'ohlcv',
+            rowCount: 1000,
+            columns: ['timestamp', 'open', 'high', 'low', 'close', 'volume'],
+            indexes: [],
+          },
         ],
         artifactCount: 2,
         totalRows: 1010,
@@ -191,7 +199,9 @@ describe('executeExperiment', () => {
   it('should throw error if artifact validation fails', async () => {
     mockArtifactStore.getArtifact = vi.fn().mockRejectedValue(new Error('Artifact not found'));
 
-    await expect(executeExperiment(testDefinition, ports)).rejects.toThrow('Artifact validation failed');
+    await expect(executeExperiment(testDefinition, ports)).rejects.toThrow(
+      'Artifact validation failed'
+    );
   });
 
   it('should throw error if artifact has invalid status', async () => {
@@ -209,7 +219,9 @@ describe('executeExperiment', () => {
       createdAt: new Date().toISOString(),
     } as ArtifactManifestRecord);
 
-    await expect(executeExperiment(testDefinition, ports)).rejects.toThrow('Artifact validation failed');
+    await expect(executeExperiment(testDefinition, ports)).rejects.toThrow(
+      'Artifact validation failed'
+    );
   });
 
   it('should build projection with correct artifacts', async () => {
@@ -319,4 +331,3 @@ describe('executeExperiment', () => {
     expect(result.outputs?.metrics).toBe('metrics-artifact-1');
   });
 });
-

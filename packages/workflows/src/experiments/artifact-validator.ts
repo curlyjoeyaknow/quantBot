@@ -73,13 +73,8 @@ export async function validateExperimentInputs(
   artifactStore: ArtifactStorePort
 ): Promise<ValidationResult> {
   // Collect all artifact IDs
-  const allArtifactIds = [
-    ...inputs.alerts,
-    ...inputs.ohlcv,
-    ...(inputs.strategies ?? []),
-  ];
+  const allArtifactIds = [...inputs.alerts, ...inputs.ohlcv, ...(inputs.strategies ?? [])];
 
   // Validate all artifacts
   return validateArtifacts(allArtifactIds, artifactStore);
 }
-

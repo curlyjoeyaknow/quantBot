@@ -154,4 +154,3 @@ export async function publishResults(
     diagnosticsArtifactId,
   };
 }
-
