@@ -5,10 +5,6 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import {
-  executeExperiment,
-  type ExperimentExecutionPorts,
-} from '../../../src/experiments/index.js';
 import type {
   ArtifactStorePort,
   ProjectionBuilderPort,
@@ -19,6 +15,23 @@ import type {
   ProjectionResult,
   ExperimentResults,
 } from '@quantbot/core';
+
+// Mock the simulation executor module
+vi.mock('../../../src/experiments/simulation-executor.js', () => ({
+  executeSimulation: vi.fn().mockResolvedValue({
+    tradesPath: '/tmp/trades.json',
+    metricsPath: '/tmp/metrics.json',
+    curvesPath: '/tmp/curves.json',
+    inputArtifactIds: [],
+  }),
+}));
+
+// Import after mocking
+import {
+  executeExperiment,
+  type ExperimentExecutionPorts,
+} from '../../../src/experiments/index.js';
+import { executeSimulation } from '../../../src/experiments/simulation-executor.js';
 
 describe('executeExperiment', () => {
   let mockArtifactStore: ArtifactStorePort;
@@ -165,31 +178,12 @@ describe('executeExperiment', () => {
   });
 
   it('should create experiment with pending status', async () => {
-    // Mock simulation execution to avoid actual execution
-    vi.mock('../../../src/experiments/simulation-executor.js', () => ({
-      executeSimulation: vi.fn().mockResolvedValue({
-        tradesPath: '/tmp/trades.json',
-        metricsPath: '/tmp/metrics.json',
-        curvesPath: '/tmp/curves.json',
-        inputArtifactIds: [],
-      }),
-    }));
-
     await executeExperiment(testDefinition, ports);
 
     expect(mockExperimentTracker.createExperiment).toHaveBeenCalledWith(testDefinition);
   });
 
   it('should validate input artifacts before execution', async () => {
-    vi.mock('../../../src/experiments/simulation-executor.js', () => ({
-      executeSimulation: vi.fn().mockResolvedValue({
-        tradesPath: '/tmp/trades.json',
-        metricsPath: '/tmp/metrics.json',
-        curvesPath: '/tmp/curves.json',
-        inputArtifactIds: [],
-      }),
-    }));
-
     await executeExperiment(testDefinition, ports);
 
     expect(mockArtifactStore.getArtifact).toHaveBeenCalledWith('alert-1');
@@ -225,15 +219,6 @@ describe('executeExperiment', () => {
   });
 
   it('should build projection with correct artifacts', async () => {
-    vi.mock('../../../src/experiments/simulation-executor.js', () => ({
-      executeSimulation: vi.fn().mockResolvedValue({
-        tradesPath: '/tmp/trades.json',
-        metricsPath: '/tmp/metrics.json',
-        curvesPath: '/tmp/curves.json',
-        inputArtifactIds: [],
-      }),
-    }));
-
     await executeExperiment(testDefinition, ports);
 
     expect(mockProjectionBuilder.buildProjection).toHaveBeenCalledWith(
@@ -251,30 +236,12 @@ describe('executeExperiment', () => {
   });
 
   it('should update status to running before execution', async () => {
-    vi.mock('../../../src/experiments/simulation-executor.js', () => ({
-      executeSimulation: vi.fn().mockResolvedValue({
-        tradesPath: '/tmp/trades.json',
-        metricsPath: '/tmp/metrics.json',
-        curvesPath: '/tmp/curves.json',
-        inputArtifactIds: [],
-      }),
-    }));
-
     await executeExperiment(testDefinition, ports);
 
     expect(mockExperimentTracker.updateStatus).toHaveBeenCalledWith('test-exp-123', 'running');
   });
 
   it('should update status to completed after execution', async () => {
-    vi.mock('../../../src/experiments/simulation-executor.js', () => ({
-      executeSimulation: vi.fn().mockResolvedValue({
-        tradesPath: '/tmp/trades.json',
-        metricsPath: '/tmp/metrics.json',
-        curvesPath: '/tmp/curves.json',
-        inputArtifactIds: [],
-      }),
-    }));
-
     await executeExperiment(testDefinition, ports);
 
     expect(mockExperimentTracker.updateStatus).toHaveBeenCalledWith('test-exp-123', 'completed');
@@ -289,40 +256,21 @@ describe('executeExperiment', () => {
   });
 
   it('should dispose projection after completion', async () => {
-    vi.mock('../../../src/experiments/simulation-executor.js', () => ({
-      executeSimulation: vi.fn().mockResolvedValue({
-        tradesPath: '/tmp/trades.json',
-        metricsPath: '/tmp/metrics.json',
-        curvesPath: '/tmp/curves.json',
-        inputArtifactIds: [],
-      }),
-    }));
-
     await executeExperiment(testDefinition, ports);
 
     expect(mockProjectionBuilder.disposeProjection).toHaveBeenCalled();
   });
 
   it('should dispose projection even on error', async () => {
-    vi.mock('../../../src/experiments/simulation-executor.js', () => ({
-      executeSimulation: vi.fn().mockRejectedValue(new Error('Simulation failed')),
-    }));
+    // Mock simulation to fail for this test
+    vi.mocked(executeSimulation).mockRejectedValueOnce(new Error('Simulation failed'));
 
-    await expect(executeExperiment(testDefinition, ports)).rejects.toThrow();
+    await expect(executeExperiment(testDefinition, ports)).rejects.toThrow('Simulation failed');
 
     expect(mockProjectionBuilder.disposeProjection).toHaveBeenCalled();
   });
 
   it('should return completed experiment', async () => {
-    vi.mock('../../../src/experiments/simulation-executor.js', () => ({
-      executeSimulation: vi.fn().mockResolvedValue({
-        tradesPath: '/tmp/trades.json',
-        metricsPath: '/tmp/metrics.json',
-        curvesPath: '/tmp/curves.json',
-        inputArtifactIds: [],
-      }),
-    }));
-
     const result = await executeExperiment(testDefinition, ports);
 
     expect(result.status).toBe('completed');
