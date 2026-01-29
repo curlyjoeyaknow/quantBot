@@ -293,10 +293,8 @@ export class CommandContext {
         // Artifact Store - Parquet + SQLite manifest
         const workspaceRoot = findWorkspaceRoot();
         const manifestDb =
-          process.env.ARTIFACT_MANIFEST_DB ||
-          join(workspaceRoot, 'data/manifest/manifest.sqlite');
-        const artifactsRoot =
-          process.env.ARTIFACTS_ROOT || join(workspaceRoot, 'data/artifacts');
+          process.env.ARTIFACT_MANIFEST_DB || join(workspaceRoot, 'data/manifest/manifest.sqlite');
+        const artifactsRoot = process.env.ARTIFACTS_ROOT || join(workspaceRoot, 'data/artifacts');
         return new ArtifactStoreAdapter(manifestDb, artifactsRoot, pythonEngine);
       },
       projectionBuilder: () => {

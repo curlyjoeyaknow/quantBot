@@ -15,7 +15,6 @@ import {
   NotFoundError,
   AppError,
   retryWithBackoff,
-  isRetryableError,
 } from '@quantbot/infra/utils';
 
 /**
@@ -148,7 +147,6 @@ export class ArtifactStoreAdapter implements ArtifactStorePort {
       return result;
     } catch (error) {
       const duration = Date.now() - startTime;
-      const isRetryable = error instanceof Error && isRetryableError(error);
       this.recordMetric(operation, duration, true, false);
 
       // Re-throw with context
@@ -214,8 +212,7 @@ export class ArtifactStoreAdapter implements ArtifactStorePort {
         avgTimeMs: metrics.count > 0 ? metrics.totalTimeMs / metrics.count : 0,
         totalTimeMs: metrics.totalTimeMs,
         errorRate: metrics.count > 0 ? metrics.errors / metrics.count : 0,
-        deduplicationRate:
-          metrics.count > 0 ? metrics.deduplications / metrics.count : 0,
+        deduplicationRate: metrics.count > 0 ? metrics.deduplications / metrics.count : 0,
       };
     }
 
@@ -338,58 +335,58 @@ export class ArtifactStoreAdapter implements ArtifactStorePort {
   async getLineage(artifactId: string): Promise<ArtifactLineage> {
     logger.debug('Getting artifact lineage', { artifactId });
 
-    const result = await this.pythonEngine.runScriptWithStdin(
-      this.scriptPath,
+    return this.executeWithRetry(
+      'get_lineage',
       {
         operation: 'get_lineage',
         manifest_db: this.manifestDb,
         artifact_id: artifactId,
       },
-      ArtifactLineageSchema
+      ArtifactLineageSchema,
+      { artifactId }
     );
-
-    return result;
   }
 
   async getDownstream(artifactId: string): Promise<ArtifactManifestRecord[]> {
     logger.debug('Getting downstream artifacts', { artifactId });
 
-    const result = await this.pythonEngine.runScriptWithStdin(
-      this.scriptPath,
+    return this.executeWithRetry(
+      'get_downstream',
       {
         operation: 'get_downstream',
         manifest_db: this.manifestDb,
         artifact_id: artifactId,
       },
-      z.array(ArtifactSchema)
+      z.array(ArtifactSchema),
+      { artifactId }
     );
-
-    return result;
   }
 
   async supersede(newArtifactId: string, oldArtifactId: string): Promise<void> {
     logger.info('Superseding artifact', { newArtifactId, oldArtifactId });
 
-    await this.pythonEngine.runScriptWithStdin(
-      this.scriptPath,
+    await this.executeWithRetry(
+      'supersede',
       {
         operation: 'supersede',
         manifest_db: this.manifestDb,
         new_artifact_id: newArtifactId,
         old_artifact_id: oldArtifactId,
       },
-      z.object({ success: z.boolean() })
+      z.object({ success: z.boolean() }),
+      { newArtifactId, oldArtifactId }
     );
   }
 
   async isAvailable(): Promise<boolean> {
     try {
-      await this.pythonEngine.runScriptWithStdin(
-        this.scriptPath,
+      const result = await this.executeWithRetry(
+        'health_check',
         { operation: 'health_check', manifest_db: this.manifestDb },
-        z.object({ available: z.boolean() })
+        z.object({ available: z.boolean() }),
+        {}
       );
-      return true;
+      return result.available;
     } catch (error) {
       logger.warn('Artifact store not available', { error });
       return false;

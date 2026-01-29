@@ -285,14 +285,41 @@ def supersede_artifact(manifest_db: str, new_artifact_id: str, old_artifact_id: 
 
 
 def health_check(manifest_db: str) -> Dict[str, Any]:
-    """Check if artifact store is available"""
+    """Check if artifact store is available
+    
+    Verifies:
+    - Database file exists and is accessible
+    - Database schema is valid (artifacts table exists)
+    - Can execute queries
+    """
     try:
-        con = connect_manifest(Path(manifest_db))
+        # Check if manifest DB file exists
+        manifest_path = Path(manifest_db)
+        if not manifest_path.exists():
+            return {'available': False, 'error': f'Manifest database not found: {manifest_db}'}
+        
+        # Check file permissions
+        if not os.access(manifest_path, os.R_OK):
+            return {'available': False, 'error': f'Manifest database not readable: {manifest_db}'}
+        
+        # Connect and verify schema
+        con = connect_manifest(manifest_path)
+        
+        # Verify artifacts table exists
+        table_check = con.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='artifacts'"
+        ).fetchone()
+        if table_check is None:
+            con.close()
+            return {'available': False, 'error': 'Artifacts table not found in manifest database'}
+        
+        # Test query execution
         con.execute("SELECT 1").fetchone()
         con.close()
+        
         return {'available': True}
     except Exception as e:
-        return {'available': False, 'error': str(e)}
+        return {'available': False, 'error': str(e), 'type': type(e).__name__}
 
 
 def main() -> None:
